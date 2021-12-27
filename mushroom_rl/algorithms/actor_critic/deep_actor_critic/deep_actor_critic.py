@@ -4,7 +4,7 @@ from mushroom_rl.utils.torch import update_optimizer_parameters
 
 class DeepAC(Agent):
     """
-    Base class for algorithms that uses the reparametrization trick, such as
+    Base class for algorithms that uses the reparameterization trick, such as
     SAC, DDPG and TD3.
 
     """

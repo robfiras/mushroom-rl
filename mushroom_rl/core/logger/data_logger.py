@@ -2,6 +2,13 @@ import re
 import pickle
 import numpy as np
 
+try:
+    tb_available = False
+    from torch.utils.tensorboard import SummaryWriter
+    tb_available = True
+except ImportError:
+    pass
+
 from pathlib import Path
 
 
@@ -23,14 +30,30 @@ class DataLogger(object):
                 data logged to the one already existing in the directory.
 
         """
+
         self._results_dir = results_dir
         self._suffix = suffix
         self._data_dict = dict()
+        tb_writer_path = str(results_dir) + suffix
+        self._tb_writer = SummaryWriter(log_dir=tb_writer_path) if tb_available else None
 
         self._best_J = -np.inf
 
         if append:
             self._load_numpy()
+
+    def get_tb_writer(self):
+        """
+        Returns a Tensorboard's SummaryWriter if Tensorboard is installed.
+
+        Returns:
+              SummaryWriter: SummaryWriter
+
+        """
+        if self._tb_writer:
+            return self._tb_writer
+        else:
+            raise ModuleNotFoundError("Tensorboard is not installed.")
 
     def log_numpy(self, **kwargs):
         """
