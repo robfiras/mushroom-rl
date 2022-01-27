@@ -177,7 +177,7 @@ class TRPO(Agent):
 
         for _ in range(self._n_epochs_line_search()):
             theta_new = theta_old + full_step * stepsize
-            #self.policy.set_weights(theta_new)
+            self.policy.set_weights(theta_new)
 
             new_loss = self._compute_loss(obs, act, adv, old_log_prob)
             kl = self._compute_kl(obs, old_pol_dist)
