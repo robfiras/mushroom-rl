@@ -1,5 +1,5 @@
 from tqdm import tqdm
-
+import time
 
 class Core(object):
     """
@@ -72,7 +72,7 @@ class Core(object):
             fit_condition = lambda: self._current_episodes_counter\
                                      >= self._n_episodes_per_fit
 
-        self._run(n_steps, n_episodes, fit_condition, render, quiet)
+        return self._run(n_steps, n_episodes, fit_condition, render, quiet)
 
     def evaluate(self, initial_states=None, n_steps=None, n_episodes=None,
                  render=False, quiet=False):
@@ -133,6 +133,7 @@ class Core(object):
         self._current_steps_counter = 0
 
         dataset = list()
+        last_fit_at = 0
         last = True
         while move_condition():
             if last:
@@ -153,14 +154,14 @@ class Core(object):
 
             dataset.append(sample)
             if fit_condition():
-                self.agent.fit(dataset)
+                fit_dataset = dataset[last_fit_at:]
+                self.agent.fit(dataset[last_fit_at:])
+                last_fit_at = len(dataset)
                 self._current_episodes_counter = 0
                 self._current_steps_counter = 0
 
                 for c in self.callbacks_fit:
                     c(dataset)
-
-                dataset = list()
 
             last = sample[-1]
 
@@ -192,6 +193,7 @@ class Core(object):
 
         if render:
             self.mdp.render()
+            time.sleep(self.mdp.env.env.dt)
 
         last = not(
             self._episode_steps < self.mdp.info.horizon and not absorbing)
