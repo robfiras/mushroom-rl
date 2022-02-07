@@ -22,7 +22,7 @@ class PPO(Agent):
     """
     def __init__(self, mdp_info, policy, actor_optimizer, critic_params,
                  n_epochs_policy, batch_size, eps_ppo, lam, ent_coeff=0.0,
-                 critic_fit_params=None):
+                 critic_fit_params=None, standardizer=None):
         """
         Constructor.
 
@@ -55,6 +55,8 @@ class PPO(Agent):
 
         self._V = Regressor(TorchApproximator, **critic_params)
 
+        self._standardizer = standardizer
+
         self._iter = 1
 
         self._add_save_attr(
@@ -66,7 +68,8 @@ class PPO(Agent):
             _optimizer='torch',
             _lambda='mushroom',
             _V='mushroom',
-            _iter='primitive'
+            _iter='primitive',
+            _standardizer='pickle'
         )
 
         super().__init__(mdp_info, policy, None)
@@ -80,6 +83,10 @@ class PPO(Agent):
 
         obs = to_float_tensor(x, self.policy.use_cuda)
         act = to_float_tensor(u, self.policy.use_cuda)
+
+        # update running mean and std
+        self._standardizer.update_mean_std(x)
+
         v_target, np_adv = compute_gae(self._V, x, xn, r, absorbing, last, self.mdp_info.gamma, self._lambda())
         np_adv = (np_adv - np.mean(np_adv)) / (np.std(np_adv) + 1e-8)
         adv = to_float_tensor(np_adv, self.policy.use_cuda)
