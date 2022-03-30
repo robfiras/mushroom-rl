@@ -5,6 +5,18 @@ import mujoco_py
 import numpy as np
 from scipy import signal, interpolate
 
+# KEYS
+PELVIS_POS_KEYS = ["pelvis_tx", "pelvis_tz", "pelvis_ty"]
+PELVIS_EULER_KEYS = [ "pelvis_list", "pelvis_tilt", "pelvis_rotation"]
+PELVIS_QUAT_KEYS = ["pelvis_q1", "pelvis_q2", "pelvis_q3", "pelvis_q4"]
+JOINT_KEYS = ["hip_adduction_l", "hip_flexion_l", "hip_rotation_l", "knee_angle_l", "ankle_angle_l", "hip_adduction_r",
+              "hip_flexion_r", "hip_rotation_r", "knee_angle_r", "ankle_angle_r"]
+
+# KEYS of euler dataset
+EKEYS = PELVIS_POS_KEYS + PELVIS_EULER_KEYS + JOINT_KEYS
+
+# KEYS of quaternion dataset
+QKEYS = PELVIS_POS_KEYS + PELVIS_QUAT_KEYS + JOINT_KEYS
 
 class Trajectory(object):
     """
@@ -34,8 +46,12 @@ class Trajectory(object):
                 trajectory velocity.
 
         """
-        trajectory_files = np.load(traj_path)
-        self.trajectory = trajectory_files["trajectory_data"]
+        trajectory_files = np.load(traj_path, allow_pickle=True)
+
+        # make new keys, one for joint position and one for joint velocity
+        keys = ["q_"+k for k in QKEYS] + ["dq_"+k for k in EKEYS]
+
+        self.trajectory = np.array([trajectory_files[key] for key in keys])
 
         if "split_points" in trajectory_files.files:
             self.split_points = trajectory_files["split_points"]
@@ -180,8 +196,8 @@ class HumanoidTrajectory(Trajectory):
         self.subtraj = self.trajectory.copy()
         self.subtraj[0, :] -= self.subtraj[0, self.subtraj_step_no]
 
-        self.sim.data.qpos[0:15] = self.subtraj[0:15, self.subtraj_step_no]
-        self.sim.data.qvel[0:14] = self.subtraj[15:29, self.subtraj_step_no]
+        self.sim.data.qpos[0:17] = self.subtraj[0:17, self.subtraj_step_no]
+        self.sim.data.qvel[0:16] = self.subtraj[17:33, self.subtraj_step_no]
 
     def get_next_sub_trajectory(self):
         """
@@ -198,17 +214,19 @@ class HumanoidTrajectory(Trajectory):
 
         """
         viewer = mujoco_py.MjViewer(self.sim)
-        viewer._render_every_frame = True
+        viewer._render_every_frame = False
         self.reset_trajectory()
         while True:
             if self.subtraj_step_no >= self.traj_length:
                 self.get_next_sub_trajectory()
 
-            self.sim.data.qpos[0:15] = np.r_[
-                self.x_dist + self.subtraj[0, self.subtraj_step_no],
-                self.subtraj[1:15, self.subtraj_step_no]
-            ]
-            self.sim.data.qvel[0:14] = self.subtraj[15:29, self.subtraj_step_no]
+            # self.sim.data.qpos[0:17] = np.r_[
+            #     self.x_dist + self.subtraj[0, self.subtraj_step_no],
+            #     self.subtraj[1:17, self.subtraj_step_no]
+            # ]
+
+            self.sim.data.qpos[0:17] = self.subtraj[0:17, self.subtraj_step_no]
+            self.sim.data.qvel[0:17] = self.subtraj[17:33, self.subtraj_step_no]
             self.sim.forward()
 
             self.subtraj_step_no += 1

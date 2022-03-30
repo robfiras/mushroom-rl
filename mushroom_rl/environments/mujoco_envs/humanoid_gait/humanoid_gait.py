@@ -144,7 +144,7 @@ class HumanoidGait(MuJoCo):
 
         self.mean_grf = RunningAveragedWindow(shape=(6,),
                                               window_size=n_intermediate_steps)
-        self.mean_vel = RunningExpWeightedAverage(shape=(3,), alpha=0.005)
+        #self.mean_vel = RunningExpWeightedAverage(shape=(3,), alpha=0.005)
         self.mean_obs = RunningAveragedWindow(
             shape=self.info.observation_space.shape,
             window_size=obs_avg_window
@@ -158,10 +158,10 @@ class HumanoidGait(MuJoCo):
         state, reward, absorbing, info = super().step(action)
 
         self.mean_obs.update_stats(state)
-        self.mean_vel.update_stats(self._sim.data.qvel[0:3])
+        #self.mean_vel.update_stats(self._sim.data.qvel[0:3])
 
         avg_obs = self.mean_obs.mean
-        avg_obs[13:16] = self.mean_vel.mean
+        #avg_obs[13:16] = self.mean_vel.mean
         return avg_obs, reward, absorbing, info
 
     def render(self):
@@ -178,7 +178,7 @@ class HumanoidGait(MuJoCo):
                 self.goal_reward, MaxVelocityReward)
                                          ) else self.goal_reward.get_observation())
 
-        self.mean_vel.reset(start_vel)
+        #self.mean_vel.reset(start_vel)
         self.mean_obs.reset(start_obs)
         self.mean_act.reset()
         self.external_actuator.reset()
