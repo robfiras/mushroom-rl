@@ -193,7 +193,7 @@ class Core(object):
 
         if render:
             self.mdp.render()
-            time.sleep(self.mdp.env.env.dt)
+            #time.sleep(self.mdp.env.env.dt)
 
         last = not(
             self._episode_steps < self.mdp.info.horizon and not absorbing)

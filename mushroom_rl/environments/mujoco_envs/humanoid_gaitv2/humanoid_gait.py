@@ -187,7 +187,7 @@ class HumanoidGait(MuJoCo):
         self.mean_act.reset()
         self.external_actuator.reset()
 
-    def _reward(self, state, action, next_state):
+    def _reward_old(self, state, action, next_state):
         live_reward = 1.0
 
         goal_reward = self.goal_reward(state, action, next_state)
@@ -210,6 +210,12 @@ class HumanoidGait(MuJoCo):
             - self.reward_weights["move_cost"] * move_cost \
             - self.reward_weights["fall_cost"] * fall_cost
 
+        return total_reward
+
+    def _reward(self, state, action, next_state):
+        live_reward = 1.0
+        pelvis_tx = super(HumanoidGait, self)._create_observation()[0]
+        total_reward = live_reward + pelvis_tx
         return total_reward
 
     def _is_absorbing(self, state):
@@ -262,21 +268,21 @@ class HumanoidGait(MuJoCo):
         """
         Creates full vector of observations:
 
-        obs[0:13] -> qpos(from mujoco obs)
+        obs[0:15] -> qpos(from mujoco obs)
         obs[0] -> torso z pos
         obs[1:5] -> torso quaternion orientation
-        obs[5:13] -> leg joints angle
+        obs[5:15] -> leg joints angle
 
-        obs[13:27] -> qvel(from mujoco obs)
-        obs[13:16] -> torso linear velocity
-        obs[16:19] -> torso angular velocity
-        obs[19:27] -> leg joints angular velocity
+        obs[15:29] -> qvel(from mujoco obs)
+        obs[15:18] -> torso linear velocity
+        obs[18:21] -> torso angular velocity
+        obs[21:31] -> leg joints angular velocity
 
-        obs[27:30] ->  ground force
-        obs[27:30] -> ground force on right foot(xyz)
-        obs[30:33] -> ground force on left foot(xyz)
+        obs[31:37] ->  ground force
+        obs[31:34] -> ground force on right foot(xyz)
+        obs[34:37] -> ground force on left foot(xyz)
 
-        obs[33:33+(len(goal_observation)] -> observations related
+        obs[37:37+(len(goal_observation)] -> observations related
                                              to the goal
 
         obs[last_obs_id - len(ext_actuator_obs): last_obs_id]
