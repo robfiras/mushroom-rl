@@ -1,4 +1,5 @@
 import time
+from copy import deepcopy
 
 import matplotlib.pyplot as plt
 import mujoco_py
@@ -29,7 +30,7 @@ class Trajectory(object):
 
     """
     def __init__(self, traj_path, traj_dt=0.01, control_dt=0.01,
-                 traj_speed_mult=1.0):
+                 traj_speed_mult=1.0, ignore_keys=[]):
         """
         Constructor.
 
@@ -50,6 +51,10 @@ class Trajectory(object):
 
         # make new keys, one for joint position and one for joint velocity
         keys = ["q_"+k for k in QKEYS] + ["dq_"+k for k in EKEYS]
+
+        # remove unwanted keys
+        for ik in ignore_keys:
+            keys.remove(ik)
 
         self.trajectory = np.array([trajectory_files[key] for key in keys])
 
@@ -75,8 +80,21 @@ class Trajectory(object):
             self.split_points = np.round(
                 self.split_points * new_traj_sampling_factor).astype(np.int32)
 
+    def create_dataset(self):
+
+        # get relevant data
+        data = np.transpose(deepcopy(self.trajectory))
+
+        # convert to dict with states and next_states
+        states = data[:-1]
+        next_states = data[1:]
+
+        return dict(states=states, next_states=next_states)
+
     def _interpolate_trajectory(self, traj, factor):
         x = np.arange(traj.shape[1])
+        numy = round(traj.shape[1] * factor)
+        no_round = traj.shape[1] * factor
         x_new = np.linspace(0, traj.shape[1] - 1, round(traj.shape[1] * factor),
                             endpoint=True)
         new_traj = interpolate.interp1d(x, traj, kind="cubic", axis=1)(x_new)
