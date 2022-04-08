@@ -273,7 +273,7 @@ class HumanoidGait(MuJoCo):
         obs[1:5] -> torso quaternion orientation
         obs[5:15] -> leg joints angle
 
-        obs[15:29] -> qvel(from mujoco obs)
+        obs[15:31] -> qvel(from mujoco obs)
         obs[15:18] -> torso linear velocity
         obs[18:21] -> torso angular velocity
         obs[21:31] -> leg joints angular velocity

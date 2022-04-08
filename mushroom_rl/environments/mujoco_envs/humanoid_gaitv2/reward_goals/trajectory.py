@@ -7,11 +7,11 @@ import numpy as np
 from scipy import signal, interpolate
 
 # KEYS
-PELVIS_POS_KEYS = ["pelvis_tx", "pelvis_tz", "pelvis_ty"]
-PELVIS_EULER_KEYS = ["pelvis_tilt", "pelvis_list", "pelvis_rotation",]
+PELVIS_POS_KEYS = ["pelvis_tx", "pelvis_tz",  "pelvis_ty"]
+PELVIS_EULER_KEYS = [ "pelvis_list", "pelvis_tilt", "pelvis_rotation",]
 PELVIS_QUAT_KEYS = ["pelvis_q1", "pelvis_q2", "pelvis_q3", "pelvis_q4"]
-JOINT_KEYS = ["hip_adduction_l", "hip_flexion_l", "hip_rotation_l", "knee_angle_l", "ankle_angle_l", "hip_adduction_r",
-              "hip_flexion_r", "hip_rotation_r", "knee_angle_r", "ankle_angle_r"]
+JOINT_KEYS = ["hip_adduction_l", "hip_flexion_l", "hip_rotation_l", "knee_angle_l", "ankle_angle_l","hip_adduction_r", "hip_flexion_r", "hip_rotation_r", "knee_angle_r",
+              "ankle_angle_r"]
 
 # KEYS of euler dataset
 EKEYS = PELVIS_POS_KEYS + PELVIS_EULER_KEYS + JOINT_KEYS
@@ -80,16 +80,43 @@ class Trajectory(object):
             self.split_points = np.round(
                 self.split_points * new_traj_sampling_factor).astype(np.int32)
 
-    def create_dataset(self):
+    def create_dataset(self, normalizer=None):
 
         # get relevant data
-        data = np.transpose(deepcopy(self.trajectory))
+        states = np.transpose(deepcopy(self.trajectory))
+
+        # normalize if needed
+        if normalizer:
+            normalizer.set_state(dict(mean=np.mean(states, axis=0),
+                                      var=1 * (np.std(states, axis=0) ** 2),
+                                      count=1))
+            norm_states = np.array([normalizer(st) for st in states])
 
         # convert to dict with states and next_states
-        states = data[:-1]
-        next_states = data[1:]
+        states = norm_states[:-1]
+        next_states = norm_states[1:]
 
         return dict(states=states, next_states=next_states)
+
+    def create_datase_with_triplet_states(self, normalizer=None):
+
+        # get relevant data
+        states = np.transpose(deepcopy(self.trajectory))
+
+        # normalize if needed
+        if normalizer:
+            normalizer.set_state(dict(mean=np.mean(states, axis=0),
+                                      var=1 * (np.std(states, axis=0) ** 2),
+                                      count=1))
+            norm_states = np.array([normalizer(st) for st in states])
+
+        # convert to dict with states and next_states
+        states = norm_states[:-2]
+        next_states = norm_states[1:-1]
+        next_next_states = norm_states[2:]
+
+        return dict(states=states, next_states=next_states, next_next_states=next_next_states)
+
 
     def _interpolate_trajectory(self, traj, factor):
         x = np.arange(traj.shape[1])
@@ -233,7 +260,8 @@ class HumanoidTrajectory(Trajectory):
         """
         viewer = mujoco_py.MjViewer(self.sim)
         viewer._render_every_frame = False
-        self.reset_trajectory()
+        self.reset_trajectory(substep_no=1)
+        curr_qpos = self.subtraj[0:17, self.subtraj_step_no]
         while True:
             if self.subtraj_step_no >= self.traj_length:
                 self.get_next_sub_trajectory()
@@ -246,6 +274,38 @@ class HumanoidTrajectory(Trajectory):
             self.sim.data.qpos[0:17] = self.subtraj[0:17, self.subtraj_step_no]
             self.sim.data.qvel[0:17] = self.subtraj[17:33, self.subtraj_step_no]
             self.sim.forward()
+
+            curr_qpos = self.sim.data.qpos[:]
+
+            self.subtraj_step_no += 1
+            time.sleep(1 / freq)
+            viewer.render()
+
+    def play_trajectory_demo_from_velocity(self, freq=200):
+        """
+        Plays a demo of the loaded trajectory by forcing the model
+        positions to the ones in the reference trajectory at every steps
+        """
+        viewer = mujoco_py.MjViewer(self.sim)
+        viewer._render_every_frame = False
+        self.reset_trajectory(substep_no=1)
+        curr_qpos = self.subtraj[0:17, self.subtraj_step_no]
+        while True:
+            if self.subtraj_step_no >= self.traj_length:
+                self.get_next_sub_trajectory()
+
+            # get velocities (we omit pelvis rotations here)
+            pelvis_v = self.subtraj[17:20, self.subtraj_step_no]
+            dq = self.subtraj[23:33, self.subtraj_step_no]
+
+            # update positions in simulation
+            self.sim.data.qpos[0:3] = curr_qpos[0:3] + self.control_dt * pelvis_v
+            self.sim.data.qpos[7:17] = curr_qpos[7:17] + self.control_dt * dq
+
+            self.sim.forward()
+
+            # save current qpos
+            curr_qpos = self.sim.data.qpos[:]
 
             self.subtraj_step_no += 1
             time.sleep(1 / freq)
