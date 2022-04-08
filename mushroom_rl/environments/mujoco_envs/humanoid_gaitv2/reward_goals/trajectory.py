@@ -7,11 +7,11 @@ import numpy as np
 from scipy import signal, interpolate
 
 # KEYS
-PELVIS_POS_KEYS = ["pelvis_tx", "pelvis_tz",  "pelvis_ty"]
-PELVIS_EULER_KEYS = [ "pelvis_list", "pelvis_tilt", "pelvis_rotation",]
+PELVIS_POS_KEYS = ["pelvis_tz", "pelvis_tx",  "pelvis_ty"]
+PELVIS_EULER_KEYS = [ "pelvis_tilt", "pelvis_list", "pelvis_rotation",]
 PELVIS_QUAT_KEYS = ["pelvis_q1", "pelvis_q2", "pelvis_q3", "pelvis_q4"]
-JOINT_KEYS = ["hip_adduction_l", "hip_flexion_l", "hip_rotation_l", "knee_angle_l", "ankle_angle_l","hip_adduction_r", "hip_flexion_r", "hip_rotation_r", "knee_angle_r",
-              "ankle_angle_r"]
+JOINT_KEYS = ["hip_adduction_r", "hip_flexion_r", "hip_rotation_r", "knee_angle_r",
+              "ankle_angle_r", "hip_adduction_l", "hip_flexion_l", "hip_rotation_l", "knee_angle_l", "ankle_angle_l"]
 
 # KEYS of euler dataset
 EKEYS = PELVIS_POS_KEYS + PELVIS_EULER_KEYS + JOINT_KEYS
