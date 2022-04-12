@@ -90,13 +90,14 @@ class Trajectory(object):
             normalizer.set_state(dict(mean=np.mean(states, axis=0),
                                       var=1 * (np.std(states, axis=0) ** 2),
                                       count=1))
-            norm_states = np.array([normalizer(st) for st in states])
+            states = np.array([normalizer(st) for st in states])
 
         # convert to dict with states and next_states
-        states = norm_states[:-1]
-        next_states = norm_states[1:]
+        new_states = states[:-1]
+        new_next_states = states[1:]
+        absorbing = np.zeros(len(new_states))
 
-        return dict(states=states, next_states=next_states)
+        return dict(states=new_states, next_states=new_next_states, absorbing=absorbing)
 
     def create_datase_with_triplet_states(self, normalizer=None):
 
