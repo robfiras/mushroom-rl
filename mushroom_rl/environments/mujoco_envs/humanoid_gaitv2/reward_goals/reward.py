@@ -73,13 +73,17 @@ class GoalRewardInterface:
         pass
 
 
-class NoGoalReward(GoalRewardInterface):
+class NoGoalReward(GoalRewardInterface, HumanoidTrajectory):
     """
     Implement a reward function that is always 0.
 
     """
     def __call__(self, state, action, next_state):
         return 0
+
+    def reset_state(self):
+        self.reset_trajectory()
+        self.terminate_trajectory_flag = False
 
 
 class MaxVelocityReward(GoalRewardInterface):

@@ -126,7 +126,7 @@ class HumanoidGait(MuJoCo):
         elif goal_reward == "max_vel":
             self.goal_reward = MaxVelocityReward(self._sim, **goal_reward_params)
         elif goal_reward is None:
-            self.goal_reward = NoGoalReward()
+            self.goal_reward = NoGoalReward(self._sim, **goal_reward_params)
         else:
             raise NotImplementedError("The specified goal reward has not been"
                                       "implemented: ", goal_reward)
@@ -178,7 +178,7 @@ class HumanoidGait(MuJoCo):
         self.goal_reward.reset_state()
         start_obs = self._reset_model(qpos_noise=0.0, qvel_noise=0.0)
         start_vel = (
-            self._sim.data.qvel[0:3] if (self.goal_reward is None or isinstance(
+            self._sim.data.qvel[0:3] if (isinstance(self.goal_reward, NoGoalReward) or isinstance(
                 self.goal_reward, MaxVelocityReward)
                                          ) else self.goal_reward.get_observation())
 
