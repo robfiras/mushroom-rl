@@ -1,4 +1,4 @@
-from .reward import NoGoalReward, MaxVelocityReward, \
+from .reward import NoGoalReward, NoGoalRewardRandInit, MaxVelocityReward, \
     VelocityProfileReward, CompleteTrajectoryReward
 
 from .trajectory import HumanoidTrajectory

@@ -73,11 +73,22 @@ class GoalRewardInterface:
         pass
 
 
-class NoGoalReward(GoalRewardInterface, HumanoidTrajectory):
+class NoGoalReward(GoalRewardInterface):
     """
     Implement a reward function that is always 0.
 
     """
+
+    def __call__(self, state, action, next_state):
+        return 0
+
+
+class NoGoalRewardRandInit(GoalRewardInterface, HumanoidTrajectory):
+    """
+    Implement a reward function that is always 0, and starts from random positions.
+
+    """
+
     def __call__(self, state, action, next_state):
         return 0
 

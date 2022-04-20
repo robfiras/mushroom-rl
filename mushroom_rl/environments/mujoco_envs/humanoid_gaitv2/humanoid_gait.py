@@ -7,7 +7,7 @@ from mushroom_rl.utils.running_stats import *
 
 from ._external_simulation import NoExternalSimulation, MuscleSimulation
 from .reward_goals import CompleteTrajectoryReward, VelocityProfileReward, \
-     MaxVelocityReward, NoGoalReward, HumanoidTrajectory
+     MaxVelocityReward, NoGoalReward, NoGoalRewardRandInit, HumanoidTrajectory
 from mushroom_rl.environments.mujoco_envs.humanoid_gait.utils import quat_to_euler
 
 
@@ -125,8 +125,10 @@ class HumanoidGait(MuJoCo):
             self.goal_reward = VelocityProfileReward(self._sim, **goal_reward_params)
         elif goal_reward == "max_vel":
             self.goal_reward = MaxVelocityReward(self._sim, **goal_reward_params)
+        elif goal_reward == "no_goal_rand_init":
+            self.goal_reward = NoGoalRewardRandInit(self._sim, **goal_reward_params)
         elif goal_reward is None:
-            self.goal_reward = NoGoalReward(self._sim, **goal_reward_params)
+            self.goal_reward = NoGoalReward()
         else:
             raise NotImplementedError("The specified goal reward has not been"
                                       "implemented: ", goal_reward)
