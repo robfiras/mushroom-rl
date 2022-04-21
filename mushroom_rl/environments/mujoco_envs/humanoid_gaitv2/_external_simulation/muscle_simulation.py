@@ -77,8 +77,8 @@ class MuscleSimulation(object):
         return musc_obs
 
     def _create_muscles(self):
-        angHipFroR, angHipSagR, angKneR, angAnkR, \
-        angHipFroL, angHipSagL, angKneL, angAnkL = self.sim.data.qpos[7:15]
+        angHipFroR, angHipSagR, angHipRotR, angKneR, angAnkR, \
+        angHipFroL, angHipSagL, angHipRotL, angKneL, angAnkL = self.sim.data.qpos[7:17]
 
         angHipAbdR = -angHipFroR
         angHipAbdL = angHipFroL
@@ -88,6 +88,11 @@ class MuscleSimulation(object):
         angKneL = np.pi - angKneL
         angAnkR = angAnkR + np.pi / 2.0
         angAnkL = angAnkL + np.pi / 2.0
+
+        # TODO: find transformation for hip rotation
+        #angHipRotR = ?
+        #angHipRotL = ?
+
 
         timestep = self.sim.model.opt.timestep
         musc = {"HABR":  HAB(angHipAbdR, timestep),
@@ -102,8 +107,8 @@ class MuscleSimulation(object):
                 "SOLR":  SOL(angAnkR, timestep),
                 "TIAR":  TIA(angAnkR, timestep),
                 "HABL":  HAB(angHipAbdL, timestep),
-                #"HROER": HROE(angHipAbdL, timestep),
-                #"HROIR": HROI(angHipAbdL, timestep),
+                "HROER": HROE(angHipRotR, timestep),
+                "HROIR": HROI(angHipRotL, timestep),
                 "HADL":  HAD(angHipAbdL, timestep),
                 "GLUL":  GLU(angHipSagL, timestep),
                 "HFLL":  HFL(angHipSagL, timestep),
@@ -129,6 +134,7 @@ class MuscleSimulation(object):
         for i, musc in enumerate(self.musc.values()):
             musc.reset_state()
 
+        # TODO: check where to insert hip rotation muscles
         self.musc["HABR"].stim = stimu[0]
         self.musc["HADR"].stim = stimu[1]
         self.musc["HFLR"].stim = stimu[2]

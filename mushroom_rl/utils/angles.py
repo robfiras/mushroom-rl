@@ -86,35 +86,58 @@ def shortest_angular_distance(from_angle, to_angle):
     return normalize_angle(to_angle - from_angle)
 
 
-def quat_to_euler(quat):
+def quat_to_euler(quat, seq='xyz'):
     """
     Convert a quaternion to euler angles.
 
     Args:
         quat (np.ndarray):  quaternion to be converted, must be in format [w, x, y, z]
-
+        seq (string): Specifies sequence of axes for rotations. Up to 3 characters belonging to the set {‘X’, ‘Y’, ‘Z’}
+                      for intrinsic rotations, or {‘x’, ‘y’, ‘z’} for extrinsic rotations.  Adjacent axes cannot be the
+                      same Extrinsic and intrinsic rotations cannot be mixed in one function call.
     Returns:
         The euler angles [x, y, z] representation of the quaternion
 
     """
     if len(quat.shape) < 2:
-        return R.from_quat(quat[[1, 2, 3, 0]]).as_euler('xyz')
+        return R.from_quat(quat[[1, 2, 3, 0]]).as_euler(seq)
     else:
-        return R.from_quat(quat[[1, 2, 3, 0], :].T).as_euler('xyz').T
+        return R.from_quat(quat[[1, 2, 3, 0], :].T).as_euler(seq).T
 
 
-def euler_to_quat(euler):
+def euler_to_quat(euler, seq='xyz'):
     """
     Convert euler angles into a quaternion.
 
     Args:
         euler (np.ndarray):  euler angles to be converted
-
+        seq (string): Specifies sequence of axes for rotations. Up to 3 characters belonging to the set {‘X’, ‘Y’, ‘Z’}
+              for intrinsic rotations, or {‘x’, ‘y’, ‘z’} for extrinsic rotations. Extrinsic and intrinsic
+              rotations cannot be mixed in one function call.
     Returns:
         Quaternion in format [w, x, y, z]
 
     """
     if len(euler.shape) < 2:
-        return R.from_euler('xyz', euler).as_quat()[[3, 0, 1, 2]]
+        return R.from_euler(seq, euler).as_quat()[[3, 0, 1, 2]]
     else:
-        return R.from_euler('xyz', euler.T).as_quat()[:, [3, 0, 1, 2]].T
+        return R.from_euler(seq, euler.T).as_quat()[:, [3, 0, 1, 2]].T
+
+
+def euler_intr_to_euler_extr(euler):
+    """
+    Convert euler intrinsic angles into extrinsic euler angles.
+
+    Args:
+        euler (np.ndarray):  euler angles to be converted
+        seq (string): Specifies sequence of axes for rotations. Up to 3 characters belonging to the set {‘X’, ‘Y’, ‘Z’}
+              for intrinsic rotations, or {‘x’, ‘y’, ‘z’} for extrinsic rotations. Extrinsic and intrinsic
+              rotations cannot be mixed in one function call.
+    Returns:
+        Quaternion in format [w, x, y, z]
+
+    """
+    if len(euler.shape) < 2:
+        return R.from_euler('XYZ', euler).as_euler('xyz')
+    else:
+        return R.from_euler('xyz', euler.T).as_euler('XYZ').T

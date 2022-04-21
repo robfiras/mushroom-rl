@@ -1,5 +1,6 @@
 import time
 from copy import deepcopy
+from mushroom_rl.utils.angles import euler_to_quat, quat_to_euler
 
 import matplotlib.pyplot as plt
 import mujoco_py
@@ -297,11 +298,17 @@ class HumanoidTrajectory(Trajectory):
 
             # get velocities (we omit pelvis rotations here)
             pelvis_v = self.subtraj[17:20, self.subtraj_step_no]
+            pelvis_v_rot = self.subtraj[20:23, self.subtraj_step_no]
             dq = self.subtraj[23:33, self.subtraj_step_no]
 
             # update positions in simulation
             self.sim.data.qpos[0:3] = curr_qpos[0:3] + self.control_dt * pelvis_v
+            new_orientation_euler = quat_to_euler(curr_qpos[3:7], 'XYZ') + self.control_dt * pelvis_v_rot
+            self.sim.data.qpos[3:7] = euler_to_quat(new_orientation_euler, 'XYZ')
             self.sim.data.qpos[7:17] = curr_qpos[7:17] + self.control_dt * dq
+
+
+
 
             self.sim.forward()
 
