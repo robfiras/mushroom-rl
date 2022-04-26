@@ -218,8 +218,8 @@ class HumanoidGait(MuJoCo):
 
     def _reward(self, state, action, next_state):
         live_reward = 1.0
-        pelvis_tx = super(HumanoidGait, self)._create_observation()[0]
-        total_reward = live_reward + pelvis_tx
+        pelvis_ty = super(HumanoidGait, self)._create_observation()[1]
+        total_reward = live_reward + pelvis_ty
         return total_reward
 
     def _is_absorbing(self, state):
