@@ -7,7 +7,7 @@ from mushroom_rl.utils.running_stats import *
 
 from ._external_simulation import NoExternalSimulation, MuscleSimulation
 from .reward_goals import CompleteTrajectoryReward, VelocityProfileReward, \
-     MaxVelocityReward, NoGoalReward, NoGoalRewardRandInit, HumanoidTrajectory
+     MaxVelocityReward, NoGoalReward, NoGoalRewardRandInit, ChangingVelocityTargetReward, HumanoidTrajectory
 from mushroom_rl.environments.mujoco_envs.humanoid_gait.utils import quat_to_euler
 
 
@@ -125,6 +125,8 @@ class HumanoidGait(MuJoCo):
             self.goal_reward = VelocityProfileReward(self._sim, **goal_reward_params)
         elif goal_reward == "max_vel":
             self.goal_reward = MaxVelocityReward(self._sim, **goal_reward_params)
+        elif goal_reward == "changing_vel":
+            self.goal_reward = ChangingVelocityTargetReward(self._sim, **goal_reward_params)
         elif goal_reward == "no_goal_rand_init":
             self.goal_reward = NoGoalRewardRandInit(self._sim, **goal_reward_params)
         elif goal_reward is None:
@@ -263,7 +265,7 @@ class HumanoidGait(MuJoCo):
         return ((state[0] < 0.90) or (state[0] > 1.20)
                 or abs(torso_euler[0]) > np.pi / 12
                 or (torso_euler[1] < -np.pi / 12) or (torso_euler[1] > np.pi / 8)
-                or (torso_euler[2] < -np.pi / 4) or (torso_euler[2] > np.pi / 4)
+                #or (torso_euler[2] < -np.pi / 4) or (torso_euler[2] > np.pi / 4)
                 )
 
     def _create_observation(self):
@@ -280,20 +282,21 @@ class HumanoidGait(MuJoCo):
         obs[18:21] -> torso angular velocity
         obs[21:31] -> leg joints angular velocity
 
-        obs[31:37] ->  ground force
-        obs[31:34] -> ground force on right foot(xyz)
-        obs[34:37] -> ground force on left foot(xyz)
+        obs[31:31+(len(goal_observation)] -> observations related
+                                     to the goal
 
-        obs[37:37+(len(goal_observation)] -> observations related
-                                             to the goal
+        x = 31+(len(goal_observation)
+        obs[x:x+6] ->  ground force
+        obs[x:x+3] -> ground force on right foot(xyz)
+        obs[x+3:x+4] -> ground force on left foot(xyz)
 
         obs[last_obs_id - len(ext_actuator_obs): last_obs_id]
                 -> observations related to the external actuator
 
         """
         obs = np.concatenate([super(HumanoidGait, self)._create_observation()[2:],
-                              self.mean_grf.mean / 1000.,
                               self.goal_reward.get_observation(),
+                              self.mean_grf.mean / 1000.,
                               self.external_actuator.get_observation()
                               ]).flatten()
         return obs

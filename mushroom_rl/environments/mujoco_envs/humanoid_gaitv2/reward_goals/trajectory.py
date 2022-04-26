@@ -48,7 +48,7 @@ class Trajectory(object):
                 trajectory velocity.
 
         """
-        trajectory_files = np.load(traj_path, allow_pickle=True)
+        self._trajectory_files = np.load(traj_path, allow_pickle=True)
 
         # make new keys, one for joint position and one for joint velocity
         keys = ["q_"+k for k in QKEYS] + ["dq_"+k for k in EKEYS]
@@ -57,9 +57,9 @@ class Trajectory(object):
         for ik in ignore_keys:
             keys.remove(ik)
 
-        self.trajectory = np.array([trajectory_files[key] for key in keys])
+        self.trajectory = np.array([self._trajectory_files[key] for key in keys])
 
-        if "split_points" in trajectory_files.files:
+        if "split_points" in self._trajectory_files.files:
             self.split_points = trajectory_files["split_points"]
         else:
             self.split_points = np.array([0, self.trajectory.shape[1]])
@@ -241,7 +241,9 @@ class HumanoidTrajectory(Trajectory):
             self.subtraj_step_no = substep_no
 
         self.subtraj = self.trajectory.copy()
+        # reset x and y to middle position
         self.subtraj[0, :] -= self.subtraj[0, self.subtraj_step_no]
+        self.subtraj[1, :] -= self.subtraj[1, self.subtraj_step_no]
 
         self.sim.data.qpos[0:17] = self.subtraj[0:17, self.subtraj_step_no]
         self.sim.data.qvel[0:16] = self.subtraj[17:33, self.subtraj_step_no]
@@ -282,6 +284,17 @@ class HumanoidTrajectory(Trajectory):
             self.subtraj_step_no += 1
             time.sleep(1 / freq)
             viewer.render()
+
+            # check if the humanoid has fallen
+            torso_euler = quat_to_euler(self.sim.data.qpos[3:7])
+            z_pos = self.sim.data.qpos[2]
+            has_fallen = ((z_pos< 0.90) or (z_pos > 1.20) or abs(torso_euler[0]) > np.pi / 12 or (torso_euler[1] < -np.pi / 12) or (torso_euler[1] > np.pi / 8))
+                          #or (torso_euler[2] < -np.pi / 4) or (torso_euler[2] > np.pi / 4))
+
+            if has_fallen:
+                print("HAS FALLEN!")
+                exit()
+
 
     def play_trajectory_demo_from_velocity(self, freq=200):
         """
