@@ -53,6 +53,9 @@ class Trajectory(object):
         # make new keys, one for joint position and one for joint velocity
         keys = ["q_"+k for k in QKEYS] + ["dq_"+k for k in EKEYS]
 
+        if "goal" in self._trajectory_files.keys():
+            keys += ["goal"]
+
         # remove unwanted keys
         for ik in ignore_keys:
             keys.remove(ik)
