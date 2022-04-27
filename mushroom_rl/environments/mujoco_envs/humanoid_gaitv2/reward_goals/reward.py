@@ -1,5 +1,6 @@
 from pathlib import Path
 import pickle
+from itertools import cycle
 
 import numpy as np
 from collections import deque
@@ -100,7 +101,7 @@ class NoGoalRewardRandInit(GoalRewardInterface, HumanoidTrajectory):
 
 class ChangingVelocityTargetReward(HumanoidTrajectory, GoalRewardInterface):
 
-    def __init__(self, sim, traj_path, goal_data_path, traj_dt=0.005,
+    def __init__(self, sim, traj_path, goal_data_path, iterate_through_plateaus=False, silent=True, traj_dt=0.005,
                  control_dt=0.005, traj_speed_mult=1.0,
                  velocity_smooth_window=1001, random_start=True):
 
@@ -117,17 +118,23 @@ class ChangingVelocityTargetReward(HumanoidTrajectory, GoalRewardInterface):
         self._goal_plateaus = goal_data["plateau_vel"]
         self._curr_goal_vel = 0.0
         self._random_start = random_start
+        self._iterate_through_plateaus = iterate_through_plateaus
+        self._iter_plateaus = cycle(np.arange(len(self._goal_plateaus))) if iterate_through_plateaus else None
+        self._silent = silent
 
     def __call__(self, state, action, next_state):
         curr_v = np.linalg.norm(state[15:18])
-        return (curr_v - self._curr_goal_vel)**2
+        return np.mean(np.square(curr_v - self._curr_goal_vel))
 
     def get_observation(self):
         return [self._curr_goal_vel]
 
     def reset_state(self):
-        # sample random plateau vel
-        ind_plateau = np.random.randint(len(self._goal_plateaus))
+        if not self._iterate_through_plateaus:
+            # sample random plateau vel
+            ind_plateau = np.random.randint(len(self._goal_plateaus))
+        else:
+            ind_plateau = next(self._iter_plateaus)
         if self._random_start:
             # sample random start fos this plateau
             ind_state_in_chunk = np.random.randint(len(self._goal_ind_chunks[ind_plateau]))
@@ -136,6 +143,8 @@ class ChangingVelocityTargetReward(HumanoidTrajectory, GoalRewardInterface):
             self.reset_trajectory(ind_state)
         else:
             self._curr_goal_vel = self._goal_plateaus[ind_plateau]
+        if not self._silent:
+            print("Current Target Velocity: ", self._curr_goal_vel)
 
 
 class MaxVelocityReward(GoalRewardInterface):

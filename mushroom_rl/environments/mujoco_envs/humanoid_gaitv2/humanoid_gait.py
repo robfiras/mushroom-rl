@@ -217,10 +217,11 @@ class HumanoidGait(MuJoCo):
         return total_reward
 
     def _reward(self, state, action, next_state):
-        live_reward = 1.0
-        pelvis_ty = super(HumanoidGait, self)._create_observation()[1]
-        total_reward = live_reward + pelvis_ty
-        return total_reward
+        # live_reward = 1.0
+        # pelvis_ty = super(HumanoidGait, self)._create_observation()[1]
+        # total_reward = live_reward + pelvis_ty
+        goal_reward = self.goal_reward(state, action, next_state)
+        return goal_reward
 
     def _is_absorbing(self, state):
         return (self._has_fallen(state)
