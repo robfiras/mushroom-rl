@@ -123,8 +123,8 @@ class ChangingVelocityTargetReward(HumanoidTrajectory, GoalRewardInterface):
         self._silent = silent
 
     def __call__(self, state, action, next_state):
-        curr_v = np.linalg.norm(state[15:18])
-        return np.mean(np.square(curr_v - self._curr_goal_vel))
+        curr_v = state[16]  # velocity in y
+        return np.abs(curr_v - self._curr_goal_vel)
 
     def get_observation(self):
         return [self._curr_goal_vel]
