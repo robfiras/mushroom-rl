@@ -7,6 +7,7 @@ from collections import deque
 
 from mushroom_rl.environments.mujoco_envs.humanoid_gait.utils import convert_traj_quat_to_euler
 from .trajectory import HumanoidTrajectory
+from mushroom_rl.utils.running_stats import *
 
 
 class GoalRewardInterface:
@@ -103,7 +104,7 @@ class ChangingVelocityTargetReward(HumanoidTrajectory, GoalRewardInterface):
 
     def __init__(self, sim, traj_path, goal_data_path, iterate_through_plateaus=False, silent=True, traj_dt=0.005,
                  control_dt=0.005, traj_speed_mult=1.0,
-                 velocity_smooth_window=1001, random_start=True):
+                 velocity_smooth_window=1001, random_start=True, n_skip_targets=1):
 
         super().__init__(sim, traj_path, traj_dt, control_dt, traj_speed_mult,
                          velocity_smooth_window)
@@ -119,12 +120,20 @@ class ChangingVelocityTargetReward(HumanoidTrajectory, GoalRewardInterface):
         self._curr_goal_vel = 0.0
         self._random_start = random_start
         self._iterate_through_plateaus = iterate_through_plateaus
+        self._n_skip_targets = n_skip_targets
         self._iter_plateaus = cycle(np.arange(len(self._goal_plateaus))) if iterate_through_plateaus else None
         self._silent = silent
+        self.mean_vel = RunningExpWeightedAverage(shape=(1,), alpha=0.005)
+
 
     def __call__(self, state, action, next_state):
         curr_v = state[16]  # velocity in y
-        return np.abs(curr_v - self._curr_goal_vel)
+        v_diff_rew = np.minimum(0.01 / (np.abs(curr_v - self._curr_goal_vel) + 1e-6), 1.0)
+        self.mean_vel.update_stats(curr_v)
+        if not self._silent:
+            print("Current_Velocity: ", self.mean_vel.mean, " Target: ", self._curr_goal_vel, " Abs. Difference: ",
+                  np.abs(self.mean_vel.mean - self._curr_goal_vel))
+        return v_diff_rew
 
     def get_observation(self):
         return [self._curr_goal_vel]
@@ -134,13 +143,15 @@ class ChangingVelocityTargetReward(HumanoidTrajectory, GoalRewardInterface):
             # sample random plateau vel
             ind_plateau = np.random.randint(len(self._goal_plateaus))
         else:
-            ind_plateau = next(self._iter_plateaus)
+            for i in range(self._n_skip_targets):
+                ind_plateau = next(self._iter_plateaus)
         if self._random_start:
             # sample random start fos this plateau
             ind_state_in_chunk = np.random.randint(len(self._goal_ind_chunks[ind_plateau]))
             ind_state = self._goal_ind_chunks[ind_plateau][ind_state_in_chunk]
             self._curr_goal_vel = self._goal_plateaus[ind_plateau]
             self.reset_trajectory(ind_state)
+            self.mean_vel.reset(self._curr_goal_vel)
         else:
             self._curr_goal_vel = self._goal_plateaus[ind_plateau]
         if not self._silent:

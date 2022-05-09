@@ -93,7 +93,6 @@ class MuscleSimulation(object):
         #angHipRotR = ?
         #angHipRotL = ?
 
-
         timestep = self.sim.model.opt.timestep
         musc = {"HABR":  HAB(angHipAbdR, timestep),
                 "HADR":  HAD(angHipAbdR, timestep),
