@@ -80,6 +80,7 @@ class MuscleSimulation(object):
         angHipFroR, angHipSagR, angHipRotR, angKneR, angAnkR, \
         angHipFroL, angHipSagL, angHipRotL, angKneL, angAnkL = self.sim.data.qpos[7:17]
 
+        angHipRotL = -angHipRotR
         angHipAbdR = -angHipFroR
         angHipAbdL = angHipFroL
         angHipSagR = angHipSagR + np.pi
@@ -89,10 +90,6 @@ class MuscleSimulation(object):
         angAnkR = angAnkR + np.pi / 2.0
         angAnkL = angAnkL + np.pi / 2.0
 
-        # TODO: find transformation for hip rotation
-        #angHipRotR = ?
-        #angHipRotL = ?
-
         timestep = self.sim.model.opt.timestep
         musc = {"HABR":  HAB(angHipAbdR, timestep),
                 "HADR":  HAD(angHipAbdR, timestep),
@@ -100,19 +97,21 @@ class MuscleSimulation(object):
                 "HFLR":  HFL(angHipSagR, timestep),
                 "HAMR":  HAM(angHipSagR, angKneR, timestep),
                 "REFR":  REF(angHipSagR, angKneR, timestep),
+                "HROER": HROE(angHipRotR, timestep),
+                "HROIR": HROI(angHipRotR, timestep),
                 "BFSHR": BFSH(angKneR, timestep),
                 "VASR":  VAS(angKneR, timestep),
                 "GASR":  GAS(angKneR, angAnkR, timestep),
                 "SOLR":  SOL(angAnkR, timestep),
                 "TIAR":  TIA(angAnkR, timestep),
                 "HABL":  HAB(angHipAbdL, timestep),
-                "HROER": HROE(angHipRotR, timestep),
-                "HROIR": HROI(angHipRotL, timestep),
                 "HADL":  HAD(angHipAbdL, timestep),
                 "GLUL":  GLU(angHipSagL, timestep),
                 "HFLL":  HFL(angHipSagL, timestep),
                 "HAML":  HAM(angHipSagL, angKneL, timestep),
                 "REFL":  REF(angHipSagL, angKneL, timestep),
+                "HROEL": HROE(angHipRotL, timestep),
+                "HROIL": HROI(angHipRotL, timestep),
                 "BFSHL": BFSH(angKneL, timestep),
                 "VASL":  VAS(angKneL, timestep),
                 "GASL":  GAS(angKneL, angAnkL, timestep),
@@ -133,35 +132,39 @@ class MuscleSimulation(object):
         for i, musc in enumerate(self.musc.values()):
             musc.reset_state()
 
-        # TODO: check where to insert hip rotation muscles
         self.musc["HABR"].stim = stimu[0]
         self.musc["HADR"].stim = stimu[1]
         self.musc["HFLR"].stim = stimu[2]
         self.musc["GLUR"].stim = stimu[3]
         self.musc["HAMR"].stim = stimu[4]
         self.musc["REFR"].stim = stimu[5]
-        self.musc["VASR"].stim = stimu[6]
-        self.musc["BFSHR"].stim = stimu[7]
-        self.musc["GASR"].stim = stimu[8]
-        self.musc["SOLR"].stim = stimu[9]
-        self.musc["TIAR"].stim = stimu[10]
-        self.musc["HABL"].stim = stimu[11]
-        self.musc["HADL"].stim = stimu[12]
-        self.musc["HFLL"].stim = stimu[13]
-        self.musc["GLUL"].stim = stimu[14]
-        self.musc["HAML"].stim = stimu[15]
-        self.musc["REFL"].stim = stimu[16]
-        self.musc["VASL"].stim = stimu[17]
-        self.musc["BFSHL"].stim = stimu[18]
-        self.musc["GASL"].stim = stimu[19]
-        self.musc["SOLL"].stim = stimu[20]
-        self.musc["TIAL"].stim = stimu[21]
+        self.musc["HROER"].stim = stimu[6]
+        self.musc["HROIR"].stim = stimu[7]
+        self.musc["VASR"].stim = stimu[8]
+        self.musc["BFSHR"].stim = stimu[9]
+        self.musc["GASR"].stim = stimu[10]
+        self.musc["SOLR"].stim = stimu[11]
+        self.musc["TIAR"].stim = stimu[12]
+        self.musc["HABL"].stim = stimu[13]
+        self.musc["HADL"].stim = stimu[14]
+        self.musc["HFLL"].stim = stimu[15]
+        self.musc["GLUL"].stim = stimu[16]
+        self.musc["HAML"].stim = stimu[17]
+        self.musc["REFL"].stim = stimu[18]
+        self.musc["HROEL"].stim = stimu[19]
+        self.musc["HROIL"].stim = stimu[20]
+        self.musc["VASL"].stim = stimu[21]
+        self.musc["BFSHL"].stim = stimu[22]
+        self.musc["GASL"].stim = stimu[23]
+        self.musc["SOLL"].stim = stimu[24]
+        self.musc["TIAL"].stim = stimu[25]
 
     def external_stimulus_to_joint_torques(self, stimu):
-        # TODO: Add HROE and HROI muscles
-        angHipFroR, angHipSagR, angKneR, angAnkR, \
-        angHipFroL, angHipSagL, angKneL, angAnkL = self.sim.data.qpos[7:15]
 
+        angHipFroR, angHipSagR, angHipRotR, angKneR, angAnkR, \
+        angHipFroL, angHipSagL, angHipRotL, angKneL, angAnkL = self.sim.data.qpos[7:17]
+
+        angHipRotL = -angHipRotL
         angHipAbdR = -angHipFroR
         angHipAbdL = angHipFroL
         angHipSagR = angHipSagR + np.pi
@@ -177,6 +180,8 @@ class MuscleSimulation(object):
         self.musc["HFLR"].stepUpdateState(np.array([angHipSagR, 0]))
         self.musc["HAMR"].stepUpdateState(np.array([angHipSagR, angKneR]))
         self.musc["REFR"].stepUpdateState(np.array([angHipSagR, angKneR]))
+        self.musc["HROER"].stepUpdateState(np.array([angHipRotR, angKneR]))
+        self.musc["HROIR"].stepUpdateState(np.array([angHipRotR, angKneR]))
         self.musc["BFSHR"].stepUpdateState(np.array([angKneR, 0]))
         self.musc["VASR"].stepUpdateState(np.array([angKneR, 0]))
         self.musc["GASR"].stepUpdateState(np.array([angKneR, angAnkR]))
@@ -188,6 +193,8 @@ class MuscleSimulation(object):
         self.musc["HFLL"].stepUpdateState(np.array([angHipSagL, 0]))
         self.musc["HAML"].stepUpdateState(np.array([angHipSagL, angKneL]))
         self.musc["REFL"].stepUpdateState(np.array([angHipSagL, angKneL]))
+        self.musc["HROEL"].stepUpdateState(np.array([angHipRotL, angKneR]))
+        self.musc["HROIL"].stepUpdateState(np.array([angHipRotL, angKneR]))
         self.musc["BFSHL"].stepUpdateState(np.array([angKneL, 0]))
         self.musc["VASL"].stepUpdateState(np.array([angKneL, 0]))
         self.musc["GASL"].stepUpdateState(np.array([angKneL, angAnkL]))
@@ -202,6 +209,8 @@ class MuscleSimulation(object):
                      self.musc["HAMR"].frcmtc * self.musc["HAMR"].levelArm[0] - self.musc["REFR"].frcmtc * \
                      self.musc["REFR"].levelArm[0]
 
+        torHipRotR = self.musc["HROIR"].frcmtc * self.musc["HROIR"].levelArm - self.musc["HROER"].frcmtc * self.musc["HROER"].levelArm
+
         torKneFleR = self.musc["BFSHR"].frcmtc * self.musc["BFSHR"].levelArm - self.musc["VASR"].frcmtc * self.musc["VASR"].levelArm + \
                      self.musc["HAMR"].frcmtc * self.musc["HAMR"].levelArm[1] - self.musc["REFR"].frcmtc * \
                      self.musc["REFR"].levelArm[1] + self.musc["GASR"].frcmtc * self.musc["GASR"].levelArm[0]
@@ -215,14 +224,17 @@ class MuscleSimulation(object):
                      self.musc["HAML"].frcmtc * self.musc["HAML"].levelArm[0] - self.musc["REFL"].frcmtc * \
                      self.musc["REFL"].levelArm[0]
 
+        torHipRotL = self.musc["HROIL"].frcmtc * self.musc["HROIL"].levelArm - self.musc["HROEL"].frcmtc * self.musc["HROEL"].levelArm
+
         torKneFleL = self.musc["BFSHL"].frcmtc * self.musc["BFSHL"].levelArm - self.musc["VASL"].frcmtc * self.musc["VASL"].levelArm + \
                      self.musc["HAML"].frcmtc * self.musc["HAML"].levelArm[1] - self.musc["REFL"].frcmtc * \
-                     self.musc["REFL"].levelArm[1] +  self.musc["GASL"].frcmtc * self.musc["GASL"].levelArm[0]
+                     self.musc["REFL"].levelArm[1] + self.musc["GASL"].frcmtc * self.musc["GASL"].levelArm[0]
 
         torAnkExtL = self.musc["SOLL"].frcmtc * self.musc["SOLL"].levelArm - self.musc["TIAL"].frcmtc * self.musc["TIAL"].levelArm + \
                      self.musc["GASL"].frcmtc * self.musc["GASL"].levelArm[1]
 
-        tor = [-torHipAbdR, torHipExtR, torKneFleR, torAnkExtR,
-               torHipAbdL, torHipExtL, torKneFleL, torAnkExtL]
+        tor = [-torHipAbdR, torHipExtR, torHipRotR, torKneFleR, torAnkExtR,
+               torHipAbdL, torHipExtL, -torHipRotL, torKneFleL, torAnkExtL]
 
         return np.squeeze(tor)
+

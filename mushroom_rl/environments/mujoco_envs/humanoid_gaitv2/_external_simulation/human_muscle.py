@@ -570,7 +570,7 @@ class HROE(MuscleTendonComplex):
      HROE, hip external rotator.
     """
 
-    def __init__(self, angHipFront, timestep):
+    def __init__(self, angHipRot, timestep):
         frcmax = 3000.0  # maximum isometric force [N]
         lopt = 0.09  # optimum fiber length CE [m]
         vmax = 12.0  # maximum contraction velocity [lopt/s]
@@ -591,7 +591,7 @@ class HROE(MuscleTendonComplex):
         lce = lopt
 
         nameMuscle = "HROE"
-        angJoi = np.array((angHipFront,))
+        angJoi = np.array((angHipRot,))
 
         super().__init__(nameMuscle=nameMuscle, frcmax=frcmax, vmax=vmax, lslack=lslack, lopt=lopt,
                          lce=lce, r=r, phiref=phiref, phimaxref=phimaxref, rho=rho, dirAng=dirAng, phiScale=phiScale,
@@ -603,7 +603,7 @@ class HROI(MuscleTendonComplex):
      HROI, hip internal rotator.
     """
 
-    def __init__(self, angHipFront, timestep):
+    def __init__(self, angHipRot, timestep):
         frcmax = 3000.0  # maximum isometric force [N]
         lopt = 0.09  # optimum fiber length CE [m]
         vmax = 12.0  # maximum contraction velocity [lopt/s]
@@ -624,7 +624,7 @@ class HROI(MuscleTendonComplex):
         lce = lopt
 
         nameMuscle = "HROI"
-        angJoi = np.array((angHipFront,))
+        angJoi = np.array((angHipRot,))
 
         super().__init__(nameMuscle=nameMuscle, frcmax=frcmax, vmax=vmax, lslack=lslack, lopt=lopt,
                          lce=lce, r=r, phiref=phiref, phimaxref=phimaxref, rho=rho, dirAng=dirAng, phiScale=phiScale,

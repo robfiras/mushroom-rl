@@ -1,6 +1,7 @@
 from pathlib import Path
 import pickle
 from itertools import cycle
+from multiprocessing import Queue, Process
 
 import numpy as np
 from collections import deque
@@ -8,6 +9,10 @@ from collections import deque
 from mushroom_rl.environments.mujoco_envs.humanoid_gait.utils import convert_traj_quat_to_euler
 from .trajectory import HumanoidTrajectory
 from mushroom_rl.utils.running_stats import *
+
+
+# def keyboard_reader(goal_queue):
+#     while True:
 
 
 class GoalRewardInterface:
@@ -103,7 +108,7 @@ class NoGoalRewardRandInit(GoalRewardInterface, HumanoidTrajectory):
 class ChangingVelocityTargetReward(HumanoidTrajectory, GoalRewardInterface):
 
     def __init__(self, sim, traj_path, goal_data_path, iterate_through_plateaus=False, silent=True, traj_dt=0.005,
-                 control_dt=0.005, traj_speed_mult=1.0,
+                 control_dt=0.005, traj_speed_mult=1.0, activate_keyboard_controller=False,
                  velocity_smooth_window=1001, random_start=True, n_skip_targets=1):
 
         super().__init__(sim, traj_path, traj_dt, control_dt, traj_speed_mult,
@@ -124,6 +129,13 @@ class ChangingVelocityTargetReward(HumanoidTrajectory, GoalRewardInterface):
         self._iter_plateaus = cycle(np.arange(len(self._goal_plateaus))) if iterate_through_plateaus else None
         self._silent = silent
         self.mean_vel = RunningExpWeightedAverage(shape=(1,), alpha=0.005)
+
+        # activate keyboard controller
+        if activate_keyboard_controller:
+            pass
+            #self._curr_goal_vel_queue = Queue()
+            #self._keyboard_reader = Process()
+
 
 
     def __call__(self, state, action, next_state):
