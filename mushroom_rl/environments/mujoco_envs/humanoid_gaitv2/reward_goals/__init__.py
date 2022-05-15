@@ -1,5 +1,5 @@
 from .reward import NoGoalReward, NoGoalRewardRandInit, MaxVelocityReward, \
-    VelocityProfileReward, CompleteTrajectoryReward, ChangingVelocityTargetReward
+    VelocityProfileReward, CompleteTrajectoryReward, ChangingVelocityTargetReward, CustomReward
 
 from .trajectory import HumanoidTrajectory
 
