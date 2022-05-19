@@ -125,8 +125,6 @@ class Trajectory(object):
 
     def _interpolate_trajectory(self, traj, factor):
         x = np.arange(traj.shape[1])
-        numy = round(traj.shape[1] * factor)
-        no_round = traj.shape[1] * factor
         x_new = np.linspace(0, traj.shape[1] - 1, round(traj.shape[1] * factor),
                             endpoint=True)
         new_traj = interpolate.interp1d(x, traj, kind="cubic", axis=1)(x_new)

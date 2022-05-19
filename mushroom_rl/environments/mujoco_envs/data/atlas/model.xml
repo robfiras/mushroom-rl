@@ -284,8 +284,8 @@
                                     <inertial pos="0.027 0 -0.067" quat="0 0.707107 0 0.707107" mass="2.41" diaginertia="0.008 0.007 0.002" />
 <!--                                    <joint name="l_leg_akx" axis="1 0 0" range="-0.8 0.8"/>-->
                                     <geom class="viz" mesh="l_foot"/>
-                                    <geom type="box" size="0.1135 0.0669435 0.025" pos="0.023 0 -0.049119" />
-                                    <geom type="box" size="0.05 0.04 0.01" pos="0.1225 0 -0.0641" />
+                                    <geom name="left_foot_back" type="box" size="0.1135 0.0669435 0.025" pos="0.023 0 -0.049119" rgba="0.9 0 0 0.2"/>
+                                    <geom name="left_foot_front" type="box" size="0.05 0.04 0.01" pos="0.1225 0 -0.0641"  rgba="0.0 0.9 0 0.2"/>
                                     <site name='left_foot_front_left' type="sphere" size="0.005" pos="0.1775 0.06 -0.08" rgba="0 0 .99 0.5" />
                                     <site name='left_foot_front_right' type="sphere" size="0.005" pos="0.1775 -0.04 -0.08" rgba="0 0 .99 0.5" />
                                     <site name='left_foot_back_left' type="sphere" size="0.005" pos="-0.0425 0.05 -0.08" rgba="0 0 .99 0.5" />
@@ -334,8 +334,8 @@
                                     <inertial pos="0.027 0 -0.067" quat="0 0.707107 0 0.707107" mass="2.41" diaginertia="0.008 0.007 0.002" />
 <!--                                    <joint name="r_leg_akx" axis="1 0 0" range="-0.8 0.8"/>-->
                                     <geom class="viz" mesh="r_foot"/>
-                                    <geom type="box" size="0.1135 0.0669435 0.025" pos="0.023 0 -0.049119" />
-                                    <geom type="box" size="0.05 0.04 0.01" pos="0.1225 0 -0.0641" />
+                                    <geom name="right_foot_back" type="box" size="0.1135 0.0669435 0.025" pos="0.023 0 -0.049119" />
+                                    <geom name="right_foot_front" type="box" size="0.05 0.04 0.01" pos="0.1225 0 -0.0641" />
                                     <site name='right_foot_front_left' type="sphere" size="0.005" pos="0.1775 0.04 -0.08" rgba="0 0 .99 0.5" />
                                     <site name='right_foot_front_right' type="sphere" size="0.005" pos="0.1775 -0.06 -0.08" rgba="0 0 .99 0.5" />
                                     <site name='right_foot_back_left' type="sphere" size="0.005" pos="-0.0425 0.05 -0.08" rgba="0 0 .99 0.5" />
