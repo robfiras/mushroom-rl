@@ -21,18 +21,18 @@ class Atlas(MuJoCo):
         """
         xml_path = (Path(__file__).resolve().parent / "data" / "atlas" / "model.xml").as_posix()
 
-        action_spec = ["r_leg_hpy_actuator", "r_leg_hpx_actuator", "r_leg_hpz_actuator", "r_leg_kny_actuator",
-                       "r_leg_aky_actuator", "l_leg_hpy_actuator", "l_leg_hpx_actuator", "l_leg_hpz_actuator",
+        action_spec = ["r_leg_hpx_actuator", "r_leg_hpy_actuator", "r_leg_hpz_actuator", "r_leg_kny_actuator",
+                       "r_leg_aky_actuator", "l_leg_hpx_actuator", "l_leg_hpy_actuator", "l_leg_hpz_actuator",
                        "l_leg_kny_actuator", "l_leg_aky_actuator"]
 
         observation_spec = [("root", ObservationType.JOINT_POS),
-                            ("r_leg_hpy", ObservationType.JOINT_POS),
                             ("r_leg_hpx", ObservationType.JOINT_POS),
+                            ("r_leg_hpy", ObservationType.JOINT_POS),
                             ("r_leg_hpz", ObservationType.JOINT_POS),
                             ("r_leg_kny", ObservationType.JOINT_POS),
                             ("r_leg_aky", ObservationType.JOINT_POS),
-                            ("l_leg_hpy", ObservationType.JOINT_POS),
                             ("l_leg_hpx", ObservationType.JOINT_POS),
+                            ("l_leg_hpy", ObservationType.JOINT_POS),
                             ("l_leg_hpz", ObservationType.JOINT_POS),
                             ("l_leg_kny", ObservationType.JOINT_POS),
                             ("l_leg_aky", ObservationType.JOINT_POS),
@@ -60,10 +60,6 @@ class Atlas(MuJoCo):
         super().__init__(xml_path, action_spec, observation_spec, gamma=gamma, horizon=horizon,
                          n_substeps=n_intermediate_steps, collision_groups=collision_groups)
 
-        low, high = self.info.action_space.low.copy(),\
-                    self.info.action_space.high.copy()
-        self.norm_act_mean = (high + low) / 2.0
-        self.norm_act_delta = (high - low) / 2.0
         self.info.action_space.low[:] = -1.0
         self.info.action_space.high[:] = 1.0
 
@@ -128,7 +124,7 @@ class Atlas(MuJoCo):
     @staticmethod
     def _has_fallen(state):
         torso_euler = quat_to_euler(state[1:5])
-        return ((state[0] < 0.90) or (state[0] > 1.20)
+        return ((state[0] < 0.80) or (state[0] > 1.20)
                 or abs(torso_euler[0]) > np.pi / 12
                 or (torso_euler[1] < -np.pi / 12) or (torso_euler[1] > np.pi / 8)
                 or (torso_euler[2] < -np.pi / 4) or (torso_euler[2] > np.pi / 4)

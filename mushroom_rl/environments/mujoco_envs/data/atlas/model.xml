@@ -1,18 +1,18 @@
 <!-- ======================================================
-    Atlas_V6 Modified by Guoping Zhao. 
-    
-	This file is part of MuJoCo.     
+    Atlas_V6 Modified by Guoping Zhao.
+
+	This file is part of MuJoCo.
 	Copyright 2009-2016 Roboti LLC.
-	
+
 	Model 		:: Atlas(v5) from Boston Dynamics
 		Source		: https://bitbucket.org/osrf/drcsim
 		Downloaded	: July 27, 2015
-		
+
 	Mujoco		:: Advanced physics simulation engine
 		Source		: www.roboti.us
 		Version		: 1.31
 		Released 	: 23Apr16
-		
+
 	Author		:: Vikash Kumar
 		Contacts 	: kumar@roboti.us
 		Last edits 	: 30Apr'16, 15Dec'15, 26Oct'15
@@ -33,7 +33,7 @@
 			<geom contype="0" conaffinity="0" group="2" type="mesh" rgba="0.5 0.6 0.7 1"/>
 		</default>
 	</default>
-	
+
 	<asset>
 		<mesh name="pelvis"         file="pelvis.stl"/>
 		<mesh name="ltorso"         file="ltorso.stl"/>
@@ -57,21 +57,21 @@
 		<mesh name="r_lleg"         file="r_lleg.stl"/>
 		<mesh name="r_talus"        file="r_talus.stl"/>
 		<mesh name="r_foot"         file="r_foot.stl"/>
-		
+
 		<texture name="groundplane" builtin="checker" height="1000" rgb1=".4 .4 .4" rgb2=".6 .6 .6" type="2d" width="1000"/>
 		<material name="MatGnd" texture="groundplane"  texrepeat="100 100" specular="1" shininess="1" reflectance="0.5"/>
 	</asset>
-	<option timestep="0.003"/>
+	<option integrator="RK4" iterations="50" solver="Newton"  timestep="0.003"/>
 	<visual>
         <map fogstart="2" fogend="4"/>
     </visual>
-	
+
     <worldbody>
-	
+
 		<!-- GROUND -->
 		<geom class="ground" name="ground" type="plane" pos="0 0 0" size="50 50 1" conaffinity="1" contype="1" material="MatGnd"/>
 		<light cutoff="100" diffuse="1 1 1" dir="-0 0 -1.3" directional="true" exponent="1" pos="0 0 1.3" specular=".1 .1 .1"/>
-		
+
         <body name="pelvis" pos="0 0 1">
             <inertial pos="0.0111 0 0.0271" quat="0.698584 0.713914 0.0424837 -0.0224092" mass="9.509" diaginertia="0.124488 0.116646 0.0957666" />
             <camera name="track" mode="trackcom" pos="0 -4 0" xyaxes="1 0 0 0 0 1"/>
@@ -348,12 +348,12 @@
             </body>
         </body>
     </worldbody>
-	
+
 	<actuator>
 <!--		<motor name="back_bkz_actuator"  joint="back_bkz" gear="106"/>-->
 <!--		<motor name="back_bky_actuator"  joint="back_bky" gear="445"/>-->
 <!--		<motor name="back_bkx_actuator"  joint="back_bkx" gear="300"/>-->
-		
+
 <!--		<motor name="l_arm_shz_actuator" joint="l_arm_shz" gear="87"/>-->
 <!--		<motor name="l_arm_shx_actuator" joint="l_arm_shx" gear="99"/>-->
 <!--		<motor name="l_arm_ely_actuator" joint="l_arm_ely" gear="63"/>-->
@@ -361,7 +361,7 @@
 <!--		<motor name="l_arm_wry_actuator" joint="l_arm_wry" gear="25"/>-->
 <!--		<motor name="l_arm_wrx_actuator" joint="l_arm_wrx" gear="25"/>		-->
 <!--		<motor name="l_arm_wry2_ctuator" joint="l_arm_wry2" gear="25"/>-->
-		
+
 <!--		<motor name="r_arm_shz_actuator" joint="r_arm_shz" gear="87"/>-->
 <!--		<motor name="r_arm_shx_actuator" joint="r_arm_shx" gear="99"/>-->
 <!--		<motor name="r_arm_ely_actuator" joint="r_arm_ely" gear="63"/>-->
@@ -369,14 +369,14 @@
 <!--		<motor name="r_arm_wry_actuator" joint="r_arm_wry" gear="25"/>-->
 <!--		<motor name="r_arm_wrx_actuator" joint="r_arm_wrx" gear="25"/>		-->
 <!--		<motor name="r_arm_wry2_actuator"joint="r_arm_wry2" gear="25"/>-->
-		
+
 		<motor name="l_leg_hpz_actuator" joint="l_leg_hpz" gear="275"/>
 		<motor name="l_leg_hpx_actuator" joint="l_leg_hpx" gear="530"/>
 		<motor name="l_leg_hpy_actuator" joint="l_leg_hpy" gear="840"/>
 		<motor name="l_leg_kny_actuator" joint="l_leg_kny" gear="890"/>
 		<motor name="l_leg_aky_actuator" joint="l_leg_aky" gear="740"/>
 <!--		<motor name="l_leg_akx_actuator" joint="l_leg_akx" gear="360"/>-->
-		
+
 		<motor name="r_leg_hpz_actuator" joint="r_leg_hpz" gear="275"/>
 		<motor name="r_leg_hpx_actuator" joint="r_leg_hpx" gear="530"/>
 		<motor name="r_leg_hpy_actuator" joint="r_leg_hpy" gear="840"/>

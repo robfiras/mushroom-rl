@@ -1,6 +1,10 @@
 import time
 from copy import deepcopy
+from time import perf_counter
+from contextlib import contextmanager
+
 from mushroom_rl.utils.angles import euler_to_quat, quat_to_euler
+from mushroom_rl.environments.mujoco import ObservationType
 
 import matplotlib.pyplot as plt
 import mujoco_py
@@ -266,36 +270,75 @@ class HumanoidTrajectory(Trajectory):
         viewer = mujoco_py.MjViewer(self.sim)
         viewer._render_every_frame = False
         self.reset_trajectory(substep_no=1)
-        curr_qpos = self.subtraj[0:17, self.subtraj_step_no]
         while True:
-            if self.subtraj_step_no >= self.traj_length:
-                self.get_next_sub_trajectory()
+            with catchtime() as t:
+                if self.subtraj_step_no >= self.traj_length:
+                    self.get_next_sub_trajectory()
 
-            # self.sim.data.qpos[0:17] = np.r_[
-            #     self.x_dist + self.subtraj[0, self.subtraj_step_no],
-            #     self.subtraj[1:17, self.subtraj_step_no]
-            # ]
+                self.sim.data.qpos[0:17] = self.subtraj[0:17, self.subtraj_step_no]
+                self.sim.data.qvel[0:17] = self.subtraj[17:33, self.subtraj_step_no]
+                self.sim.forward()
 
-            self.sim.data.qpos[0:17] = self.subtraj[0:17, self.subtraj_step_no]
-            self.sim.data.qvel[0:17] = self.subtraj[17:33, self.subtraj_step_no]
-            self.sim.forward()
+                self.subtraj_step_no += 1
+                sleep_time = np.maximum(1/freq - t(), 0.0)
+                time.sleep(sleep_time)
+                viewer.render()
 
-            curr_qpos = self.sim.data.qpos[:]
+                # check if the humanoid has fallen
+                torso_euler = quat_to_euler(self.sim.data.qpos[3:7])
+                z_pos = self.sim.data.qpos[2]
+                has_fallen = ((z_pos < 0.90) or (z_pos > 1.20) or abs(torso_euler[0]) > np.pi / 12 or (torso_euler[1] < -np.pi / 12) or (torso_euler[1] > np.pi / 8))
+                              #or (torso_euler[2] < -np.pi / 4) or (torso_euler[2] > np.pi / 4))
 
-            self.subtraj_step_no += 1
-            time.sleep(1 / freq)
-            viewer.render()
+                if has_fallen:
+                    print("HAS FALLEN!")
+                    return
 
-            # check if the humanoid has fallen
-            torso_euler = quat_to_euler(self.sim.data.qpos[3:7])
-            z_pos = self.sim.data.qpos[2]
-            has_fallen = ((z_pos< 0.90) or (z_pos > 1.20) or abs(torso_euler[0]) > np.pi / 12 or (torso_euler[1] < -np.pi / 12) or (torso_euler[1] > np.pi / 8))
-                          #or (torso_euler[2] < -np.pi / 4) or (torso_euler[2] > np.pi / 4))
+    def play_trajectory_demo_different_order(self, mdp, freq=200):
+        """
+        Plays a demo of the loaded trajectory by forcing the model
+        positions to the ones in the reference trajectory at every step
 
-            if has_fallen:
-                print("HAS FALLEN!")
-                exit()
+        """
+        viewer = mujoco_py.MjViewer(self.sim)
+        viewer._render_every_frame = False
+        self.reset_trajectory(substep_no=1)
+        while True:
+            with catchtime() as t:
+                if self.subtraj_step_no >= self.traj_length:
+                    self.get_next_sub_trajectory()
 
+                # get data
+                root_pose = self.subtraj[0:7, self.subtraj_step_no]
+                qpos = self.subtraj[7:17, self.subtraj_step_no]
+                root_vel = self.subtraj[17:23, self.subtraj_step_no]
+                q_vel = self.subtraj[23:33, self.subtraj_step_no]
+                state = [root_pose, *qpos, root_vel, *q_vel]
+
+                for name_ot, value in zip(mdp._observation_map, state):
+                    name, ot = name_ot
+                    if ot == ObservationType.JOINT_POS:
+                        mdp._sim.data.set_joint_qpos(name, value)
+                    elif ot == ObservationType.JOINT_VEL:
+                        mdp._sim.data.set_joint_qvel(name, value)
+
+                self.sim.forward()
+
+                self.subtraj_step_no += 1
+                sleep_time = np.maximum(1/freq - t(), 0.0)
+                time.sleep(sleep_time)
+                viewer.render()
+
+                # check if the humanoid has fallen
+                torso_euler = quat_to_euler(self.sim.data.qpos[3:7])
+                z_pos = self.sim.data.qpos[2]
+                has_fallen = ((z_pos < 0.78) or (z_pos > 1.20) or abs(torso_euler[0]) > np.pi / 12 or (
+                            torso_euler[1] < -np.pi / 12) or (torso_euler[1] > np.pi / 8))
+                # or (torso_euler[2] < -np.pi / 4) or (torso_euler[2] > np.pi / 4))
+
+                if has_fallen:
+                    print("HAS FALLEN!")
+                    #return
 
     def play_trajectory_demo_from_velocity(self, freq=200):
         """
@@ -307,31 +350,76 @@ class HumanoidTrajectory(Trajectory):
         self.reset_trajectory(substep_no=1)
         curr_qpos = self.subtraj[0:17, self.subtraj_step_no]
         while True:
-            if self.subtraj_step_no >= self.traj_length:
-                self.get_next_sub_trajectory()
+            with catchtime() as t:
+                if self.subtraj_step_no >= self.traj_length:
+                    self.get_next_sub_trajectory()
 
-            # get velocities (we omit pelvis rotations here)
-            pelvis_v = self.subtraj[17:20, self.subtraj_step_no]
-            pelvis_v_rot = self.subtraj[20:23, self.subtraj_step_no]
-            dq = self.subtraj[23:33, self.subtraj_step_no]
+                # get velocities
+                pelvis_v = self.subtraj[17:20, self.subtraj_step_no]
+                pelvis_v_rot = self.subtraj[20:23, self.subtraj_step_no]
+                dq = self.subtraj[23:33, self.subtraj_step_no]
 
-            # update positions in simulation
-            self.sim.data.qpos[0:3] = curr_qpos[0:3] + self.control_dt * pelvis_v
-            new_orientation_euler = quat_to_euler(curr_qpos[3:7], 'XYZ') + self.control_dt * pelvis_v_rot
-            self.sim.data.qpos[3:7] = euler_to_quat(new_orientation_euler, 'XYZ')
-            self.sim.data.qpos[7:17] = curr_qpos[7:17] + self.control_dt * dq
+                # update positions in simulation
+                self.sim.data.qpos[0:3] = curr_qpos[0:3] + self.control_dt * pelvis_v
+                new_orientation_euler = quat_to_euler(curr_qpos[3:7], 'XYZ') + self.control_dt * pelvis_v_rot
+                self.sim.data.qpos[3:7] = euler_to_quat(new_orientation_euler, 'XYZ')
+                self.sim.data.qpos[7:17] = curr_qpos[7:17] + self.control_dt * dq
 
+                self.sim.forward()
 
+                # save current qpos
+                curr_qpos = self.sim.data.qpos[:]
 
+                self.subtraj_step_no += 1
+                sleep_time = np.maximum(1 / freq - t(), 0.0)
+                time.sleep(sleep_time)
+                viewer.render()
 
-            self.sim.forward()
+    def play_trajectory_demo_from_velocity_different_order(self, mdp, freq=200):
+        """
+        Plays a demo of the loaded trajectory by forcing the model
+        positions to the ones in the reference trajectory at every steps
+        """
+        viewer = mujoco_py.MjViewer(self.sim)
+        viewer._render_every_frame = False
+        self.reset_trajectory(substep_no=1)
+        curr_root_pose = self.subtraj[0:7, self.subtraj_step_no]
+        curr_qpos = self.subtraj[7:17, self.subtraj_step_no]
+        while True:
+            with catchtime() as t:
+                if self.subtraj_step_no >= self.traj_length:
+                    self.get_next_sub_trajectory()
 
-            # save current qpos
-            curr_qpos = self.sim.data.qpos[:]
+                # get data
+                root_vel = self.subtraj[17:23, self.subtraj_step_no]
+                q_vel = self.subtraj[23:33, self.subtraj_step_no]
 
-            self.subtraj_step_no += 1
-            time.sleep(1 / freq)
-            viewer.render()
+                # update position based on velocities
+                new_root_pos = curr_root_pose[0:3] + self.control_dt * root_vel[0:3]
+                new_orientation_euler = quat_to_euler(curr_root_pose[3:7], 'XYZ') + self.control_dt * root_vel[3:]
+                new_root_orientation = euler_to_quat(new_orientation_euler, 'XYZ')
+                root_pose = np.concatenate([new_root_pos, new_root_orientation])
+                qpos = curr_qpos + self.control_dt * q_vel
+
+                state = [root_pose, *qpos, root_vel, *q_vel]
+
+                for name_ot, value in zip(mdp._observation_map, state):
+                    name, ot = name_ot
+                    if ot == ObservationType.JOINT_POS:
+                        mdp._sim.data.set_joint_qpos(name, value)
+                    elif ot == ObservationType.JOINT_VEL:
+                        mdp._sim.data.set_joint_qvel(name, value)
+
+                self.sim.forward()
+
+                # save current qpos
+                curr_root_pose = self.subtraj[0:7, self.subtraj_step_no]
+                curr_qpos = self.subtraj[7:17, self.subtraj_step_no]
+
+                self.subtraj_step_no += 1
+                sleep_time = np.maximum(1 / freq - t(), 0.0)
+                time.sleep(sleep_time)
+                viewer.render()
 
     def _plot_joint_trajectories(self, n_points=2000):
         """
@@ -351,3 +439,8 @@ class HumanoidTrajectory(Trajectory):
                 self.subtraj[7 + j, 0:n_points]) / self.control_dt)
             ax[1, j].legend(["Joint {} vel".format(j), "derivate of pos"])
         plt.show()
+
+@contextmanager
+def catchtime() -> float:
+    start = perf_counter()
+    yield lambda: perf_counter() - start
