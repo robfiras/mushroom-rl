@@ -294,6 +294,52 @@ class HumanoidTrajectory(Trajectory):
                     print("HAS FALLEN!")
                     return
 
+
+    def play_trajectory_demo_different_order_atlas(self, mdp, freq=200):
+        """
+        Plays a demo of the loaded trajectory by forcing the model
+        positions to the ones in the reference trajectory at every step
+
+        """
+        viewer = mujoco_py.MjViewer(self.sim)
+        viewer._render_every_frame = False
+        self.reset_trajectory(substep_no=1)
+
+        # order of keys for atlas from xml
+        ATLAS_JOINT_KEYS = ["hip_rotation_l", "hip_adduction_l", "hip_flexion_l", "knee_angle_l",
+                            "ankle_angle_l", "hip_rotation_r", "hip_adduction_r", "hip_flexion_r", "knee_angle_r",
+                            "ankle_angle_r", ]
+
+        joint_indices = dict(zip(JOINT_KEYS, [i for i in range(len(JOINT_KEYS))]))
+        reordered_keys = [joint_indices[k] for k in ATLAS_JOINT_KEYS]
+
+        while True:
+            with catchtime() as t:
+                if self.subtraj_step_no >= self.traj_length:
+                    self.get_next_sub_trajectory()
+
+                self.sim.data.qpos[0:7] = self.subtraj[0:7, self.subtraj_step_no]
+                self.sim.data.qpos[7:17] = self.subtraj[7:17, self.subtraj_step_no][reordered_keys]
+
+                self.sim.forward()
+
+                self.subtraj_step_no += 1
+                sleep_time = np.maximum(1/freq - t(), 0.0)
+                time.sleep(sleep_time)
+                viewer.render()
+
+                # check if the humanoid has fallen
+                torso_euler = quat_to_euler(self.sim.data.qpos[3:7])
+                z_pos = self.sim.data.qpos[2]
+                has_fallen = ((z_pos < 0.78) or (z_pos > 1.20) or abs(torso_euler[0]) > np.pi / 12 or (
+                            torso_euler[1] < -np.pi / 12) or (torso_euler[1] > np.pi / 8))
+                # or (torso_euler[2] < -np.pi / 4) or (torso_euler[2] > np.pi / 4))
+
+                if has_fallen:
+                    print("HAS FALLEN!")
+                    #return
+
+
     def play_trajectory_demo_different_order(self, mdp, freq=200):
         """
         Plays a demo of the loaded trajectory by forcing the model
@@ -303,6 +349,7 @@ class HumanoidTrajectory(Trajectory):
         viewer = mujoco_py.MjViewer(self.sim)
         viewer._render_every_frame = False
         self.reset_trajectory(substep_no=1)
+
         while True:
             with catchtime() as t:
                 if self.subtraj_step_no >= self.traj_length:
@@ -340,6 +387,7 @@ class HumanoidTrajectory(Trajectory):
                     print("HAS FALLEN!")
                     #return
 
+
     def play_trajectory_demo_from_velocity(self, freq=200):
         """
         Plays a demo of the loaded trajectory by forcing the model
@@ -349,6 +397,7 @@ class HumanoidTrajectory(Trajectory):
         viewer._render_every_frame = False
         self.reset_trajectory(substep_no=1)
         curr_qpos = self.subtraj[0:17, self.subtraj_step_no]
+
         while True:
             with catchtime() as t:
                 if self.subtraj_step_no >= self.traj_length:
@@ -385,6 +434,15 @@ class HumanoidTrajectory(Trajectory):
         self.reset_trajectory(substep_no=1)
         curr_root_pose = self.subtraj[0:7, self.subtraj_step_no]
         curr_qpos = self.subtraj[7:17, self.subtraj_step_no]
+
+        # order of keys for atlas from xml
+        ATLAS_JOINT_KEYS = ["hip_rotation_l", "hip_adduction_l", "hip_flexion_l", "knee_angle_l",
+                            "ankle_angle_l", "hip_rotation_r", "hip_adduction_r", "hip_flexion_r", "knee_angle_r",
+                            "ankle_angle_r", ]
+
+        joint_indices = dict(zip(JOINT_KEYS, [i for i in range(len(JOINT_KEYS))]))
+        reordered_keys = [joint_indices[k] for k in ATLAS_JOINT_KEYS]
+
         while True:
             with catchtime() as t:
                 if self.subtraj_step_no >= self.traj_length:
@@ -413,8 +471,8 @@ class HumanoidTrajectory(Trajectory):
                 self.sim.forward()
 
                 # save current qpos
-                curr_root_pose = self.subtraj[0:7, self.subtraj_step_no]
-                curr_qpos = self.subtraj[7:17, self.subtraj_step_no]
+                curr_root_pose = self.sim.data.qpos[0:7]
+                curr_qpos[reordered_keys] = self.sim.data.qpos[7:17]
 
                 self.subtraj_step_no += 1
                 sleep_time = np.maximum(1 / freq - t(), 0.0)

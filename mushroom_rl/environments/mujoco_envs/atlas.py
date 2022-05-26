@@ -1,3 +1,5 @@
+import time
+
 import mujoco_py
 
 from mushroom_rl.environments.mujoco import MuJoCo, ObservationType
@@ -8,13 +10,16 @@ from mushroom_rl.utils import spaces
 from mushroom_rl.utils.angles import quat_to_euler
 from mushroom_rl.utils.running_stats import *
 
+from mushroom_rl.environments.mujoco_envs.humanoid_gaitv2.reward_goals import NoGoalReward, NoGoalRewardRandInit,\
+    ChangingVelocityTargetReward, CustomReward
+
 
 class Atlas(MuJoCo):
     """
     Mujoco simulation of the Atlas robot.
 
     """
-    def __init__(self, gamma=0.99, horizon=2000, n_intermediate_steps=10):
+    def __init__(self, gamma=0.99, horizon=1000, n_intermediate_steps=5,  goal_reward=None, goal_reward_params=None):
         """
         Constructor.
 
@@ -63,20 +68,34 @@ class Atlas(MuJoCo):
         self.info.action_space.low[:] = -1.0
         self.info.action_space.high[:] = 1.0
 
+        self._n_substeps = n_intermediate_steps
+
+        # specify the reward
+        if goal_reward == "changing_vel":
+            self.goal_reward = ChangingVelocityTargetReward(self._sim, **goal_reward_params)
+        elif goal_reward == "no_goal_rand_init":
+            self.goal_reward = NoGoalRewardRandInit(self._sim, **goal_reward_params)
+        elif goal_reward == "custom":
+            self.goal_reward = CustomReward(sim=self._sim, **goal_reward_params)
+        elif goal_reward is None:
+            self.goal_reward = NoGoalReward()
+        else:
+            raise NotImplementedError("The specified goal reward has not been"
+                                      "implemented: ", goal_reward)
+
         self.info.observation_space = spaces.Box(*self._get_observation_space())
-    #
-    # def step(self, action):
-    #     action = ((action.copy() * self.norm_act_delta) + self.norm_act_mean)
-    #
-    #     state, reward, absorbing, info = super().step(action)
-    #
-    #     return state, reward, absorbing, info
 
     def _get_observation_space(self):
         sim_low, sim_high = (self.info.observation_space.low[2:],
                              self.info.observation_space.high[2:])
 
-        return sim_low, sim_high
+        grf_low, grf_high = (-np.ones((12,)) * np.inf,
+                             np.ones((12,)) * np.inf)
+
+        r_low, r_high = self.goal_reward.get_observation_space()
+
+        return (np.concatenate([sim_low, grf_low, r_low]),
+                np.concatenate([sim_high, grf_high, r_high]))
 
     def _create_observation(self):
         """
@@ -97,22 +116,31 @@ class Atlas(MuJoCo):
         obs[37:40] -> grf left foot back
         obs[40:43] -> grf left foot front
 
+        obs[43:] -> reward observation (if available)
+
         """
 
         obs = np.concatenate([super()._create_observation()[2:],
-                              self._get_collision_force("ground", "right_foot_back")[:3],
-                              self._get_collision_force("ground", "right_foot_front")[:3],
-                              self._get_collision_force("ground", "left_foot_back")[:3],
-                              self._get_collision_force("ground", "left_foot_front")[:3]])
+                              self._get_collision_force("ground", "right_foot_back")[:3]/10000.,
+                              self._get_collision_force("ground", "right_foot_front")[:3]/10000.,
+                              self._get_collision_force("ground", "left_foot_back")[:3]/10000.,
+                              self._get_collision_force("ground", "left_foot_front")[:3]/10000.,
+                              self.goal_reward.get_observation(),
+                              ]).flatten()
 
         return obs
 
     def _reward(self, state, action, next_state):
-        return 0.
+        goal_reward = self.goal_reward(state, action, next_state)
+        return goal_reward
+
+    def _setup(self):
+        self.goal_reward.reset_state()
 
     def _is_absorbing(self, state):
 
-        return self._has_fallen(state)
+        #return self._has_fallen(state)
+        return False
 
     def _set_state(self, qpos, qvel):
         old_state = self._sim.get_state()
@@ -129,6 +157,30 @@ class Atlas(MuJoCo):
                 or (torso_euler[1] < -np.pi / 12) or (torso_euler[1] > np.pi / 8)
                 or (torso_euler[2] < -np.pi / 4) or (torso_euler[2] > np.pi / 4)
                 )
+
+    def render(self):
+        if self._viewer is None:
+            self._viewer = mujoco_py.MjViewer(self._sim)
+
+        self._viewer.render()
+        time.sleep(self._dt*self._n_substeps)
+
+    def _reset_model(self, qpos_noise=0.0, qvel_noise=0.0):
+        self._set_state(self._sim.data.qpos + np.random.uniform(
+            low=-qpos_noise, high=qpos_noise, size=self._sim.model.nq),
+                        self._sim.data.qvel + np.random.uniform(low=-qvel_noise,
+                                                                high=qvel_noise,
+                                                                size=self._sim.model.nv)
+                        )
+
+        return self._create_observation()
+
+    def _set_state(self, qpos, qvel):
+        old_state = self._sim.get_state()
+        new_state = mujoco_py.MjSimState(old_state.time, qpos, qvel,
+                                         old_state.act, old_state.udd_state)
+        self._sim.set_state(new_state)
+        self._sim.forward()
 
 
 if __name__ == '__main__':
@@ -151,17 +203,6 @@ if __name__ == '__main__':
     while True:
         print('test')
         action = np.random.randn(action_dim)/10
-        action = np.zeros(action_dim)
         nstate, _, absorbing, _ = env.step(action)
 
-        f_rfb = nstate[31:34]
-        f_rff = nstate[34:37]
-        f_lfb = nstate[37:40]
-        f_lff = nstate[40:43]
-
-        print("grf right_back:", f_rfb)
-        print("grf right_front:",f_rff)
-        print("grf left_back:", f_lfb)
-        print("grf left_front:", f_lff)
         env.render()
-        time.sleep(0.5)
