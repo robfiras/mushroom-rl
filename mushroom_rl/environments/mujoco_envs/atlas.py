@@ -138,9 +138,7 @@ class Atlas(MuJoCo):
         self.goal_reward.reset_state()
 
     def _is_absorbing(self, state):
-
-        #return self._has_fallen(state)
-        return False
+        return self._has_fallen(state)
 
     def _set_state(self, qpos, qvel):
         old_state = self._sim.get_state()
