@@ -25,7 +25,7 @@
 		<site type="sphere" size="0.005"/>
 		<joint limited="true" damping="0.1" armature="0.01" type="hinge" pos="0 0 0"/>
 		<geom contype="0" conaffinity="1" friction="0.7 0.1 0.1" rgba="0.5 0.6 0.7 0.2" margin="0.001" group="0" />
-		<motor ctrlrange="-.95 .95"/>
+		<motor ctrlrange="-0.95 0.95"/>
 		<default class="viz">
 			<geom contype="0" conaffinity="0" group="1" type="mesh" rgba=".6 .6 .7 1"/>
 		</default>
@@ -61,7 +61,7 @@
 		<texture name="groundplane" builtin="checker" height="1000" rgb1=".4 .4 .4" rgb2=".6 .6 .6" type="2d" width="1000"/>
 		<material name="MatGnd" texture="groundplane"  texrepeat="100 100" specular="1" shininess="1" reflectance="0.5"/>
 	</asset>
-	<option integrator="RK4" iterations="50" solver="Newton"  timestep="0.003"/>
+	<option integrator="RK4" iterations="50" solver="Newton"  timestep="0.001"/>
 	<visual>
         <map fogstart="2" fogend="4"/>
     </visual>
