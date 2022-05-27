@@ -61,7 +61,7 @@
 		<texture name="groundplane" builtin="checker" height="1000" rgb1=".4 .4 .4" rgb2=".6 .6 .6" type="2d" width="1000"/>
 		<material name="MatGnd" texture="groundplane"  texrepeat="100 100" specular="1" shininess="1" reflectance="0.5"/>
 	</asset>
-	<option integrator="RK4" iterations="50" solver="Newton"  timestep="0.001"/>
+	<option integrator="RK4" iterations="50" solver="Newton"  timestep="0.003"/>
 	<visual>
         <map fogstart="2" fogend="4"/>
     </visual>
@@ -87,7 +87,7 @@
 <!--            <joint armature="0" axis="1 0 0" damping="0" limited="false" name="trunk_rot_x" pos="0 0 0" stiffness="0" type="hinge"/>-->
 <!--            <joint armature="0" axis="0 1 0" damping="0" limited="false" name="trunk_rot_y" pos="0 0 0" stiffness="0" type="hinge"/>-->
 <!--            <joint armature="0" axis="0 0 1" damping="0" limited="false" name="trunk_rot_z" pos="0 0 0" stiffness="0" type="hinge"/>-->
-            <joint name="root" armature="0" damping="0" limited="false" pos="0 0 0" stiffness="0" type="free"/>
+            <joint name="root" armature="0" damping="1" limited="false" pos="0 0 0" stiffness="0" type="free"/>
             <body name="ltorso" pos="-0.0125 0 0">
                 <inertial pos="-0.0112984 -3.15366e-006 0.0746835" quat="0.997071 0.000128212 0.076485 -0.00012406" mass="2.27" diaginertia="0.003962 0.00341694 0.00169212" />
 <!--                <joint name="back_bkz" axis="0 0 1" range="-0.663225 0.663225"/>-->
@@ -248,13 +248,13 @@
             </body>
             <body name="l_uglut" pos="0 0.089 0">
                 <inertial pos="0.00529262 -0.00344732 0.00313046" quat="0.999122 -7.72169e-005 0.0419028 -0.000305187" mass="1.959" diaginertia="0.000745109 0.000688179 0.000410071" />
-                <joint name="l_leg_hpz" axis="0 0 1" range="-0.174358 0.786794"/>
+                <joint name="l_leg_hpz" damping="5" axis="0 0 1" range="-0.174358 0.786794"/>
                 <geom class="viz" mesh="l_uglut"/>
                 <geom type="box" size="0.025 0.05 0.05" pos="0.01 0.005 0" quat="0.965694 0.259684 0 0" />
                 <geom type="cylinder" size="0.019841 0.040421" pos="0 0 0" />
                 <body name="l_lglut" pos="0 0 0">
                     <inertial pos="0.0133341 0.0170484 -0.0312052" quat="0.353465 0.600383 0.388609 0.602981" mass="0.898" diaginertia="0.00133867 0.000995812 0.000690275" />
-                    <joint name="l_leg_hpx" axis="1 0 0" range="-0.523599 0.523599"/>
+                    <joint name="l_leg_hpx" damping="5" axis="1 0 0" range="-0.523599 0.523599"/>
                     <geom class="viz" mesh="l_lglut"/>
                     <geom type="box" size="0.0625 0.025 0.04" pos="0.015 0.026 -0.028" />
                     <geom type="cylinder" size="0.0200969 0.030153" pos="0.05 0.027488 -0.067" quat="0.707107 0.707107 0 0" />
@@ -262,7 +262,7 @@
                     <geom type="box" size="0.04875 0.0345 0.0515" pos="0.01 0.02 0.01" />
                     <body name="l_uleg" pos="0.05 0.0225 -0.066">
                         <inertial pos="0 0 -0.21" mass="8.204" diaginertia="0.09 0.09 0.02" />
-                        <joint name="l_leg_hpy" axis="0 1 0" range="-1.61234 0.65764"/>
+                        <joint name="l_leg_hpy" damping="5" axis="0 1 0" range="-1.61234 0.65764"/>
                         <geom class="viz" mesh="l_uleg"/>
                         <geom type="cylinder" size="0.09 0.075" pos="-0.0199 0.00585 -0.122" />
                         <geom type="cylinder" size="0.07 0.075" pos="-0.032 -0.005 -0.224" quat="0.988771 0 -0.149438 0" />
@@ -271,12 +271,12 @@
                         <geom type="box" size="0.035 0.019 0.07" pos="-0.017 0.0595 -0.049" />
                         <body name="l_lleg" pos="-0.05 0 -0.374">
                             <inertial pos="0.001 0 -0.187" quat="0.999751 0 0.0223266 0" mass="4.515" diaginertia="0.0771341 0.076 0.00986594" />
-                            <joint name="l_leg_kny" axis="0 1 0"    range="0 2.35637"/>
+                            <joint name="l_leg_kny" damping="5" axis="0 1 0"    range="0 2.35637"/>
                             <geom class="viz" mesh="l_lleg"/>
                             <geom type="cylinder" size="0.07 0.2" pos="0.02 0.00295 -0.182" quat="0.99875 0 0.0499792 0" />
                             <body name="l_talus" pos="0 0 -0.422">
                                 <inertial pos="0 0 0" quat="0.5 0.5 -0.5 0.5" mass="0.125" diaginertia="1.30101e-005 1.01674e-005 8.42775e-006" />
-                                <joint name="l_leg_aky" axis="0 1 0"   range="-1 0.7"/>
+                                <joint name="l_leg_aky" damping="5" axis="0 1 0"   range="-1 0.7"/>
                                 <geom class="viz" mesh="l_talus"/>
                                 <geom type="cylinder" size="0.010181 0.014771" pos="0 0 0" quat="0.707107 0 0.707107 0" />
                                 <geom type="cylinder" size="0.010348 0.0050295" pos="0 0 0" quat="0.707107 0.707107 0 0" />
@@ -298,13 +298,13 @@
             </body>
             <body name="r_uglut" pos="0 -0.089 0">
                 <inertial pos="0.00529262 0.00344732 0.00313046" quat="0.999122 7.72169e-005 0.0419028 0.000305187" mass="1.959" diaginertia="0.000745109 0.000688179 0.000410071" />
-                <joint name="r_leg_hpz" axis="0 0 1" range="-0.786794 0.174358"/>
+                <joint name="r_leg_hpz" damping="5" axis="0 0 1" range="-0.786794 0.174358"/>
                 <geom class="viz" mesh="r_uglut"/>
                 <geom type="box" size="0.025 0.05 0.05" pos="0.01 -0.005 0" quat="0.965694 -0.259684 0 0" />
                 <geom type="cylinder" size="0.019841 0.040421" pos="0 0 0" />
                 <body name="r_lglut" pos="0 0 0">
                     <inertial pos="0.0133341 -0.0170484 -0.0312052" quat="0.602981 0.388609 0.600383 0.353465" mass="0.898" diaginertia="0.00133867 0.000995812 0.000690275" />
-                    <joint name="r_leg_hpx" axis="1 0 0" range="-0.523599 0.523599"/>
+                    <joint name="r_leg_hpx" damping="5" axis="1 0 0" range="-0.523599 0.523599"/>
                     <geom class="viz" mesh="r_lglut"/>
                     <geom type="box" size="0.0625 0.025 0.04" pos="0.015 -0.026 -0.028" />
                     <geom type="cylinder" size="0.0200969 0.030153" pos="0.05 -0.027488 -0.067" quat="0.707107 0.707107 0 0" />
@@ -312,7 +312,7 @@
                     <geom type="box" size="0.04875 0.0345 0.0515" pos="0.01 -0.02 0.01" />
                     <body name="r_uleg" pos="0.05 -0.0225 -0.066">
                         <inertial pos="0 0 -0.21" mass="8.204" diaginertia="0.09 0.09 0.02" />
-                        <joint name="r_leg_hpy" axis="0 1 0"   range="-1.61234 0.65764"/>
+                        <joint name="r_leg_hpy" damping="5" axis="0 1 0"   range="-1.61234 0.65764"/>
                         <geom class="viz" mesh="r_uleg"/>
                         <geom type="cylinder" size="0.09 0.075" pos="-0.0199 -0.00585 -0.122" />
                         <geom type="cylinder" size="0.07 0.075" pos="-0.032 0.005 -0.224" quat="0.988771 0 -0.149438 0" />
@@ -321,12 +321,12 @@
                         <geom type="box" size="0.035 0.019 0.07" pos="-0.017 -0.0595 -0.049" />
                         <body name="r_lleg" pos="-0.05 0 -0.374">
                             <inertial pos="0.001 0 -0.187" quat="0.999751 0 0.0223266 0" mass="4.515" diaginertia="0.0771341 0.076 0.00986594" />
-                            <joint name="r_leg_kny" axis="0 1 0"   range="0 2.35637"/>
+                            <joint name="r_leg_kny" damping="5" axis="0 1 0"   range="0 2.35637"/>
                             <geom class="viz" mesh="r_lleg"/>
                             <geom type="cylinder" size="0.07 0.2" pos="0.02 -0.00295 -0.182" quat="0.99875 0 0.0499792 0" />
                             <body name="r_talus" pos="0 0 -0.422">
                                 <inertial pos="0 0 0" quat="0.5 0.5 -0.5 0.5" mass="0.125" diaginertia="1.30101e-005 1.01674e-005 8.42775e-006" />
-                                <joint name="r_leg_aky" axis="0 1 0"   range="-1 0.7"/>
+                                <joint name="r_leg_aky" damping="5" axis="0 1 0"   range="-1 0.7"/>
                                 <geom class="viz" mesh="r_talus"/>
                                 <geom type="cylinder" size="0.010181 0.014771" pos="0 0 0" quat="0.707107 0 0.707107 0" />
                                 <geom type="cylinder" size="0.010348 0.0050295" pos="0 0 0" quat="0.707107 0.707107 0 0" />
