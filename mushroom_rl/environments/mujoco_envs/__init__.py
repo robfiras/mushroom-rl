@@ -1,6 +1,7 @@
 from .ball_in_a_cup import BallInACup
-from .humanoid_gaitv2 import HumanoidGait
-from .atlas import Atlas
+from .humanoids import HumanoidGait
+from .humanoids import Atlas, AtlasTrajectory
 
 BallInACup.register()
 HumanoidGait.register()
+Atlas.register()

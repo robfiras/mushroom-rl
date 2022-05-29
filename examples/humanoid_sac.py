@@ -13,7 +13,7 @@ from mushroom_rl.core import Core, Logger
 from mushroom_rl.utils.dataset import compute_J, episodes_length
 
 from mushroom_rl.environments.mujoco_envs import HumanoidGait
-from mushroom_rl.environments.mujoco_envs.humanoid_gait import \
+from mushroom_rl.environments.mujoco_envs.humanoids.humanoid_gait import \
     VelocityProfile3D, RandomConstantVelocityProfile, ConstantVelocityProfile
 
 from tqdm import trange
