@@ -151,6 +151,17 @@ class HumanoidGait(MuJoCo):
                                        move_cost=0.10, fall_cost=0.00)
 
         self.info.observation_space = spaces.Box(*self._get_observation_space())
+        # modify the observation space
+        self.info.observation_space.low[0] = 0      # pelvis height
+        self.info.observation_space.high[0] = 3
+        self.info.observation_space.low[1:5] = -1   # quaternions
+        self.info.observation_space.high[1:5] = 1
+        self.info.observation_space.low[15:18] = -10    # translational velocity pelvis
+        self.info.observation_space.high[15:18] = 10
+        self.info.observation_space.low[18:21] = -10    # rotational velocity pelvis
+        self.info.observation_space.high[18:21] = 10
+        self.info.observation_space.low[21:31] = -100   # rotational velocity joints
+        self.info.observation_space.high[21:31] = 100   # rotational velocity joints
 
         self.mean_grf = RunningAveragedWindow(shape=(6,),
                                               window_size=n_intermediate_steps)
