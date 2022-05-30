@@ -167,10 +167,6 @@ class Atlas(MuJoCo):
                 or (torso_euler[2] < -np.pi / 4) or (torso_euler[2] > np.pi / 4)
                 )
 
-    def _preprocess_action(self, action):
-        clipped_action = np.clip(action, self.info.action_space.low, self.info.action_space.high)
-        return clipped_action
-
     def render(self):
         if self._viewer is None:
             self._viewer = mujoco_py.MjViewer(self._sim)
