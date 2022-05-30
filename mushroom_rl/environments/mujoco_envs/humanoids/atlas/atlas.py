@@ -83,6 +83,19 @@ class Atlas(MuJoCo):
 
         self.info.observation_space = spaces.Box(*self._get_observation_space())
 
+        # modify the observation space
+        self.info.observation_space.low[0] = 0      # pelvis height
+        self.info.observation_space.high[0] = 3
+        self.info.observation_space.low[1:5] = -1   # quaternions
+        self.info.observation_space.high[1:5] = 1
+        self.info.observation_space.low[15:18] = -10    # translational velocity pelvis
+        self.info.observation_space.high[15:18] = 10
+        self.info.observation_space.low[18:21] = -10    # rotational velocity pelvis
+        self.info.observation_space.high[18:21] = 10
+        self.info.observation_space.low[21:31] = -100   # rotational velocity joints
+        self.info.observation_space.high[21:31] = 100   # rotational velocity joints
+
+
     def _get_observation_space(self):
         sim_low, sim_high = (self.info.observation_space.low[2:],
                              self.info.observation_space.high[2:])
