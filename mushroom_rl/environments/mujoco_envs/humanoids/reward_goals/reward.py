@@ -102,11 +102,12 @@ class NoGoalRewardRandInit(GoalRewardInterface, HumanoidTrajectory):
 
 class CustomReward(GoalRewardInterface):
 
-    def __init__(self, trajectory, reward_callback=None, random_start=True, **kwargs):
+    def __init__(self, trajectory, reward_callback=None, random_start=True, random_start_point=None,  **kwargs):
 
         self._trajectory = trajectory(**kwargs)
         self._reward_callback = reward_callback
         self._random_start = random_start
+        self._random_start_point = random_start_point
 
     def __call__(self, state, action, next_state):
         if self._reward_callback is not None:
@@ -116,7 +117,10 @@ class CustomReward(GoalRewardInterface):
 
     def reset_state(self):
         if self._random_start:
-            self._trajectory.reset_trajectory()
+            if self._random_start_point:
+                self._trajectory.reset_trajectory(self._random_start_point)
+            else:
+                self._trajectory.reset_trajectory()
             self._trajectory.terminate_trajectory_flag = False
 
 
