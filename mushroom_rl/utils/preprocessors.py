@@ -139,3 +139,24 @@ class MinMaxPreprocessor(StandardizationPreprocessor):
             ((orig_obs - self._obs_mean) / self._obs_delta)[self._obs_mask]
 
         return obs
+
+    def inv(self, obs):
+        """
+        Inverse of normalization.
+
+        Args:
+            obs (np.ndarray): Normalized observation to be unnormalized.
+
+        Returns:
+            Observation array with the same shape.
+
+        """
+        orig_obs = obs.copy()
+
+        if self._run_norm_obs:
+            raise ValueError("Inverse of normalization not allowed, when using running mean"
+                             "on some part of the observation space.")
+
+        obs = orig_obs * self._obs_delta + self._obs_mean
+
+        return obs
