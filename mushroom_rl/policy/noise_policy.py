@@ -110,6 +110,7 @@ class ClippedGaussianPolicy(ParametricPolicy):
         self._sigma = sigma
         self._low = low
         self._high = high
+        self.use_mean = False
 
         self._add_save_attr(
             _approximator='mushroom',
@@ -117,16 +118,20 @@ class ClippedGaussianPolicy(ParametricPolicy):
             _inv_sigma='numpy',
             _sigma='numpy',
             _low='numpy',
-            _high='numpy'
+            _high='numpy',
+            use_mean='primitive'
         )
 
     def __call__(self, state, action):
         raise NotImplementedError
 
     def draw_action(self, state):
-        mu = np.reshape(self._approximator.predict(np.expand_dims(state, axis=0), **self._predict_params), -1)
+        if self.use_mean:
+            return np.reshape(self._approximator.predict(np.expand_dims(state, axis=0), **self._predict_params), -1)
+        else:
+            mu = np.reshape(self._approximator.predict(np.expand_dims(state, axis=0), **self._predict_params), -1)
 
-        action_raw = np.random.multivariate_normal(mu, self._sigma)
+            action_raw = np.random.multivariate_normal(mu, self._sigma)
 
         return np.clip(action_raw, self._low, self._high)
 
