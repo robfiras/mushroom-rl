@@ -61,7 +61,7 @@
 		<texture name="groundplane" builtin="checker" height="1000" rgb1=".4 .4 .4" rgb2=".6 .6 .6" type="2d" width="1000"/>
 		<material name="MatGnd" texture="groundplane"  texrepeat="100 100" specular="1" shininess="1" reflectance="0.5"/>
 	</asset>
-	<option integrator="RK4" iterations="50" solver="Newton"  timestep="0.0025"/>
+	<option integrator="RK4" iterations="50" solver="Newton"  timestep="0.001"/>
 	<visual>
         <map fogstart="2" fogend="4"/>
     </visual>
@@ -276,7 +276,7 @@
                             <geom type="cylinder" size="0.07 0.2" pos="0.02 0.00295 -0.182" quat="0.99875 0 0.0499792 0" />
                             <body name="l_talus" pos="0 0 -0.422">
                                 <inertial pos="0 0 0" quat="0.5 0.5 -0.5 0.5" mass="0.125" diaginertia="1.30101e-005 1.01674e-005 8.42775e-006" />
-                                <joint name="l_leg_aky" damping="5" axis="0 1 0"   range="-1 0.7"/>
+                                <joint name="l_leg_aky" damping="5" axis="0 1 0"   range="-0.1 0.7"/>
                                 <geom class="viz" mesh="l_talus"/>
                                 <geom type="cylinder" size="0.010181 0.014771" pos="0 0 0" quat="0.707107 0 0.707107 0" />
                                 <geom type="cylinder" size="0.010348 0.0050295" pos="0 0 0" quat="0.707107 0.707107 0 0" />
@@ -326,7 +326,7 @@
                             <geom type="cylinder" size="0.07 0.2" pos="0.02 -0.00295 -0.182" quat="0.99875 0 0.0499792 0" />
                             <body name="r_talus" pos="0 0 -0.422">
                                 <inertial pos="0 0 0" quat="0.5 0.5 -0.5 0.5" mass="0.125" diaginertia="1.30101e-005 1.01674e-005 8.42775e-006" />
-                                <joint name="r_leg_aky" damping="5" axis="0 1 0"   range="-1 0.7"/>
+                                <joint name="r_leg_aky" damping="5" axis="0 1 0"   range="-0.1 0.7"/>
                                 <geom class="viz" mesh="r_talus"/>
                                 <geom type="cylinder" size="0.010181 0.014771" pos="0 0 0" quat="0.707107 0 0.707107 0" />
                                 <geom type="cylinder" size="0.010348 0.0050295" pos="0 0 0" quat="0.707107 0.707107 0 0" />
