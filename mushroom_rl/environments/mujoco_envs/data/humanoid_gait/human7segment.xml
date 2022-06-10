@@ -69,11 +69,14 @@ All rights reserved
             <!--define right thigh-->
             <body name="right_thigh" pos="0 -0.08 0">
                 <!--joint range limit -45, 20 deg-->
-                <joint name="right_hip_frontal" axis="1 0 0" armature="0" damping="0" range="-0.7854 0.349" type="hinge"/>
+<!--                <joint name="right_hip_frontal" axis="1 0 0" armature="0" damping="0" range="-0.7854 0.349" type="hinge"/>-->
+                <joint name="right_hip_frontal" axis="1 0 0" armature="0" damping="0" range="-0.2 0.349" type="hinge"/>
                 <!--joint range limit -60, 60 deg-->
-                <joint name="right_hip_sagittal" axis="0 1 0" armature="0" damping="0" range="-1.047 1.047" type="hinge"/>
+<!--                <joint name="right_hip_sagittal" axis="0 1 0" armature="0" damping="0" range="-1.047 1.047" type="hinge"/>-->
+                <joint name="right_hip_sagittal" axis="0 1 0" armature="0" damping="0" range="-0.7 0.3" type="hinge"/>
                 <!--joint range limit -50, 50 deg-->
-                <joint name="right_hip_rot" axis="0 0 1" armature="0" damping="0" range="-0.8727 0.8727" type="hinge"/>
+<!--                <joint name="right_hip_rot" axis="0 0 1" armature="0" damping="0" range="-0.8727 0.8727" type="hinge"/>-->
+                <joint name="right_hip_rot" axis="0 0 1" armature="0" damping="0" range="-0.25 0.25" type="hinge"/>
                 <geom type="mesh" mesh="thigh_r"/>
                 <geom name="right_thigh" fromto="0 0 -0.05 0 0 -0.45" rgba="0.6 0.3 0 0.2" size="0.06" type="capsule"/>
 
@@ -114,11 +117,14 @@ All rights reserved
             <!--define left thigh-->
             <body name="left_thigh" pos="0 0.08 0">
                 <!--joint range limit -45, 20 deg-->
-                <joint name="left_hip_frontal" axis="1 0 0" armature="0" damping="0" range="-0.349 0.7854" type="hinge"/>
+<!--                <joint name="left_hip_frontal" axis="1 0 0" armature="0" damping="0" range="-0.349 0.7854" type="hinge"/>-->
+                <joint name="left_hip_frontal" axis="1 0 0" armature="0" damping="0" range="-0.349 0.2" type="hinge"/>
                 <!--joint range limit -60, 60 deg-->
-                <joint name="left_hip_sagittal" axis="0 1 0" armature="0" damping="0" range="-1.047 1.047" type="hinge"/>
+                <joint name="left_hip_sagittal" axis="0 1 0" armature="0" damping="0" range="-0.7 0.3" type="hinge"/>
+<!--                <joint name="left_hip_sagittal" axis="0 1 0" armature="0" damping="0" range="-1.047 1.047" type="hinge"/>-->
                 <!--joint range limit -50, 50 deg-->
-                <joint name="left_hip_rot" axis="0 0 1" armature="0" damping="0" range="-0.8727 0.8727" type="hinge"/>
+<!--                <joint name="left_hip_rot" axis="0 0 1" armature="0" damping="0" range="-0.8727 0.8727" type="hinge"/>-->
+                <joint name="left_hip_rot" axis="0 0 1" armature="0" damping="0" range="-0.25 0.25" type="hinge"/>
                 <geom type="mesh" mesh="thigh_l"/>
                 <geom name="left_thigh" fromto="0 0 -0.05 0 0 -0.45" rgba="0 0.2 0.7 0.2" size="0.06" type="capsule"/>
 

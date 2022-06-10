@@ -4,6 +4,7 @@ from time import perf_counter
 from contextlib import contextmanager
 
 from mushroom_rl.utils.angles import euler_to_quat, quat_to_euler
+from mushroom_rl.utils.running_stats import RunningAveragedWindow
 from mushroom_rl.environments.mujoco import ObservationType
 from mushroom_rl.environments.mujoco_envs.humanoids.reward_goals.trajectory import Trajectory
 
@@ -134,6 +135,7 @@ class HumanoidTrajectory(Trajectory):
         positions to the ones in the reference trajectory at every step
 
         """
+        running_mean = RunningAveragedWindow(shape=(1,), window_size=500)
         viewer = mujoco_py.MjViewer(self.sim)
         viewer._render_every_frame = False
         self.reset_trajectory(substep_no=1)
@@ -144,6 +146,8 @@ class HumanoidTrajectory(Trajectory):
 
                 self.sim.data.qpos[0:17] = self.subtraj[0:17, self.subtraj_step_no]
                 self.sim.data.qvel[0:17] = self.subtraj[17:33, self.subtraj_step_no]
+                running_mean.update_stats(self.subtraj[17:18, self.subtraj_step_no])
+                print("Running mean: ", running_mean.mean)
                 self.sim.forward()
 
                 self.subtraj_step_no += 1
