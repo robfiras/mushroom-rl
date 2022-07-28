@@ -119,8 +119,7 @@ class HumanoidGait(MuJoCo):
             goal_reward_params = dict()
 
         if goal_reward == "trajectory" or goal_reward == "com_vel_trajectory":
-            control_dt = self._sim.model.opt.timestep * self._n_intermediate_steps
-            self.goal_reward = CompleteTrajectoryReward(self._sim, control_dt,
+            self.goal_reward = CompleteTrajectoryReward(self._sim,
                                                         **goal_reward_params)
         elif goal_reward == "vel_profile":
             self.goal_reward = VelocityProfileReward(self._sim, **goal_reward_params)

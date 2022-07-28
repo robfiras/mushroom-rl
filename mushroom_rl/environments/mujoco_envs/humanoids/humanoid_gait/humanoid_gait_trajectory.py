@@ -14,7 +14,6 @@ import numpy as np
 from scipy import signal, interpolate
 
 
-
 class HumanoidTrajectory(Trajectory):
     """
     Loads a trajectory to be used by the humanoid environment. The trajectory

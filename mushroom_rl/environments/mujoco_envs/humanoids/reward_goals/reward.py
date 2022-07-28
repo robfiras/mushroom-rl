@@ -348,7 +348,7 @@ class CompleteTrajectoryReward(GoalRewardInterface, HumanoidTrajectory):
         self.traj_data_range = np.clip(2 * np.std(self.euler_traj, axis=1), 0.15, np.inf)
 
         self.joint_importance = np.where(self.traj_data_range < 0.15, 2 * self.traj_data_range, 1.0)
-        self.joint_importance[2 :14] *= 1.0
+        self.joint_importance[2:14] *= 1.0
         self.joint_importance[17:28] *= 0.1
         self.joint_importance[28:34] *= 5.0
         self.joint_importance = np.r_[self.joint_importance[2:14],
@@ -385,8 +385,7 @@ class CompleteTrajectoryReward(GoalRewardInterface, HumanoidTrajectory):
 
         current_target = np.concatenate(
             [self.euler_traj[2:14, self.subtraj_step_no],
-            self.euler_traj[17:34, self.subtraj_step_no]]
-        )
+             self.euler_traj[17:34, self.subtraj_step_no]])
 
         current_error_standard = (np.subtract(current_state, current_target) /
                                   self.traj_data_range)
