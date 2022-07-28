@@ -60,14 +60,24 @@ class Trajectory(object):
         if "goal" in self._trajectory_files.keys():
             keys += ["goal"]
 
+        # needed for deep mimic
+        if "rel_feet_xpos_r" in self._trajectory_files.keys():
+            keys += ["rel_feet_xpos_r"]
+            keys += ["rel_feet_ypos_r"]
+            keys += ["rel_feet_zpos_r"]
+            keys += ["rel_feet_xpos_l"]
+            keys += ["rel_feet_ypos_l"]
+            keys += ["rel_feet_zpos_l"]
+
         # remove unwanted keys
         for ik in ignore_keys:
             keys.remove(ik)
 
         self.trajectory = np.array([self._trajectory_files[key] for key in keys])
+        self.keys = keys
 
-        if "split_points" in self._trajectory_files.files:
-            self.split_points = trajectory_files["split_points"]
+        if "split_points" in self._trajectory_files.keys():
+            self.split_points = self._trajectory_files["split_points"]
         else:
             self.split_points = np.array([0, self.trajectory.shape[1]])
 
@@ -145,3 +155,5 @@ class Trajectory(object):
         initial_x_pos = self.trajectory[0][start_sim_step]
         sub_traj[0, :] -= initial_x_pos
         return sub_traj
+
+

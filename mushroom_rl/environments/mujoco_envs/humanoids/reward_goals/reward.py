@@ -311,7 +311,9 @@ class CompleteTrajectoryReward(GoalRewardInterface, HumanoidTrajectory):
     """
     def __init__(self, sim, control_dt=0.005, traj_path=None,
                  traj_dt=0.0025, traj_speed_mult=1.0,
-                 use_error_terminate=False, **kwargs):
+                 use_error_terminate=False, joint_pos_rew_weight=1.0,
+                 joint_vel_rew_weight=1.0, com_pos_rew_weight=0.1, com_vel_rew_weight=0.1, com_pos_only_z=True,
+                 feet_pos_rew_weight=1.0, rew_scale=1.0, **kwargs):
         """
         Constructor.
 
@@ -340,6 +342,14 @@ class CompleteTrajectoryReward(GoalRewardInterface, HumanoidTrajectory):
                                                        traj_speed_mult)
         self.error_terminate = use_error_terminate
 
+        self._joint_pos_rew_weight = joint_pos_rew_weight
+        self._joint_vel_rew_weight = joint_vel_rew_weight
+        self._com_pos_rew_weight = com_pos_rew_weight
+        self._com_vel_rew_weight = com_vel_rew_weight
+        self._com_pos_only_z = com_pos_only_z
+        self._feet_pos_rew_weight = feet_pos_rew_weight
+        self._rew_scale = rew_scale
+
         self.error_threshold = 0.20
         self.terminate_trajectory_flag = False
 
@@ -359,39 +369,56 @@ class CompleteTrajectoryReward(GoalRewardInterface, HumanoidTrajectory):
                                                self.traj_data_range[17:34]])
 
     def __call__(self, state, action, next_state):
-        traj_reward_vec = self._calculate_each_comp_reward(state, action,
-                                                           next_state)
+        rew_com_pos, rew_joint_pos, rew_com_vel,\
+        rew_joint_vel, rew_foot_pos = self._calculate_each_comp_reward(state, action, next_state)
 
-        norm_traj_reward = np.sum(traj_reward_vec * self.joint_importance) / np.sum(
-                self.joint_importance)
+        reward = self._com_pos_rew_weight * rew_com_pos\
+                 + self._joint_pos_rew_weight * rew_joint_pos\
+                 + self._com_vel_rew_weight * rew_com_vel\
+                 + self._joint_vel_rew_weight * rew_joint_vel \
+                 + self._feet_pos_rew_weight * rew_foot_pos
 
-        if self.error_terminate and norm_traj_reward < (1 - self.error_threshold):
-            self.terminate_trajectory_flag = True
-
-        if self.error_terminate:
-            norm_traj_reward = 1 + (norm_traj_reward - 1) / self.error_threshold
-        return norm_traj_reward
+        return reward * self._rew_scale
 
     def _calculate_each_comp_reward(self, state, action, next_state):
-        euler_state = convert_traj_quat_to_euler(next_state, offset=2)
 
-        foot_vec = np.append(
-            (self.sim.data.body_xpos[1] - self.sim.data.body_xpos[4]),
-            (self.sim.data.body_xpos[1] - self.sim.data.body_xpos[7])
+        # --- get current data ---
+        euler_state = convert_traj_quat_to_euler(next_state, offset=0)
+        if self._com_pos_only_z:
+            current_com_pos = euler_state[2:6]
+        else:
+            current_com_pos = euler_state[0:6]
+        current_q_pos = euler_state[6:16]
+        current_com_vel = euler_state[16:22]
+        current_q_vel = euler_state[22:32]
+
+        rel_foot_vec = np.append(
+            (self.sim.data.get_body_xpos("torso") - self.sim.data.get_body_xpos("right_foot")),
+            (self.sim.data.get_body_xpos("torso") - self.sim.data.get_body_xpos("left_foot"))
         )
 
-        current_state = np.concatenate([euler_state[0:12],
-                                        euler_state[15:26], foot_vec])
+        # --- get target data ---
+        if self._com_pos_only_z:
+            tar_com_pos = self.euler_traj[2:6, self.subtraj_step_no]
+        else:
+            tar_com_pos = self.euler_traj[0:6, self.subtraj_step_no]
+        tar_q_pos = self.euler_traj[6:16, self.subtraj_step_no]
+        tar_com_vel = self.euler_traj[16:22, self.subtraj_step_no]
+        tar_q_vel = self.euler_traj[22:32, self.subtraj_step_no]
 
-        current_target = np.concatenate(
-            [self.euler_traj[2:14, self.subtraj_step_no],
-             self.euler_traj[17:34, self.subtraj_step_no]])
+        # get the start and end of the foot positions in an expert state
+        foot_vec_start = np.squeeze(np.where(np.array(self.keys) == "rel_feet_xpos_r")).item() - 1
+        foot_vec_end = np.squeeze(np.where(np.array(self.keys) == "rel_feet_zpos_l")).item()
+        tar_foot_vec = self.euler_traj[foot_vec_start:foot_vec_end, self.subtraj_step_no]
 
-        current_error_standard = (np.subtract(current_state, current_target) /
-                                  self.traj_data_range)
+        # --- calculate all rewards ---
+        rew_com_pos = np.exp(-5.0 * np.mean(np.square(current_com_pos - tar_com_pos)))
+        rew_joint_pos = np.exp(-2.0 * np.mean(np.square(current_q_pos - tar_q_pos)))
+        rew_com_vel = np.exp(-5.0 * np.mean(np.square(current_com_vel - tar_com_vel)))
+        rew_joint_vel = np.exp(-0.1 * np.mean(np.square(current_q_vel - tar_q_vel)))
+        rew_foot_pos = np.exp(-40.0 * np.mean(np.square(rel_foot_vec - tar_foot_vec)))
 
-        traj_reward_vec = np.exp(-np.square(current_error_standard))
-        return traj_reward_vec
+        return rew_com_pos, rew_joint_pos, rew_com_vel, rew_joint_vel, rew_foot_pos
 
     def update_state(self):
         self.subtraj_step_no += 1

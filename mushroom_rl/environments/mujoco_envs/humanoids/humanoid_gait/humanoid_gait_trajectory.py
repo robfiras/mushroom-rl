@@ -220,6 +220,35 @@ class HumanoidTrajectory(Trajectory):
             ax[1, j].legend(["Joint {} vel".format(j), "derivate of pos"])
         plt.show()
 
+    def get_rel_feet_pos(self):
+        """
+        Simulates the trajectory and extracts the relative feet positions.
+        """
+
+        self.reset_trajectory(substep_no=0)
+
+        rel_foot_vecs = []
+        for i in range(self.traj_length):
+
+            self.sim.data.qpos[0:17] = self.subtraj[0:17, self.subtraj_step_no]
+            self.sim.data.qvel[0:17] = self.subtraj[17:33, self.subtraj_step_no]
+
+            self.sim.forward()
+
+            # get feet positions
+            rel_foot_vec = [
+                [self.sim.data.get_body_xpos("torso") - self.sim.data.get_body_xpos("right_foot")],
+                [self.sim.data.get_body_xpos("torso") - self.sim.data.get_body_xpos("left_foot")]]
+            rel_foot_vecs.append(rel_foot_vec)
+
+            self.subtraj_step_no += 1
+
+            print("Converted sample: ", i)
+
+        return np.squeeze(np.array(rel_foot_vecs))
+
+
+
 @contextmanager
 def catchtime() -> float:
     start = perf_counter()
