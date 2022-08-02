@@ -18,6 +18,15 @@ PELVIS_QUAT_KEYS = ["pelvis_q1", "pelvis_q2", "pelvis_q3", "pelvis_q4"]
 JOINT_KEYS = ["hip_adduction_r", "hip_flexion_r", "hip_rotation_r", "knee_angle_r",
               "ankle_angle_r", "hip_adduction_l", "hip_flexion_l", "hip_rotation_l", "knee_angle_l", "ankle_angle_l"]
 
+FOOT_KEYS = ["rel_feet_xpos_r", "rel_feet_ypos_r", "rel_feet_zpos_r",
+             "rel_feet_xpos_l", "rel_feet_ypos_l", "rel_feet_zpos_l",
+             "feet_q1_r", "feet_q2_r", "feet_q3_r", "feet_q4_r",
+             "feet_q1_l", "feet_q2_l", "feet_q3_l", "feet_q4_l",
+             "feet_xvelp_r", "feet_yvelp_r", "feet_zvelp_r",
+             "feet_xvelp_l", "feet_yvelp_l", "feet_zvelp_l",
+             "feet_xvelr_r", "feet_yvelr_r", "feet_zvelr_r",
+             "feet_xvelr_l", "feet_yvelr_l", "feet_zvelr_l"]
+
 # KEYS of euler dataset
 EKEYS = PELVIS_POS_KEYS + PELVIS_EULER_KEYS + JOINT_KEYS
 
@@ -62,12 +71,7 @@ class Trajectory(object):
 
         # needed for deep mimic
         if "rel_feet_xpos_r" in self._trajectory_files.keys():
-            keys += ["rel_feet_xpos_r"]
-            keys += ["rel_feet_ypos_r"]
-            keys += ["rel_feet_zpos_r"]
-            keys += ["rel_feet_xpos_l"]
-            keys += ["rel_feet_ypos_l"]
-            keys += ["rel_feet_zpos_l"]
+            keys += FOOT_KEYS
 
         # remove unwanted keys
         for ik in ignore_keys:

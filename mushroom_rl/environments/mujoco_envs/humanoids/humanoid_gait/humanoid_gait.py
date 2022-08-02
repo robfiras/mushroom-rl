@@ -10,6 +10,8 @@ from ._external_simulation import NoExternalSimulation, MuscleSimulation
 from mushroom_rl.environments.mujoco_envs.humanoids.reward_goals import CompleteTrajectoryReward, VelocityProfileReward, \
      MaxVelocityReward, NoGoalReward, NoGoalRewardRandInit, ChangingVelocityTargetReward, CustomReward
 from mushroom_rl.environments.mujoco_envs.humanoids.utils import quat_to_euler
+from mushroom_rl.environments.mujoco_envs.humanoids.humanoid_gait.humanoid_gait_trajectory\
+    import get_all_foot_pos_and_vels_step
 
 
 class HumanoidGait(MuJoCo):
@@ -22,7 +24,7 @@ class HumanoidGait(MuJoCo):
     """
     def __init__(self, gamma=0.99, horizon=2000, n_intermediate_steps=10,
                  use_muscles=True, goal_reward=None, goal_reward_params=None,
-                 obs_avg_window=1, act_avg_window=1):
+                 obs_avg_window=1, act_avg_window=1, use_foot_data=False):
         """
         Constructor.
 
@@ -52,7 +54,8 @@ class HumanoidGait(MuJoCo):
             obs_avg_window (int, 1): size of window used to average
                 observations;
             act_avg_window (int, 1): size of window used to average actions.
-
+            use_foot_data (bool, False): if true, a 26-dim vector containing data about the feet is added to
+                                         the observations.
         """
         self.use_muscles = use_muscles
         self.goal_reward = goal_reward
@@ -114,6 +117,7 @@ class HumanoidGait(MuJoCo):
         self.norm_act_delta = (high - low) / 2.0
         self.info.action_space.low[:] = -1.0
         self.info.action_space.high[:] = 1.0
+        self._use_foot_data = use_foot_data
 
         if goal_reward_params is None:
             goal_reward_params = dict()
@@ -253,8 +257,15 @@ class HumanoidGait(MuJoCo):
 
         a_low, a_high = self.external_actuator.get_observation_space()
 
-        return (np.concatenate([sim_low, grf_low, r_low, a_low]),
-                np.concatenate([sim_high, grf_high, r_high, a_high]))
+        if self._use_foot_data:
+            foot_low, foot_high = (-np.ones((26,)) * np.inf,
+                                   np.ones((26,)) * np.inf)
+
+            return (np.concatenate([sim_low, foot_low, grf_low, r_low, a_low]),
+                    np.concatenate([sim_high, foot_high, grf_high, r_high, a_high]))
+        else:
+            return (np.concatenate([sim_low, grf_low, r_low, a_low]),
+                    np.concatenate([sim_high, grf_high, r_high, a_high]))
 
     def _reset_model(self, qpos_noise=0.0, qvel_noise=0.0):
         self._set_state(self._sim.data.qpos + np.random.uniform(
@@ -308,13 +319,30 @@ class HumanoidGait(MuJoCo):
                 -> observations related to the external actuator
 
         """
-        obs = np.concatenate([super(HumanoidGait, self)._create_observation()[2:],
-                              self.goal_reward.get_observation(),
-                              self.mean_grf.mean / 1000.,
-                              self.external_actuator.get_observation()
-                              ]).flatten()
+        if self._use_foot_data:
+            obs = np.concatenate([super(HumanoidGait, self)._create_observation()[2:],
+                                  self.get_foot_data(),
+                                  self.goal_reward.get_observation(),
+                                  self.mean_grf.mean / 1000.,
+                                  self.external_actuator.get_observation()
+                                  ]).flatten()
+        else:
+            obs = np.concatenate([super(HumanoidGait, self)._create_observation()[2:],
+                                  self.goal_reward.get_observation(),
+                                  self.mean_grf.mean / 1000.,
+                                  self.external_actuator.get_observation()
+                                  ]).flatten()
         return obs
 
+    def get_foot_data(self):
+        """
+        Returns a 26-dim vector containing information of the two feet, i.e., pose and velocities.
+        Per foot:
+        x, y, z, q1, q2, q3, q4 --> pose (x, y, z are positions relative to torso)
+        dx, dy, dz, d_alpha, d_beta, d_gamma --> velocities
+        """
+        data = np.array(list(get_all_foot_pos_and_vels_step(self._sim).values()))
+        return data
     def _preprocess_action(self, action):
         action = self.external_actuator.preprocess_action(action)
         self.mean_act.update_stats(action)

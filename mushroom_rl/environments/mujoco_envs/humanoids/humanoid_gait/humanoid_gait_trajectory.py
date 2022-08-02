@@ -247,6 +247,140 @@ class HumanoidTrajectory(Trajectory):
 
         return np.squeeze(np.array(rel_foot_vecs))
 
+    def get_all_foot_pos_and_vels(self):
+        """
+        Simulates the trajectory and extracts the relative feet positions and orientations.
+        """
+
+        self.reset_trajectory(substep_no=0)
+
+        rel_foot_vecs = []
+        feet_qori_right = []
+        feet_qori_left = []
+        feet_vel_trans_right = []
+        feet_vel_trans_left = []
+        feet_vel_rot_right = []
+        feet_vel_rot_left = []
+        for i in range(self.traj_length):
+
+            self.sim.data.qpos[0:17] = self.subtraj[0:17, self.subtraj_step_no]
+            self.sim.data.qvel[0:17] = self.subtraj[17:33, self.subtraj_step_no]
+
+            self.sim.forward()
+
+            # get feet positions (3dim)
+            rel_foot_vec = [
+                [self.sim.data.get_body_xpos("torso") - self.sim.data.get_body_xpos("right_foot")],
+                [self.sim.data.get_body_xpos("torso") - self.sim.data.get_body_xpos("left_foot")]]
+            rel_foot_vecs.append(rel_foot_vec)
+
+            # get feet orientation in quaternions (4dim)
+            feet_qori_right.append(self.sim.data.get_body_xquat("right_foot"))
+            feet_qori_left.append(self.sim.data.get_body_xquat("left_foot"))
+
+            # get feet translational velocities (3dim)
+            feet_vel_trans_right.append(self.sim.data.get_body_xvelp("right_foot"))
+            feet_vel_trans_left.append(self.sim.data.get_body_xvelp("left_foot"))
+
+            # get feet rotational velocities (3dim)
+            feet_vel_rot_right.append(self.sim.data.get_body_xvelr("right_foot"))
+            feet_vel_rot_left.append(self.sim.data.get_body_xvelr("left_foot"))
+
+            self.subtraj_step_no += 1
+
+            print("Converted sample: ", i)
+
+        rel_foot_vecs = np.squeeze(np.array(rel_foot_vecs))
+        feet_qori_right = np.array(feet_qori_right)
+        feet_qori_left = np.array(feet_qori_left)
+        feet_vel_trans_right = np.array(feet_vel_trans_right)
+        feet_vel_trans_left = np.array(feet_vel_trans_left)
+        feet_vel_rot_right = np.array(feet_vel_rot_right)
+        feet_vel_rot_left = np.array(feet_vel_rot_left)
+
+        data = dict(
+            rel_feet_xpos_r=rel_foot_vecs[:, 0, 0],
+            rel_feet_ypos_r=rel_foot_vecs[:, 0, 1],
+            rel_feet_zpos_r=rel_foot_vecs[:, 0, 2],
+            rel_feet_xpos_l=rel_foot_vecs[:, 1, 0],
+            rel_feet_ypos_l=rel_foot_vecs[:, 1, 1],
+            rel_feet_zpos_l=rel_foot_vecs[:, 1, 2],
+            feet_q1_r=feet_qori_right[:, 0],
+            feet_q2_r=feet_qori_right[:, 1],
+            feet_q3_r=feet_qori_right[:, 2],
+            feet_q4_r=feet_qori_right[:, 3],
+            feet_q1_l=feet_qori_left[:, 0],
+            feet_q2_l=feet_qori_left[:, 1],
+            feet_q3_l=feet_qori_left[:, 2],
+            feet_q4_l=feet_qori_left[:, 3],
+            feet_xvelp_r=feet_vel_trans_right[:, 0],
+            feet_yvelp_r=feet_vel_trans_right[:, 1],
+            feet_zvelp_r=feet_vel_trans_right[:, 2],
+            feet_xvelp_l=feet_vel_trans_left[:, 0],
+            feet_yvelp_l=feet_vel_trans_left[:, 1],
+            feet_zvelp_l=feet_vel_trans_left[:, 2],
+            feet_xvelr_r=feet_vel_rot_right[:, 0],
+            feet_yvelr_r=feet_vel_rot_right[:, 1],
+            feet_zvelr_r=feet_vel_rot_right[:, 2],
+            feet_xvelr_l=feet_vel_rot_left[:, 0],
+            feet_yvelr_l=feet_vel_rot_left[:, 1],
+            feet_zvelr_l=feet_vel_rot_left[:, 2],
+        )
+        return data
+
+
+def get_all_foot_pos_and_vels_step(sim):
+    """
+    Simulates the trajectory and extracts the relative feet positions and orientations.
+    """
+
+    # get feet positions (3dim)
+    rel_foot_vec = [
+        sim.data.get_body_xpos("torso") - sim.data.get_body_xpos("right_foot"),
+        sim.data.get_body_xpos("torso") - sim.data.get_body_xpos("left_foot")]
+
+    # get feet orientation in quaternions (4dim)
+    feet_qori_right = sim.data.get_body_xquat("right_foot")
+    feet_qori_left = sim.data.get_body_xquat("left_foot")
+
+    # get feet translational velocities (3dim)
+    feet_vel_trans_right = sim.data.get_body_xvelp("right_foot")
+    feet_vel_trans_left = sim.data.get_body_xvelp("left_foot")
+
+    # get feet rotational velocities (3dim)
+    feet_vel_rot_right = sim.data.get_body_xvelr("right_foot")
+    feet_vel_rot_left = sim.data.get_body_xvelr("left_foot")
+
+    data = dict(
+        rel_feet_xpos_r=rel_foot_vec[0][0],
+        rel_feet_ypos_r=rel_foot_vec[0][1],
+        rel_feet_zpos_r=rel_foot_vec[0][2],
+        rel_feet_xpos_l=rel_foot_vec[1][0],
+        rel_feet_ypos_l=rel_foot_vec[1][1],
+        rel_feet_zpos_l=rel_foot_vec[1][2],
+        feet_q1_r=feet_qori_right[0],
+        feet_q2_r=feet_qori_right[1],
+        feet_q3_r=feet_qori_right[2],
+        feet_q4_r=feet_qori_right[3],
+        feet_q1_l=feet_qori_left[0],
+        feet_q2_l=feet_qori_left[1],
+        feet_q3_l=feet_qori_left[2],
+        feet_q4_l=feet_qori_left[3],
+        feet_xvelp_r=feet_vel_trans_right[0],
+        feet_yvelp_r=feet_vel_trans_right[1],
+        feet_zvelp_r=feet_vel_trans_right[2],
+        feet_xvelp_l=feet_vel_trans_left[0],
+        feet_yvelp_l=feet_vel_trans_left[1],
+        feet_zvelp_l=feet_vel_trans_left[2],
+        feet_xvelr_r=feet_vel_rot_right[0],
+        feet_yvelr_r=feet_vel_rot_right[1],
+        feet_zvelr_r=feet_vel_rot_right[2],
+        feet_xvelr_l=feet_vel_rot_left[0],
+        feet_yvelr_l=feet_vel_rot_left[1],
+        feet_zvelr_l=feet_vel_rot_left[2],
+    )
+    return data
+
 
 
 @contextmanager
