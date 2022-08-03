@@ -343,6 +343,7 @@ class HumanoidGait(MuJoCo):
         """
         data = np.array(list(get_all_foot_pos_and_vels_step(self._sim).values()))
         return data
+
     def _preprocess_action(self, action):
         action = self.external_actuator.preprocess_action(action)
         self.mean_act.update_stats(action)

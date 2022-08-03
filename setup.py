@@ -16,8 +16,8 @@ from mushroom_rl import __version__
 def glob_data_files(data_package, data_type=None):
     data_type = '*' if data_type is None else data_type
     data_dir = data_package.replace(".", "/")
-    data_files = [] 
-    directories = glob.glob(data_dir+'/**/', recursive=True) 
+    data_files = []
+    directories = glob.glob(data_dir+'/**/', recursive=True)
     for directory in directories:
         subdir = directory[len(data_dir)+1:]
         if subdir != "":
@@ -62,9 +62,9 @@ long_description = 'MushroomRL is a Python Reinforcement Learning (RL) library' 
                    ' available at http://mushroomrl.readthedocs.io/en/latest/.'
 
 
-ext_modules = [Extension('mushroom_rl.environments.mujoco_envs.humanoid_gait.'
+ext_modules = [Extension('mushroom_rl.environments.mujoco_envs.humanoids.humanoid_gait.'
                          '_external_simulation.muscle_simulation_stepupdate',
-                        ['mushroom_rl/environments/mujoco_envs/humanoid_gait/'
+                        ['mushroom_rl/environments/mujoco_envs/humanoids/humanoid_gait/'
                          '_external_simulation/muscle_simulation_stepupdate.pyx'],
                          include_dirs=[numpy.get_include()])]
 
