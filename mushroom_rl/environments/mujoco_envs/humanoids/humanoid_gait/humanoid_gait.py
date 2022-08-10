@@ -24,7 +24,8 @@ class HumanoidGait(MuJoCo):
     """
     def __init__(self, gamma=0.99, horizon=2000, n_intermediate_steps=10,
                  use_muscles=True, goal_reward=None, goal_reward_params=None,
-                 obs_avg_window=1, act_avg_window=1, use_foot_data=False):
+                 obs_avg_window=1, act_avg_window=1, use_foot_data=False,
+                 model_path=None):
         """
         Constructor.
 
@@ -56,13 +57,16 @@ class HumanoidGait(MuJoCo):
             act_avg_window (int, 1): size of window used to average actions.
             use_foot_data (bool, False): if true, a 26-dim vector containing data about the feet is added to
                                          the observations.
+             model_path (str, None): path of the xml file to load.
         """
         self.use_muscles = use_muscles
         self.goal_reward = goal_reward
         self.act_avg_window = act_avg_window
         self.obs_avg_window = obs_avg_window
 
-        model_path = Path(__file__).resolve().parent.parent.parent / "data" / "humanoid_gait" / "human7segment.xml"
+        if model_path is None:
+            model_path = Path(__file__).resolve().parent.parent.parent / "data" / "humanoid_gait" / "human7segment.xml"
+            model_path = model_path.as_posix()
 
         action_spec = ["right_hip_frontal", "right_hip_sagittal", "right_hip_rot",
                        "right_knee", "right_ankle", "left_hip_frontal",
@@ -99,7 +103,7 @@ class HumanoidGait(MuJoCo):
                             ("right_foot", ["right_foot"])
                             ]
 
-        super().__init__(model_path.as_posix(), action_spec, observation_spec, gamma=gamma,
+        super().__init__(model_path, action_spec, observation_spec, gamma=gamma,
                          horizon=horizon, n_substeps=1,
                          n_intermediate_steps=n_intermediate_steps,
                          collision_groups=collision_groups)
