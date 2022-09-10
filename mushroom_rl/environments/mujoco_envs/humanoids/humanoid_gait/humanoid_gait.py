@@ -294,7 +294,7 @@ class HumanoidGait(MuJoCo):
         return ((state[0] < 0.90) or (state[0] > 1.20)
                 or abs(torso_euler[0]) > np.pi / 12
                 or (torso_euler[1] < -np.pi / 12) or (torso_euler[1] > np.pi / 8)
-                #or (torso_euler[2] < -np.pi / 4) or (torso_euler[2] > np.pi / 4)
+                or (torso_euler[2] < (-np.pi / 14)+np.pi/2) or (torso_euler[2] > (np.pi / 14)+np.pi/2)
                 )
 
     def _create_observation(self):

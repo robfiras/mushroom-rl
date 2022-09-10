@@ -128,7 +128,7 @@ class HumanoidTrajectory(Trajectory):
         self.x_dist += self.subtraj[0][-1]
         self.reset_trajectory()
 
-    def play_trajectory_demo(self, freq=200):
+    def play_trajectory_demo(self, freq=200, view_from_other_side=False):
         """
         Plays a demo of the loaded trajectory by forcing the model
         positions to the ones in the reference trajectory at every step
@@ -137,6 +137,14 @@ class HumanoidTrajectory(Trajectory):
         running_mean = RunningAveragedWindow(shape=(1,), window_size=500)
         viewer = mujoco_py.MjViewer(self.sim)
         viewer._render_every_frame = False
+        if view_from_other_side:
+            from mujoco_py.generated import const
+            viewer.cam.type = const.CAMERA_TRACKING
+            viewer.cam.trackbodyid = 0
+            viewer.cam.distance *= 0.3
+            viewer.cam.elevation = -0  # camera rotation around the axis in the plane going through the frame origin (if 0 you just see a line)
+            viewer.cam.azimuth = 270
+        print("here")
         self.reset_trajectory(substep_no=1)
         while True:
             with catchtime() as t:
@@ -150,28 +158,35 @@ class HumanoidTrajectory(Trajectory):
                 self.sim.forward()
 
                 self.subtraj_step_no += 1
-                sleep_time = np.maximum(1/freq - t(), 0.0)
+                sleep_time = np.maximum(1 / freq - t(), 0.0)
                 time.sleep(sleep_time)
                 viewer.render()
 
                 # check if the humanoid has fallen
                 torso_euler = quat_to_euler(self.sim.data.qpos[3:7])
                 z_pos = self.sim.data.qpos[2]
-                has_fallen = ((z_pos < 0.90) or (z_pos > 1.20) or abs(torso_euler[0]) > np.pi / 12 or (torso_euler[1] < -np.pi / 12) or (torso_euler[1] > np.pi / 8))
-                              #or (torso_euler[2] < -np.pi / 4) or (torso_euler[2] > np.pi / 4))
+                has_fallen = ((z_pos < 0.90) or (z_pos > 1.20) or abs(torso_euler[0]) > np.pi / 12 or (
+                            torso_euler[1] < -np.pi / 12) or (torso_euler[1] > np.pi / 8))
+                # or (torso_euler[2] < -np.pi / 4) or (torso_euler[2] > np.pi / 4))
 
-                if has_fallen:
-                    print("HAS FALLEN!")
-                    return
+                #if has_fallen:
+                    #print("HAS FALLEN!")
+                    #return
 
-
-    def play_trajectory_demo_from_velocity(self, freq=200):
+    def play_trajectory_demo_from_velocity(self, freq=200, view_from_other_side=False):
         """
         Plays a demo of the loaded trajectory by forcing the model
         positions to the ones in the reference trajectory at every steps
         """
         viewer = mujoco_py.MjViewer(self.sim)
         viewer._render_every_frame = False
+        if view_from_other_side:
+            from mujoco_py.generated import const
+            viewer.cam.type = const.CAMERA_TRACKING
+            viewer.cam.trackbodyid = 0
+            viewer.cam.distance *= 0.3
+            viewer.cam.elevation = -0  # camera rotation around the axis in the plane going through the frame origin (if 0 you just see a line)
+            viewer.cam.azimuth = 270
         self.reset_trajectory(substep_no=1)
         curr_qpos = self.subtraj[0:17, self.subtraj_step_no]
 

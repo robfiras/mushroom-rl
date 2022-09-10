@@ -219,7 +219,8 @@ class GaussianTorchPolicy(TorchPolicy):
             _action_dim='primitive',
             _mu='mushroom',
             _predict_params='pickle',
-            _log_sigma='torch'
+            _log_sigma='torch',
+            _deterministic='primitive'
         )
 
     def draw_action_t(self, state):

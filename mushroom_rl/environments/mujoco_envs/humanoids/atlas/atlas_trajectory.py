@@ -18,7 +18,7 @@ def catchtime() -> float:
 
 class AtlasTrajectory(HumanoidTrajectory):
 
-    def play_trajectory_demo(self, mdp, freq=200):
+    def play_trajectory_demo(self, mdp, freq=200, view_from_other_side=False):
         """
         Plays a demo of the loaded trajectory by forcing the model
         positions to the ones in the reference trajectory at every step
@@ -27,6 +27,14 @@ class AtlasTrajectory(HumanoidTrajectory):
         viewer = mujoco_py.MjViewer(self.sim)
         viewer._render_every_frame = False
         self.reset_trajectory(substep_no=1)
+
+        if view_from_other_side:
+            from mujoco_py.generated import const
+            viewer.cam.type = const.CAMERA_TRACKING
+            viewer.cam.trackbodyid = 0
+            viewer.cam.distance *= 0.3
+            viewer.cam.elevation = -0  # camera rotation around the axis in the plane going through the frame origin (if 0 you just see a line)
+            viewer.cam.azimuth = 270
 
         while True:
             with catchtime() as t:
@@ -65,7 +73,7 @@ class AtlasTrajectory(HumanoidTrajectory):
                     print("HAS FALLEN!")
                     #return
 
-    def play_trajectory_demo_from_velocity(self, mdp, freq=200):
+    def play_trajectory_demo_from_velocity(self, mdp, freq=200, view_from_other_side=False):
         """
         Plays a demo of the loaded trajectory by forcing the model
         positions to the ones in the reference trajectory at every steps
@@ -75,6 +83,14 @@ class AtlasTrajectory(HumanoidTrajectory):
         self.reset_trajectory(substep_no=1)
         curr_root_pose = self.subtraj[0:7, self.subtraj_step_no]
         curr_qpos = self.subtraj[7:17, self.subtraj_step_no]
+
+        if view_from_other_side:
+            from mujoco_py.generated import const
+            viewer.cam.type = const.CAMERA_TRACKING
+            viewer.cam.trackbodyid = 0
+            viewer.cam.distance *= 0.3
+            viewer.cam.elevation = -0  # camera rotation around the axis in the plane going through the frame origin (if 0 you just see a line)
+            viewer.cam.azimuth = 270
 
         # order of keys for atlas from xml
         ATLAS_JOINT_KEYS = ["hip_rotation_l", "hip_adduction_l", "hip_flexion_l", "knee_angle_l",
