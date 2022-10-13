@@ -26,7 +26,7 @@ class HumanoidTrajectory(Trajectory):
     """
     def __init__(self, sim, traj_path, traj_dt=0.005,
                  control_dt=0.005, traj_speed_mult=1.0,
-                 velocity_smooth_window=1001):
+                 velocity_smooth_window=1):
         """
         Constructor.
 
