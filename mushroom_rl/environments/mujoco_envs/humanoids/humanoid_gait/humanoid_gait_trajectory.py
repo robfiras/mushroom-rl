@@ -25,8 +25,7 @@ class HumanoidTrajectory(Trajectory):
 
     """
     def __init__(self, sim, traj_path, traj_dt=0.005,
-                 control_dt=0.005, traj_speed_mult=1.0,
-                 velocity_smooth_window=1):
+                 control_dt=0.005, traj_speed_mult=1.0):
         """
         Constructor.
 
@@ -55,8 +54,7 @@ class HumanoidTrajectory(Trajectory):
         self.sim = sim
         self.trajectory[15:29] *= traj_speed_mult
 
-        self.complete_velocity_profile = self._smooth_vel_profile(
-                self.trajectory[15:18],  window_size=velocity_smooth_window)
+        self.complete_velocity_profile = self.trajectory[15:18]
 
         self.subtraj_step_no = 0
         self.x_dist = 0
