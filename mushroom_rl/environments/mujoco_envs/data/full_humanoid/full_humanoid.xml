@@ -8,6 +8,7 @@
     <site size="0.001"></site>
     <tendon width="0.001" rgba=".95 .3 .3 1" limited="false"></tendon>
     <muscle scale="400"></muscle>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0"/>
   </default>
   <option timestep="0.001">
     <flag energy="enable"></flag>
@@ -89,12 +90,12 @@
       <site name="semimem_l-P1" pos="-0.0987 -0.114 -0.0614"></site>
       <site name="semiten_l-P1" pos="-0.1038 -0.1253 -0.0515"></site>
       <site name="tfl_l-P1" pos="-0.0311 0.0214 -0.1241"></site>
-      <joint name="pelvis_tx" type="slide" pos="0 0 0" axis="       1        0        0" limited="true" range="      -5        5" ref="0" armature="0" damping="0" stiffness="0"></joint>
-      <joint name="pelvis_tz" type="slide" pos="0 0 0" axis="       0        0        1" limited="true" range="      -3        3" ref="0" armature="0" damping="0" stiffness="0"></joint>
-      <joint name="pelvis_ty" type="slide" pos="0 0 0" axis="       0        1        0" limited="true" range="      -1        2" ref="0" armature="0" damping="0" stiffness="0"></joint>
-      <joint name="pelvis_tilt" type="hinge" pos="0 0 0" axis="       0        0        1" limited="true" range=" -1.5708   1.5708" ref="0" armature="0" damping="0" stiffness="0"></joint>
-      <joint name="pelvis_list" type="hinge" pos="0 0 0" axis="       1        0        0" limited="true" range=" -1.5708   1.5708" ref="0" armature="0" damping="0" stiffness="0"></joint>
-      <joint name="pelvis_rotation" type="hinge" pos="0 0 0" axis="       0        1        0" limited="true" range=" -1.5708   1.5708" ref="0" armature="0" damping="0" stiffness="0"></joint>
+      <joint name="pelvis_tx" type="slide" pos="0 0 0" axis="       1        0        0" limited="true" range="      -5        5" ref="0" armature="0" damping="0.5" stiffness="0"></joint>
+      <joint name="pelvis_tz" type="slide" pos="0 0 0" axis="       0        0        1" limited="true" range="      -3        3" ref="0" armature="0" damping="0.5" stiffness="0"></joint>
+      <joint name="pelvis_ty" type="slide" pos="0 0 0" axis="       0        1        0" limited="true" range="      -1        2" ref="0" armature="0" damping="0.5" stiffness="0"></joint>
+      <joint name="pelvis_tilt" type="hinge" pos="0 0 0" axis="       0        0        1" limited="true" range=" -1.5708   1.5708" ref="0" armature="0" damping="0.5" stiffness="0"></joint>
+      <joint name="pelvis_list" type="hinge" pos="0 0 0" axis="       1        0        0" limited="true" range=" -1.5708   1.5708" ref="0" armature="0" damping="0.5" stiffness="0"></joint>
+      <joint name="pelvis_rotation" type="hinge" pos="0 0 0" axis="       0        1        0" limited="true" range=" -1.5708   1.5708" ref="0" armature="0" damping="0.5" stiffness="0"></joint>
       <body name="femur_r" pos="-0.056276 -0.07849  0.07726" quat="1.0 0.0 0.0 0.0">
         <geom name="r_femur" type="mesh" mesh="r_femur"></geom>
         <inertial pos="       0    -0.17        0" mass="9.3014" fullinertia="  0.1339   0.0351   0.1412        0        0        0"></inertial>
@@ -1048,21 +1049,21 @@
     </spatial>
   </tendon>
   <actuator>
-    <motor name="lumbar_ext" gear="10" joint="lumbar_extension"></motor>
-    <motor name="lumbar_bend" gear="10" joint="lumbar_bending"></motor>
-    <motor name="lumbar_rot" gear="10" joint="lumbar_rotation"></motor>
-    <motor name="shoulder_flex_r" gear="10" joint="arm_flex_r"></motor>
-    <motor name="shoulder_add_r" gear="10" joint="arm_add_r"></motor>
-    <motor name="shoulder_rot_r" gear="10" joint="arm_rot_r"></motor>
-    <motor name="elbow_flex_r" gear="10" joint="elbow_flex_r"></motor>
-    <motor name="pro_sup_r" gear="10" joint="pro_sup_r"></motor>
+    <motor name="lumbar_ext" gear="450" joint="lumbar_extension"></motor>
+    <motor name="lumbar_bend" gear="300" joint="lumbar_bending"></motor>
+    <motor name="lumbar_rot" gear="100" joint="lumbar_rotation"></motor>
+    <motor name="shoulder_flex_r" gear="100" joint="arm_flex_r"></motor>
+    <motor name="shoulder_add_r" gear="100" joint="arm_add_r"></motor>
+    <motor name="shoulder_rot_r" gear="100" joint="arm_rot_r"></motor>
+    <motor name="elbow_flex_r" gear="100" joint="elbow_flex_r"></motor>
+    <motor name="pro_sup_r" gear="100" joint="pro_sup_r"></motor>
     <motor name="wrist_flex_r" gear="10" joint="wrist_flex_r"></motor>
     <motor name="wrist_dev_r" gear="10" joint="wrist_dev_r"></motor>
-    <motor name="shoulder_flex_l" gear="10" joint="arm_flex_l"></motor>
-    <motor name="shoulder_add_l" gear="10" joint="arm_add_l"></motor>
-    <motor name="shoulder_rot_l" gear="10" joint="arm_rot_l"></motor>
-    <motor name="elbow_flex_l" gear="10" joint="elbow_flex_l"></motor>
-    <motor name="pro_sup_l" gear="10" joint="pro_sup_l"></motor>
+    <motor name="shoulder_flex_l" gear="100" joint="arm_flex_l"></motor>
+    <motor name="shoulder_add_l" gear="100" joint="arm_add_l"></motor>
+    <motor name="shoulder_rot_l" gear="100" joint="arm_rot_l"></motor>
+    <motor name="elbow_flex_l" gear="100" joint="elbow_flex_l"></motor>
+    <motor name="pro_sup_l" gear="100" joint="pro_sup_l"></motor>
     <motor name="wrist_flex_l" gear="10" joint="wrist_flex_l"></motor>
     <motor name="wrist_dev_l" gear="10" joint="wrist_dev_l"></motor>
     <muscle name="addbrev_r" tendon="addbrev_r_tendon" lengthrange="0.000886257  1.41801"></muscle>
