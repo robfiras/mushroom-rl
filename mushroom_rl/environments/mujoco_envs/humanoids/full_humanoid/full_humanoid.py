@@ -266,12 +266,20 @@ class FullHumanoid(MuJoCo):
 
     @staticmethod
     def _has_fallen(state):
-        torso_euler = state[1:4]
-        return ((state[0] < -0.35) or (state[0] > 0.10)
-                or abs(torso_euler[0]) > np.pi / 12
-                or (torso_euler[1] < -np.pi / 12) or (torso_euler[1] > np.pi / 8)
-                #or (torso_euler[2] < (-np.pi / 14)+np.pi/2) or (torso_euler[2] > (np.pi / 14)+np.pi/2)
-                )
+        pelvis_euler = state[1:4]
+        pelvis_condition = ((state[0] < -0.35) or (state[0] > 0.10)
+                            or (pelvis_euler[0] < (-np.pi / 4.5)) or (pelvis_euler[0] > (np.pi / 12))
+                            or (pelvis_euler[1] < -np.pi / 12) or (pelvis_euler[1] > np.pi / 8)
+                            or (pelvis_euler[2] < (-np.pi / 10)) or (pelvis_euler[2] > (np.pi / 10))
+                           )
+        lumbar_euler = state[35:38]
+        lumbar_condition = ((lumbar_euler[0] < (-np.pi / 4.5)) or (lumbar_euler[0] > (np.pi / 12))
+                            or (lumbar_euler[1] < -np.pi / 5) or (lumbar_euler[1] > np.pi / 5)
+                            or (lumbar_euler[2] < (-np.pi / 4.5)) or (lumbar_euler[2] > (np.pi / 4.5))
+                            )
+
+        return pelvis_condition or lumbar_condition
+
 
     def render(self):
         if self._viewer is None:

@@ -7,6 +7,7 @@ from mushroom_rl.utils.angles import euler_to_quat, quat_to_euler
 from mushroom_rl.utils.running_stats import RunningAveragedWindow
 from mushroom_rl.environments.mujoco import ObservationType
 from mushroom_rl.environments.mujoco_envs.humanoids.reward_goals.trajectory import Trajectory
+from mushroom_rl.environments.mujoco_envs.humanoids.full_humanoid.full_humanoid import FullHumanoid
 
 import matplotlib.pyplot as plt
 import mujoco_py
@@ -228,13 +229,24 @@ class FullHumanoidTrajectory():
                 # check if the humanoid has fallen
                 torso_euler = quat_to_euler(self.sim.data.qpos[3:7])
                 z_pos = self.sim.data.qpos[2]
-                has_fallen = ((z_pos < 0.90) or (z_pos > 1.20) or abs(torso_euler[0]) > np.pi / 12 or (
-                            torso_euler[1] < -np.pi / 12) or (torso_euler[1] > np.pi / 8))
-                # or (torso_euler[2] < -np.pi / 4) or (torso_euler[2] > np.pi / 4))
 
-                #if has_fallen:
-                    #print("HAS FALLEN!")
-                    #return
+                pelvis_euler = self.sim.data.qpos[3:6]
+                pelvis_condition = ((self.sim.data.qpos[2] < -0.35) or (self.sim.data.qpos[2] > 0.10)
+                                    or (pelvis_euler[0] < (-np.pi / 4.5)) or (pelvis_euler[0] > (np.pi / 12))
+                                    or (pelvis_euler[1] < -np.pi / 12) or (pelvis_euler[1] > np.pi / 8)
+                                    or (pelvis_euler[2] < (-np.pi / 10)) or (pelvis_euler[2] > (np.pi / 10))
+                                    )
+                lumbar_euler = self.sim.data.qpos[37:40]
+                lumbar_condition = ((lumbar_euler[0] < (-np.pi / 4.5)) or (lumbar_euler[0] > (np.pi / 12))
+                                    or (lumbar_euler[1] < -np.pi / 5) or (lumbar_euler[1] > np.pi / 5)
+                                    or (lumbar_euler[2] < (-np.pi / 4.5)) or (lumbar_euler[2] > (np.pi / 4.5))
+                                    )
+                has_fallen = pelvis_condition or lumbar_condition
+                if has_fallen:
+                    print("HAS FALLEN!")
+                    print("Lumbar_condition:", lumbar_condition)
+                    print("Pelvis_condition:", pelvis_condition)
+
 
     def play_trajectory_demo_from_velocity(self, freq=200, view_from_other_side=False):
         """
