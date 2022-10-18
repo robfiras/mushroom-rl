@@ -11,7 +11,7 @@ class MuJoCo(Environment):
 
     """
 
-    def __init__(self, file_name, actuation_spec, observation_spec, gamma,horizon, timestep=1/240.,
+    def __init__(self, file_name, actuation_spec, observation_spec, gamma, horizon, timestep=1/240.,
                  n_intermediate_steps=1, additional_data_spec=None, collision_groups=None, **viewer_params):
         """
         Constructor.
