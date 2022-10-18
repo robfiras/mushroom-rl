@@ -277,7 +277,6 @@ class FullHumanoid(MuJoCo):
                             or (lumbar_euler[1] < -np.pi / 10) or (lumbar_euler[1] > np.pi / 10)
                             or (lumbar_euler[2] < (-np.pi / 4.5)) or (lumbar_euler[2] > (np.pi / 4.5))
                             )
-        return False
         return pelvis_condition or lumbar_condition
 
 
