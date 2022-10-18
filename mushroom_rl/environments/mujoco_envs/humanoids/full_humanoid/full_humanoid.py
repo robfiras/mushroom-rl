@@ -272,12 +272,12 @@ class FullHumanoid(MuJoCo):
                             or (pelvis_euler[1] < -np.pi / 12) or (pelvis_euler[1] > np.pi / 8)
                             or (pelvis_euler[2] < (-np.pi / 10)) or (pelvis_euler[2] > (np.pi / 10))
                            )
-        lumbar_euler = state[35:38]
-        lumbar_condition = ((lumbar_euler[0] < (-np.pi / 4.5)) or (lumbar_euler[0] > (np.pi / 12))
-                            or (lumbar_euler[1] < -np.pi / 5) or (lumbar_euler[1] > np.pi / 5)
+        lumbar_euler = state[32:35]
+        lumbar_condition = ((lumbar_euler[0] < (-np.pi / 6)) or (lumbar_euler[0] > (np.pi / 10))
+                            or (lumbar_euler[1] < -np.pi / 10) or (lumbar_euler[1] > np.pi / 10)
                             or (lumbar_euler[2] < (-np.pi / 4.5)) or (lumbar_euler[2] > (np.pi / 4.5))
                             )
-
+        return False
         return pelvis_condition or lumbar_condition
 
 

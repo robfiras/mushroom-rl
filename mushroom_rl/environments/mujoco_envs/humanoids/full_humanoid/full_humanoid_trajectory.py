@@ -236,11 +236,13 @@ class FullHumanoidTrajectory():
                                     or (pelvis_euler[1] < -np.pi / 12) or (pelvis_euler[1] > np.pi / 8)
                                     or (pelvis_euler[2] < (-np.pi / 10)) or (pelvis_euler[2] > (np.pi / 10))
                                     )
-                lumbar_euler = self.sim.data.qpos[37:40]
-                lumbar_condition = ((lumbar_euler[0] < (-np.pi / 4.5)) or (lumbar_euler[0] > (np.pi / 12))
-                                    or (lumbar_euler[1] < -np.pi / 5) or (lumbar_euler[1] > np.pi / 5)
+                lumbar_euler = self.sim.data.qpos[34:37]
+                lumbar_condition = ((lumbar_euler[0] < (-np.pi / 6)) or (lumbar_euler[0] > (np.pi / 10))
+                                    or (lumbar_euler[1] < -np.pi / 10) or (lumbar_euler[1] > np.pi / 10)
                                     or (lumbar_euler[2] < (-np.pi / 4.5)) or (lumbar_euler[2] > (np.pi / 4.5))
                                     )
+
+
                 has_fallen = pelvis_condition or lumbar_condition
                 if has_fallen:
                     print("HAS FALLEN!")
