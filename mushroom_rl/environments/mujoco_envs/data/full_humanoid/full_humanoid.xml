@@ -7,13 +7,13 @@
     <geom contype="1" conaffinity="1" condim="3" rgba="0.8 0.6 .4 1" margin="0.001" solref=".02 1" solimp=".8 .8 .01" material="geom"></geom>
     <site size="0.001"></site>
     <tendon width="0.001" rgba=".95 .3 .3 1" limited="false"></tendon>
-    <muscle scale="400"></muscle>
+    <muscle scale="4000"></muscle>
     <motor ctrllimited="true" ctrlrange="-1.0 1.0"/>
   </default>
   <option timestep="0.001">
     <flag energy="enable"></flag>
   </option>
-  <size nconmax="400" nuser_jnt="1"></size>
+  <size njmax="1000" nconmax="400" nuser_jnt="1"></size>
   <visual>
     <map fogstart="3" fogend="5" force="0.1"></map>
     <quality shadowsize="2048"></quality>
@@ -1049,21 +1049,21 @@
     </spatial>
   </tendon>
   <actuator>
-    <motor name="lumbar_ext" gear="450" joint="lumbar_extension"></motor>
-    <motor name="lumbar_bend" gear="300" joint="lumbar_bending"></motor>
-    <motor name="lumbar_rot" gear="100" joint="lumbar_rotation"></motor>
-    <motor name="shoulder_flex_r" gear="100" joint="arm_flex_r"></motor>
-    <motor name="shoulder_add_r" gear="100" joint="arm_add_r"></motor>
-    <motor name="shoulder_rot_r" gear="100" joint="arm_rot_r"></motor>
-    <motor name="elbow_flex_r" gear="100" joint="elbow_flex_r"></motor>
-    <motor name="pro_sup_r" gear="100" joint="pro_sup_r"></motor>
+    <motor name="lumbar_ext" gear="200" joint="lumbar_extension"></motor>
+    <motor name="lumbar_bend" gear="200" joint="lumbar_bending"></motor>
+    <motor name="lumbar_rot" gear="50" joint="lumbar_rotation"></motor>
+    <motor name="shoulder_flex_r" gear="10" joint="arm_flex_r"></motor>
+    <motor name="shoulder_add_r" gear="10" joint="arm_add_r"></motor>
+    <motor name="shoulder_rot_r" gear="10" joint="arm_rot_r"></motor>
+    <motor name="elbow_flex_r" gear="10" joint="elbow_flex_r"></motor>
+    <motor name="pro_sup_r" gear="10" joint="pro_sup_r"></motor>
     <motor name="wrist_flex_r" gear="10" joint="wrist_flex_r"></motor>
     <motor name="wrist_dev_r" gear="10" joint="wrist_dev_r"></motor>
-    <motor name="shoulder_flex_l" gear="100" joint="arm_flex_l"></motor>
-    <motor name="shoulder_add_l" gear="100" joint="arm_add_l"></motor>
-    <motor name="shoulder_rot_l" gear="100" joint="arm_rot_l"></motor>
-    <motor name="elbow_flex_l" gear="100" joint="elbow_flex_l"></motor>
-    <motor name="pro_sup_l" gear="100" joint="pro_sup_l"></motor>
+    <motor name="shoulder_flex_l" gear="10" joint="arm_flex_l"></motor>
+    <motor name="shoulder_add_l" gear="10" joint="arm_add_l"></motor>
+    <motor name="shoulder_rot_l" gear="10" joint="arm_rot_l"></motor>
+    <motor name="elbow_flex_l" gear="10" joint="elbow_flex_l"></motor>
+    <motor name="pro_sup_l" gear="10" joint="pro_sup_l"></motor>
     <motor name="wrist_flex_l" gear="10" joint="wrist_flex_l"></motor>
     <motor name="wrist_dev_l" gear="10" joint="wrist_dev_l"></motor>
     <muscle name="addbrev_r" tendon="addbrev_r_tendon" lengthrange="0.000886257  1.41801"></muscle>
