@@ -14,16 +14,16 @@ import mujoco_py
 import numpy as np
 from scipy import signal, interpolate
 
-EKEYS = [ "pelvis_tx", "pelvis_tz", "pelvis_ty", "pelvis_tilt", "pelvis_list", "pelvis_rotation", "hip_flexion_r",
-         "hip_adduction_r", "hip_rotation_r", "knee_angle_r_translation2", "knee_angle_r_translation1", "knee_angle_r",
-         "knee_angle_r_rotation2", "knee_angle_r_rotation3", "ankle_angle_r", "subtalar_angle_r", "mtp_angle_r",
-         "knee_angle_r_beta_translation2", "knee_angle_r_beta_translation1", "knee_angle_r_beta_rotation1",
-         "hip_flexion_l", "hip_adduction_l", "hip_rotation_l", "knee_angle_l_translation2", "knee_angle_l_translation1",
-         "knee_angle_l", "knee_angle_l_rotation2", "knee_angle_l_rotation3", "ankle_angle_l", "subtalar_angle_l",
-         "mtp_angle_l", "knee_angle_l_beta_translation2", "knee_angle_l_beta_translation1", "knee_angle_l_beta_rotation1",
-         "lumbar_extension", "lumbar_bending", "lumbar_rotation", "arm_flex_r", "arm_add_r", "arm_rot_r",
-         "elbow_flex_r", "pro_sup_r", "wrist_flex_r", "wrist_dev_r", "arm_flex_l", "arm_add_l", "arm_rot_l",
-         "elbow_flex_l", "pro_sup_l", "wrist_flex_l", "wrist_dev_l"]
+# EKEYS = [ "pelvis_tx", "pelvis_tz", "pelvis_ty", "pelvis_tilt", "pelvis_list", "pelvis_rotation", "hip_flexion_r",
+#          "hip_adduction_r", "hip_rotation_r", "knee_angle_r_translation2", "knee_angle_r_translation1", "knee_angle_r",
+#          "knee_angle_r_rotation2", "knee_angle_r_rotation3", "ankle_angle_r", "subtalar_angle_r", "mtp_angle_r",
+#          "knee_angle_r_beta_translation2", "knee_angle_r_beta_translation1", "knee_angle_r_beta_rotation1",
+#          "hip_flexion_l", "hip_adduction_l", "hip_rotation_l", "knee_angle_l_translation2", "knee_angle_l_translation1",
+#          "knee_angle_l", "knee_angle_l_rotation2", "knee_angle_l_rotation3", "ankle_angle_l", "subtalar_angle_l",
+#          "mtp_angle_l", "knee_angle_l_beta_translation2", "knee_angle_l_beta_translation1", "knee_angle_l_beta_rotation1",
+#          "lumbar_extension", "lumbar_bending", "lumbar_rotation", "arm_flex_r", "arm_add_r", "arm_rot_r",
+#          "elbow_flex_r", "pro_sup_r", "wrist_flex_r", "wrist_dev_r", "arm_flex_l", "arm_add_l", "arm_rot_l",
+#          "elbow_flex_l", "pro_sup_l", "wrist_flex_l", "wrist_dev_l"]
 
 
 class FullHumanoidTrajectory():
