@@ -168,9 +168,6 @@ class FullHumanoid(MuJoCo):
         super().__init__(xml_path, action_spec, observation_spec, gamma=gamma, horizon=horizon,
                          n_substeps=n_intermediate_steps, collision_groups=[])  # TODO: add collision groups here
 
-        self.info.action_space.low[:] = -1.0
-        self.info.action_space.high[:] = 1.0
-
         self._n_substeps = n_intermediate_steps
 
         # specify the reward
@@ -187,6 +184,13 @@ class FullHumanoid(MuJoCo):
                                       "implemented: ", goal_reward)
 
         self.info.observation_space = spaces.Box(*self._get_observation_space())
+
+        low, high = self.info.action_space.low.copy(),\
+                    self.info.action_space.high.copy()
+        self.norm_act_mean = (high + low) / 2.0
+        self.norm_act_delta = (high - low) / 2.0
+        self.info.action_space.low[:] = -1.0
+        self.info.action_space.high[:] = 1.0
 
         # TODO: Maybe modify the observation space
         #self.info.observation_space.low[0] = 0      # pelvis height
@@ -254,6 +258,10 @@ class FullHumanoid(MuJoCo):
     def _setup(self):
         self.goal_reward.reset_state()
 
+    def _preprocess_action(self, action):
+        unnormalized_action = ((action.copy() * self.norm_act_delta) + self.norm_act_mean)
+        return unnormalized_action
+
     def _is_absorbing(self, state):
         return self._has_fallen(state)
 
@@ -277,6 +285,7 @@ class FullHumanoid(MuJoCo):
                             or (lumbar_euler[1] < -np.pi / 10) or (lumbar_euler[1] > np.pi / 10)
                             or (lumbar_euler[2] < (-np.pi / 4.5)) or (lumbar_euler[2] > (np.pi / 4.5))
                             )
+        return False
         return pelvis_condition or lumbar_condition
 
 
