@@ -1,5 +1,5 @@
 import time
-import mujoco_py
+#import mujoco_py
 
 from mushroom_rl.environments.mujoco import MuJoCo, ObservationType
 from pathlib import Path
@@ -8,8 +8,8 @@ from mushroom_rl.utils import spaces
 from mushroom_rl.utils.angles import quat_to_euler
 from mushroom_rl.utils.running_stats import *
 
-from mushroom_rl.environments.mujoco_envs.humanoids.reward_goals import NoGoalReward, NoGoalRewardRandInit,\
-    ChangingVelocityTargetReward, CustomReward
+#from mushroom_rl.environments.mujoco_envs.humanoids.reward_goals import NoGoalReward, NoGoalRewardRandInit,\
+#    ChangingVelocityTargetReward, CustomReward
 
 
 class Atlas(MuJoCo):

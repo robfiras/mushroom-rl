@@ -1,12 +1,12 @@
 import time
 import numpy as np
-import mujoco_py
+
 from time import perf_counter
 from contextlib import contextmanager
 
 from mushroom_rl.environments.mujoco import ObservationType
-from mushroom_rl.environments.mujoco_envs.humanoids.humanoid_gait.humanoid_gait_trajectory import HumanoidTrajectory
-from mushroom_rl.environments.mujoco_envs.humanoids.reward_goals import JOINT_KEYS
+from mushroom_rl.environments.mujoco_envs.humanoids.full_humanoid.full_humanoid_trajectory import FullHumanoidTrajectory
+
 from mushroom_rl.environments.mujoco_envs.humanoids.utils import quat_to_euler, euler_to_quat
 
 
@@ -16,7 +16,7 @@ def catchtime() -> float:
     yield lambda: perf_counter() - start
 
 
-class AtlasTrajectory(HumanoidTrajectory):
+class AtlasTrajectory(FullHumanoidTrajectory):
 
     def play_trajectory_demo(self, mdp, freq=200, view_from_other_side=False):
         """
