@@ -23,7 +23,7 @@ class ReducedHumanoidTorque(BaseHumanoid):
     Mujoco simulation of simplified humanoid model with torque actuation.
 
     """
-    def __init__(self, goal_reward_params=None, **kwargs):
+    def __init__(self, **kwargs):
         """
         Constructor.
 
@@ -145,12 +145,12 @@ class ReducedHumanoidTorque(BaseHumanoid):
     @staticmethod
     def has_fallen(state):
         pelvis_euler = state[1:4]
-        pelvis_condition = ((state[0] < -0.35) or (state[0] > 0.10)
+        pelvis_condition = ((state[0] < -0.46) or (state[0] > 0.0)
                             or (pelvis_euler[0] < (-np.pi / 4.5)) or (pelvis_euler[0] > (np.pi / 12))
                             or (pelvis_euler[1] < -np.pi / 12) or (pelvis_euler[1] > np.pi / 8)
                             or (pelvis_euler[2] < (-np.pi / 10)) or (pelvis_euler[2] > (np.pi / 10))
                            )
-        lumbar_euler = state[32:35]
+        lumbar_euler = state[18:21]
         lumbar_condition = ((lumbar_euler[0] < (-np.pi / 6)) or (lumbar_euler[0] > (np.pi / 10))
                             or (lumbar_euler[1] < -np.pi / 10) or (lumbar_euler[1] > np.pi / 10)
                             or (lumbar_euler[2] < (-np.pi / 4.5)) or (lumbar_euler[2] > (np.pi / 4.5))

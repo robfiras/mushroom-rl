@@ -43,8 +43,7 @@ class BaseHumanoid(MuJoCo):
         #    self.goal_reward = NoGoalRewardRandInit(self._sim, **goal_reward_params)
         # todo: update all rewards to new mujoco interface and not rely on sim anymore
         if goal_reward == "custom":
-            self.goal_reward = CustomReward(model=self._model, data=self._data, keys=self.get_all_observation_keys(),
-                                            **goal_reward_params)
+            self.goal_reward = CustomReward(**goal_reward_params)
         elif goal_reward is None:
             self.goal_reward = NoGoalReward()
         else:
@@ -126,6 +125,13 @@ class BaseHumanoid(MuJoCo):
             time.sleep(self.dt)
         else:
             self._viewer.render(self._data)
+
+    def create_dataset(self, ignore_keys=[], normalizer=None):
+        if self.trajectory is not None :
+            return self.trajectory.create_dataset(ignore_keys=ignore_keys, normalizer=normalizer)
+        else:
+            raise ValueError("No trajecory was passed to the environment. To create a dataset,"
+                             "pass a trajectory to the dataset first.")
 
     def play_trajectory_demo(self, freq=200, view_from_other_side=False):
         """

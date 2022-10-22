@@ -105,27 +105,14 @@ class NoGoalRewardRandInit(GoalRewardInterface, BaseHumanoidTrajectory):
 
 class CustomReward(GoalRewardInterface):
 
-    def __init__(self, trajectory, reward_callback=None, random_start=True, random_start_point=None,  **kwargs):
-
-        self._trajectory = trajectory(**kwargs)
+    def __init__(self, reward_callback=None, random_start=True, random_start_point=None,  **kwargs):
         self._reward_callback = reward_callback
-        self._random_start = random_start
-        self._random_start_point = random_start_point
 
     def __call__(self, state, action, next_state):
         if self._reward_callback is not None:
             return self._reward_callback(state, action, next_state)
         else:
             0
-
-    def reset_state(self):
-        if self._random_start:
-            if self._random_start_point:
-                self._trajectory.reset_trajectory(self._random_start_point)
-            else:
-                self._trajectory.reset_trajectory()
-            self._trajectory.terminate_trajectory_flag = False
-
 
 class ChangingVelocityTargetReward(BaseHumanoidTrajectory, GoalRewardInterface):
 

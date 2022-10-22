@@ -96,10 +96,14 @@ class Trajectory(object):
     def traj_length(self):
         return self.subtraj.shape[1]
 
-    def create_dataset(self, normalizer=None):
+    def create_dataset(self, ignore_keys=[], normalizer=None):
 
-        # get relevant data
-        states = np.transpose(deepcopy(self.trajectory))
+        # create a dict and extract all elements except the ones specified in ignore_keys.
+        all_data = dict(zip(self.keys, deepcopy(list(self.trajectory))))
+        for ikey in ignore_keys:
+            del all_data[ikey]
+        traj = list(all_data.values())
+        states = np.transpose(deepcopy(np.array(traj)))
 
         # normalize if needed
         if normalizer:
