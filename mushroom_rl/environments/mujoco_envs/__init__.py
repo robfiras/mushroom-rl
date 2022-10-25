@@ -1,8 +1,12 @@
 from .ball_in_a_cup import BallInACup
-from .humanoids import HumanoidGait
+try:
+    from .humanoids import HumanoidGait
+    HumanoidGait.register()
+except:
+    pass
 from .humanoids import Atlas, AtlasTrajectory
 from .humanoids import FullHumanoid, FullHumanoidTrajectory
 
 BallInACup.register()
-HumanoidGait.register()
+
 Atlas.register()
