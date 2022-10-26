@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import mujoco
 from mushroom_rl.environments.mujoco_envs.humanoids.base_humanoid import BaseHumanoid
 from mushroom_rl.utils.angles import quat_to_euler
 from mushroom_rl.utils.running_stats import *
@@ -17,18 +18,6 @@ class Atlas(BaseHumanoid):
 
         """
         xml_path = (Path(__file__).resolve().parent.parent / "data" / "atlas" / "model.xml").as_posix()
-
-        "hip_flexion_r_actuator",
-        "hip_adduction_r_actuator",
-        "hip_rotation_r_actuator",
-        "knee_angle_r_actuator",
-        "ankle_angle_r_actuator",
-
-        "hip_flexion_l_actuator",
-        "hip_adduction_l_actuator",
-        "hip_rotation_l_actuator",
-        "knee_angle_l_actuator",
-        "ankle_angle_l_actuator",
 
         action_spec = ["hip_flexion_r_actuator","hip_adduction_r_actuator","hip_rotation_r_actuator",
                        "knee_angle_r_actuator","ankle_angle_r_actuator","hip_flexion_l_actuator",
