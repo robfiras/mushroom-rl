@@ -132,15 +132,13 @@ class ReducedHumanoidTorque(BaseHumanoid):
                             ("dq_wrist_flex_l", "wrist_flex_l", ObservationType.JOINT_VEL),
                             ("dq_wrist_dev_l", "wrist_dev_l", ObservationType.JOINT_VEL)]
 
-        # TODO: add collision groups
-        # collision_groups = [("ground", ["ground"]),
-        #                    ("right_foot_back", ["right_foot_back"]),
-        #                    ("right_foot_front", ["right_foot_front"]),
-        #                    ("left_foot_back", ["left_foot_back"]),
-        #                    ("left_foot_front", ["left_foot_front"]),
-        #                    ]
+        collision_groups = [("floor", ["floor"]),
+                            ("foot_r", ["foot"]),
+                            ("front_foot_r", ["bofoot"]),
+                            ("foot_l", ["l_foot"]),
+                            ("front_foot_l", ["l_bofoot"])]
 
-        super().__init__(xml_path, action_spec, observation_spec, **kwargs)  # TODO: add collision groups here
+        super().__init__(xml_path, action_spec, observation_spec, collision_groups, **kwargs)
 
     @staticmethod
     def has_fallen(state):
@@ -158,9 +156,7 @@ class ReducedHumanoidTorque(BaseHumanoid):
         return pelvis_condition or lumbar_condition
 
 
-
 if __name__ == '__main__':
-    import time
 
     env = ReducedHumanoidTorque(timestep=1/500, n_substeps=20)
 

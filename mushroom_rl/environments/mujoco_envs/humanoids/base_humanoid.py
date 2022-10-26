@@ -60,6 +60,10 @@ class BaseHumanoid(MuJoCo):
         self.info.action_space.low[:] = -1.0
         self.info.action_space.high[:] = 1.0
 
+        # setup a running average window for the mean ground forces
+        self.mean_grf = RunningAveragedWindow(shape=(12,),
+                                              window_size=n_substeps)
+
         if traj_params:
             self.trajectory = Trajectory(keys=self.get_all_observation_keys(), **traj_params)
         else:
@@ -69,25 +73,20 @@ class BaseHumanoid(MuJoCo):
         sim_low, sim_high = (self.info.observation_space.low[2:],
                              self.info.observation_space.high[2:])
 
-        # TODO: add ground forces here once collision groups are added
-        #grf_low, grf_high = (-np.ones((12,)) * np.inf,
-        #                     np.ones((12,)) * np.inf)
+        grf_low, grf_high = (-np.ones((12,)) * np.inf,
+                             np.ones((12,)) * np.inf)
 
         r_low, r_high = self.goal_reward.get_observation_space()
 
-        return (np.concatenate([sim_low, r_low]),   # TODO: add grf here as well
-                np.concatenate([sim_high, r_high]))
+        return (np.concatenate([sim_low, grf_low, r_low]),
+                np.concatenate([sim_high, grf_high, r_high]))
 
     def _create_observation(self, obs):
         """
         Creates full vector of observations:
         """
         obs = np.concatenate([obs[2:],
-                              # TODO: add grf forces here
-                              #self._get_collision_force("ground", "right_foot_back")[:3]/10000.,
-                              #self._get_collision_force("ground", "right_foot_front")[:3]/10000.,
-                              #self._get_collision_force("ground", "left_foot_back")[:3]/10000.,
-                              #self._get_collision_force("ground", "left_foot_front")[:3]/10000.,
+                              self.mean_grf.mean / 1000.,
                               self.goal_reward.get_observation(),
                               ]).flatten()
 
@@ -108,6 +107,14 @@ class BaseHumanoid(MuJoCo):
     def _preprocess_action(self, action):
         unnormalized_action = ((action.copy() * self.norm_act_delta) + self.norm_act_mean)
         return unnormalized_action
+
+    def _simulation_post_step(self):
+        grf = np.concatenate([self._get_collision_force("floor", "foot_r")[:3],
+                              self._get_collision_force("floor", "front_foot_r")[:3],
+                              self._get_collision_force("floor", "foot_l")[:3],
+                              self._get_collision_force("floor", "front_foot_l")[:3]])
+
+        self.mean_grf.update_stats(grf)
 
     def is_absorbing(self, obs):
         return self.has_fallen(obs)

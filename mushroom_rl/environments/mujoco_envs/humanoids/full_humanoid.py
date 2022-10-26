@@ -165,13 +165,13 @@ class FullHumanoid(BaseHumanoid):
                             ("dq_wrist_flex_l", "wrist_flex_l", ObservationType.JOINT_VEL),
                             ("dq_wrist_dev_l", "wrist_dev_l", ObservationType.JOINT_VEL)]
 
-        # TODO: add collision groups
-        # collision_groups = [("ground", ["ground"]),
-        #                    ("right_foot_back", ["right_foot_back"]),
-        #                    ("right_foot_front", ["right_foot_front"]),
-        #                    ("left_foot_back", ["left_foot_back"]),
-        #                    ("left_foot_front", ["left_foot_front"]),
-        #                    ]
+        collision_groups = [("floor", ["floor"]),
+                            ("foot_r", ["r_foot"]),
+                            ("front_foot_r", ["r_bofoot"]),
+                            ("foot_l", ["l_foot"]),
+                            ("front_foot_l", ["l_bofoot"])]
+
+        super().__init__(xml_path, action_spec, observation_spec, collision_groups, **kwargs)
 
         super().__init__(xml_path, action_spec, observation_spec, **kwargs)  # TODO: add collision groups here
 
