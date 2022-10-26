@@ -1,14 +1,8 @@
-import time
-
-from mushroom_rl.environments.mujoco import ObservationType
-from mushroom_rl.environments.mujoco_envs.humanoids.base_humanoid  import BaseHumanoid
 from pathlib import Path
 
-from mushroom_rl.utils import spaces
-from mushroom_rl.utils.angles import quat_to_euler
+from mushroom_rl.environments.mujoco_envs.humanoids.base_humanoid import BaseHumanoid
 from mushroom_rl.utils.running_stats import *
 from mushroom_rl.utils.mujoco import *
-
 
 # optional imports
 try:
