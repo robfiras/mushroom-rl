@@ -8,16 +8,17 @@ class AirHockeyRepel(AirHockeySingle):
     Class for the air hockey repel task.
     The agent tries repel the puck to the opponent.
     If the puck get into the goal, it will get a punishment.
+
     """
-    def __init__(self, gamma=0.99, horizon=500, env_noise=False, obs_noise=False, torque_control=True,
-                 step_action_function=None, timestep=1 / 240., n_intermediate_steps=1, random_init=False,
-                 action_penalty=1e-3, init_velocity_range=(1, 2.2)):
+    def __init__(self, random_init=False, action_penalty=1e-3, init_velocity_range=(1, 2.2), gamma=0.99, horizon=500,
+                 env_noise=False, obs_noise=False, timestep=1 / 240., n_intermediate_steps=1, **viewer_params):
         """
         Constructor
         Args:
             random_init(bool, False): If true, initialize the puck at random position .
             action_penalty(float, 1e-3): The penalty of the action on the reward at each time step
             init_velocity_range((float, float), (1, 2.2)): The range in which the initial velocity is initialized
+
         """
 
         self.random_init = random_init
@@ -28,8 +29,7 @@ class AirHockeyRepel(AirHockeySingle):
         self.goal = np.array([0.98, 0])
 
         super().__init__(gamma=gamma, horizon=horizon, timestep=timestep, n_intermediate_steps=n_intermediate_steps,
-                         env_noise=env_noise, obs_noise=obs_noise, torque_control=torque_control,
-                         step_action_function=step_action_function)
+                         env_noise=env_noise, obs_noise=obs_noise, **viewer_params)
 
     def setup(self, state=None):
         # Set initial puck parameters
@@ -51,8 +51,8 @@ class AirHockeyRepel(AirHockeySingle):
             puck_lin_vel = np.array([-1., 0., 0.])
             puck_ang_vel = np.zeros(3)
 
-        self._data.joint("puck").qpos = np.concatenate([puck_pos, [0, 0, 0, 0, 1]])
-        self._data.joint("puck").qvel = np.concatenate([puck_lin_vel, puck_ang_vel])
+        self._write_data("puck_pos", np.concatenate([puck_pos, [0, 0, 0, 0, 1]]))
+        self._write_data("puck_vel", np.concatenate([puck_lin_vel, puck_ang_vel]))
         
         super(AirHockeyRepel, self).setup()
 

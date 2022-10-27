@@ -78,10 +78,7 @@ class MuJoCo(Environment):
         else:
             self._action_indices = []
             for name in actuation_spec:
-                action_idx = mujoco.mj_name2id(self._model, mujoco.mjtObj.mjOBJ_ACTUATOR, name)
-                assert action_idx != -1, "Unknown actuator name %s" % name
-                self._action_indices.append(action_idx)
-                # self._action_indices.append(self.model.actuator(name).id) Will work in future release of mujoco...
+                self._action_indices.append(self._model.actuator(name).id)
 
         low = []
         high = []
@@ -132,9 +129,8 @@ class MuJoCo(Environment):
         mujoco.mj_resetData(self._model, self._data)
         self.setup()
 
-        obs = self._create_observation(self.obs_helper.build_obs(self._data))
-        self._obs = self._modify_observation(obs)
-        return self._obs
+        self._obs = self._create_observation(self.obs_helper.build_obs(self._data))
+        return self._modify_observation(self._obs)
 
     def step(self, action):
         cur_obs = self._obs.copy()
@@ -154,15 +150,15 @@ class MuJoCo(Environment):
 
             self._simulation_post_step()
 
-        obs = self._create_observation(self.obs_helper.build_obs(self._data))
+            cur_obs = self._create_observation(self.obs_helper.build_obs(self._data))
 
         self._step_finalize()
 
-        absorbing = self.is_absorbing(obs)
-        reward = self.reward(cur_obs, action, obs, absorbing)
+        absorbing = self.is_absorbing(cur_obs)
+        reward = self.reward(self._obs, action, cur_obs, absorbing)
 
-        self._obs = self._modify_observation(obs)
-        return self._obs, reward, absorbing, {}
+        self._obs = cur_obs
+        return self._modify_observation(cur_obs), reward, absorbing, {}
 
     def render(self):
         if self._viewer is None:
@@ -172,6 +168,7 @@ class MuJoCo(Environment):
 
     def stop(self):
         if self._viewer is not None:
+            self._viewer.stop()
             del self._viewer
             self._viewer = None
 
