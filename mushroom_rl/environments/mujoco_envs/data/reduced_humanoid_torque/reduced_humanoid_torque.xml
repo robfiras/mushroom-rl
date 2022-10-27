@@ -9,7 +9,7 @@
     <lengthrange inttotal="50" useexisting="true"></lengthrange>
   </compiler>
   <default>
-    <joint limited="true" damping="0.0" armature="0.1" stiffness="2"></joint>
+    <joint limited="true" damping="0.05" armature="0.1" stiffness="2"></joint>
     <geom rgba="0.8 0.6 .4 1" margin="0.001"></geom>
     <site size="0.001"></site>
     <tendon width="0.001" rgba=".95 .3 .3 1" limited="false"></tendon>
@@ -286,43 +286,43 @@
   <tendon>
   </tendon>
   <actuator>
-    <motor name="mot_lumbar_ext" gear="150" joint="lumbar_extension"></motor>
-    <motor name="mot_lumbar_bend" gear="150" joint="lumbar_bending"></motor>
-    <motor name="mot_lumbar_rot" gear="50" joint="lumbar_rotation"></motor>
-    <motor name="mot_shoulder_flex_r" gear="10" joint="arm_flex_r"></motor>
-    <motor name="mot_shoulder_add_r" gear="10" joint="arm_add_r"></motor>
-    <motor name="mot_shoulder_rot_r" gear="10" joint="arm_rot_r"></motor>
-    <motor name="mot_elbow_flex_r" gear="10" joint="elbow_flex_r"></motor>
-    <motor name="mot_pro_sup_r" gear="10" joint="pro_sup_r"></motor>
-    <motor name="mot_wrist_flex_r" gear="10" joint="wrist_flex_r"></motor>
-    <motor name="mot_wrist_dev_r" gear="10" joint="wrist_dev_r"></motor>
-    <motor name="mot_shoulder_flex_l" gear="10" joint="arm_flex_l"></motor>
-    <motor name="mot_shoulder_add_l" gear="10" joint="arm_add_l"></motor>
-    <motor name="mot_shoulder_rot_l" gear="10" joint="arm_rot_l"></motor>
-    <motor name="mot_elbow_flex_l" gear="10" joint="elbow_flex_l"></motor>
-    <motor name="mot_pro_sup_l" gear="10" joint="pro_sup_l"></motor>
-    <motor name="mot_wrist_flex_l" gear="10" joint="wrist_flex_l"></motor>
-    <motor name="mot_wrist_dev_l" gear="10" joint="wrist_dev_l"></motor>
-    <motor name="mot_hip_flexion_r" gear="160" joint="hip_flexion_r"></motor>
-    <motor name="mot_hip_adduction_r" gear="160" joint="hip_adduction_r"></motor>
-    <motor name="mot_hip_rotation_r" gear="160" joint="hip_rotation_r"></motor>
-    <motor name="mot_knee_angle_r" gear="160" joint="knee_angle_r"></motor>
-    <motor name="mot_ankle_angle_r" gear="120" joint="ankle_angle_r"></motor>
-    <motor name="mot_subtalar_angle_r" gear="10" joint="subtalar_angle_r"></motor>
-    <motor name="mot_mtp_angle_r" gear="10" joint="mtp_angle_r"></motor>
-    <motor name="mot_hip_flexion_l" gear="160" joint="hip_flexion_l"></motor>
-    <motor name="mot_hip_adduction_l" gear="160" joint="hip_adduction_l"></motor>
-    <motor name="mot_hip_rotation_l" gear="160" joint="hip_rotation_l"></motor>
-    <motor name="mot_knee_angle_l" gear="160" joint="knee_angle_l"></motor>
-    <motor name="mot_ankle_angle_l" gear="120" joint="ankle_angle_l"></motor>
-    <motor name="mot_subtalar_angle_l" gear="10" joint="subtalar_angle_l"></motor>
-    <motor name="mot_mtp_angle_l" gear="10" joint="mtp_angle_l"></motor>
+    <motor name="mot_lumbar_ext" gear="200" joint="lumbar_extension"></motor>
+    <motor name="mot_lumbar_bend" gear="200" joint="lumbar_bending"></motor>
+    <motor name="mot_lumbar_rot" gear="100" joint="lumbar_rotation"></motor>
+    <motor name="mot_shoulder_flex_r" gear="50" joint="arm_flex_r"></motor>
+    <motor name="mot_shoulder_add_r" gear="50" joint="arm_add_r"></motor>
+    <motor name="mot_shoulder_rot_r" gear="50" joint="arm_rot_r"></motor>
+    <motor name="mot_elbow_flex_r" gear="50" joint="elbow_flex_r"></motor>
+    <motor name="mot_pro_sup_r" gear="50" joint="pro_sup_r"></motor>
+    <motor name="mot_wrist_flex_r" gear="50" joint="wrist_flex_r"></motor>
+    <motor name="mot_wrist_dev_r" gear="50" joint="wrist_dev_r"></motor>
+    <motor name="mot_shoulder_flex_l" gear="50" joint="arm_flex_l"></motor>
+    <motor name="mot_shoulder_add_l" gear="50" joint="arm_add_l"></motor>
+    <motor name="mot_shoulder_rot_l" gear="50" joint="arm_rot_l"></motor>
+    <motor name="mot_elbow_flex_l" gear="50" joint="elbow_flex_l"></motor>
+    <motor name="mot_pro_sup_l" gear="50" joint="pro_sup_l"></motor>
+    <motor name="mot_wrist_flex_l" gear="50" joint="wrist_flex_l"></motor>
+    <motor name="mot_wrist_dev_l" gear="50" joint="wrist_dev_l"></motor>
+    <motor name="mot_hip_flexion_r" gear="300" joint="hip_flexion_r"></motor>
+    <motor name="mot_hip_adduction_r" gear="200" joint="hip_adduction_r"></motor>
+    <motor name="mot_hip_rotation_r" gear="200" joint="hip_rotation_r"></motor>
+    <motor name="mot_knee_angle_r" gear="200" joint="knee_angle_r"></motor>
+    <motor name="mot_ankle_angle_r" gear="200" joint="ankle_angle_r"></motor>
+    <motor name="mot_subtalar_angle_r" gear="200" joint="subtalar_angle_r"></motor>
+    <motor name="mot_mtp_angle_r" gear="200" joint="mtp_angle_r"></motor>
+    <motor name="mot_hip_flexion_l" gear="300" joint="hip_flexion_l"></motor>
+    <motor name="mot_hip_adduction_l" gear="200" joint="hip_adduction_l"></motor>
+    <motor name="mot_hip_rotation_l" gear="200" joint="hip_rotation_l"></motor>
+    <motor name="mot_knee_angle_l" gear="200" joint="knee_angle_l"></motor>
+    <motor name="mot_ankle_angle_l" gear="200" joint="ankle_angle_l"></motor>
+    <motor name="mot_subtalar_angle_l" gear="200" joint="subtalar_angle_l"></motor>
+    <motor name="mot_mtp_angle_l" gear="200" joint="mtp_angle_l"></motor>
   </actuator>
   <equality>
-    <joint name="subtalar_angle_r_constraint" active="true" joint1="subtalar_angle_r" polycoef="       0        0        0        0        0"></joint>
-    <joint name="mtp_angle_r_constraint" active="true" joint1="mtp_angle_r" polycoef="       0        0        0        0        0"></joint>
-    <joint name="subtalar_angle_l_constraint" active="true" joint1="subtalar_angle_l" polycoef="       0        0        0        0        0"></joint>
-    <joint name="mtp_angle_l_constraint" active="true" joint1="mtp_angle_l" polycoef="       0        0        0        0        0"></joint>
+<!--    <joint name="subtalar_angle_r_constraint" active="true" joint1="subtalar_angle_r" polycoef="       0        0        0        0        0"></joint>-->
+<!--    <joint name="mtp_angle_r_constraint" active="true" joint1="mtp_angle_r" polycoef="       0        0        0        0        0"></joint>-->
+<!--    <joint name="subtalar_angle_l_constraint" active="true" joint1="subtalar_angle_l" polycoef="       0        0        0        0        0"></joint>-->
+<!--    <joint name="mtp_angle_l_constraint" active="true" joint1="mtp_angle_l" polycoef="       0        0        0        0        0"></joint>-->
     <joint name="wrist_flex_r_constraint" active="true" joint1="wrist_flex_r" polycoef="       0        0        0        0        0"></joint>
     <joint name="wrist_dev_r_constraint" active="true" joint1="wrist_dev_r" polycoef="       0        0        0        0        0"></joint>
     <joint name="wrist_flex_l_constraint" active="true" joint1="wrist_flex_l" polycoef="       0        0        0        0        0"></joint>
