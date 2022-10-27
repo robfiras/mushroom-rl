@@ -197,7 +197,7 @@ if __name__ == '__main__':
     absorbing = False
     while True:
 
-        action = np.random.randn(action_dim) * 0.01
+        action = np.random.randn(action_dim)
         nstate, _, absorbing, _ = env.step(action)
 
         env.render()

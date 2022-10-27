@@ -147,7 +147,17 @@ class BaseHumanoid(MuJoCo):
 
         """
         assert self.trajectory is not None
-
+        ##Todo: different camera view not working
+        # cam = mujoco.MjvCamera()
+        # mujoco.mjv_defaultCamera(cam)
+        # viewer._render_every_frame = False
+        # if view_from_other_side:
+        #     #self._model.cam_pos = [3., 2., 0.0]
+        #     cam.type = mujoco.mjtCamera.mjCAMERA_TRACKING
+        #     cam.trackbodyid = 0
+        #     cam.distance *= 0.3
+        #     cam.elevation = -0  # camera rotation around the axis in the plane going through the frame origin (if 0 you just see a line)
+        #     cam.azimuth = 270
         len_qpos, len_qvel = self.len_qpos_qvel()
         qpos, qvel = self.trajectory.reset_trajectory(len_qpos, len_qvel, substep_no=1)
         self._data.qpos = qpos
@@ -156,9 +166,6 @@ class BaseHumanoid(MuJoCo):
             sample = self.trajectory.get_next_sample()
             obs_spec = self.obs_helper.observation_spec
             assert len(sample) == len(obs_spec)
-
-            #self._data.qpos = sample[0:len_qpos]
-            #self._data.qvel = sample[len_qpos:len_qpos + len_qvel]
 
             for key_name_ot, value in zip(obs_spec, sample):
                 key, name, ot = key_name_ot
@@ -174,45 +181,6 @@ class BaseHumanoid(MuJoCo):
                 print("Has Fallen!")
 
             self.render()
-
-    # def play_trajectory_demo(self, freq=200, view_from_other_side=False):
-    #     """
-    #     Plays a demo of the loaded trajectory by forcing the model
-    #     positions to the ones in the reference trajectory at every step
-    #
-    #     """
-    #
-    #     assert self.trajectory is not None
-    #
-    #     # Todo: different camera view not working
-    #     # cam = mujoco.MjvCamera()
-    #     # mujoco.mjv_defaultCamera(cam)
-    #     # viewer._render_every_frame = False
-    #     # if view_from_other_side:
-    #     #     #self._model.cam_pos = [3., 2., 0.0]
-    #     #     cam.type = mujoco.mjtCamera.mjCAMERA_TRACKING
-    #     #     cam.trackbodyid = 0
-    #     #     cam.distance *= 0.3
-    #     #     cam.elevation = -0  # camera rotation around the axis in the plane going through the frame origin (if 0 you just see a line)
-    #     #     cam.azimuth = 270
-    #
-    #     len_qpos, len_qvel = self.len_qpos_qvel()
-    #     qpos, qvel = self.trajectory.reset_trajectory(len_qpos, len_qvel, substep_no=1)
-    #     self._data.qpos = qpos
-    #     self._data.qvel = qvel
-    #     while True:
-    #         sample = self.trajectory.get_next_sample()
-    #
-    #         self._data.qpos = sample[0:len_qpos]
-    #         self._data.qvel = sample[len_qpos:len_qpos+len_qvel]
-    #
-    #         mujoco.mj_forward(self._model, self._data)
-    #
-    #         obs = self._create_observation(sample)
-    #         if self.has_fallen(obs):
-    #             print("Has Fallen!")
-    #
-    #         self.render()
 
     def play_trajectory_demo_from_velocity(self, freq=200, view_from_other_side=False):
         """
