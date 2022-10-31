@@ -319,10 +319,10 @@
     <motor name="mot_mtp_angle_l" gear="200" joint="mtp_angle_l"></motor>
   </actuator>
   <equality>
-<!--    <joint name="subtalar_angle_r_constraint" active="true" joint1="subtalar_angle_r" polycoef="       0        0        0        0        0"></joint>-->
-<!--    <joint name="mtp_angle_r_constraint" active="true" joint1="mtp_angle_r" polycoef="       0        0        0        0        0"></joint>-->
-<!--    <joint name="subtalar_angle_l_constraint" active="true" joint1="subtalar_angle_l" polycoef="       0        0        0        0        0"></joint>-->
-<!--    <joint name="mtp_angle_l_constraint" active="true" joint1="mtp_angle_l" polycoef="       0        0        0        0        0"></joint>-->
+    <joint name="subtalar_angle_r_constraint" active="true" joint1="subtalar_angle_r" polycoef="       0        0        0        0        0"></joint>
+    <joint name="mtp_angle_r_constraint" active="true" joint1="mtp_angle_r" polycoef="       0        0        0        0        0"></joint>
+    <joint name="subtalar_angle_l_constraint" active="true" joint1="subtalar_angle_l" polycoef="       0        0        0        0        0"></joint>
+    <joint name="mtp_angle_l_constraint" active="true" joint1="mtp_angle_l" polycoef="       0        0        0        0        0"></joint>
     <joint name="wrist_flex_r_constraint" active="true" joint1="wrist_flex_r" polycoef="       0        0        0        0        0"></joint>
     <joint name="wrist_dev_r_constraint" active="true" joint1="wrist_dev_r" polycoef="       0        0        0        0        0"></joint>
     <joint name="wrist_flex_l_constraint" active="true" joint1="wrist_flex_l" polycoef="       0        0        0        0        0"></joint>
