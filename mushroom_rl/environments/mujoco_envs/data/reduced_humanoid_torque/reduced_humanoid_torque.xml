@@ -25,12 +25,12 @@
       <geom name="pelvis" type="mesh" mesh="pelvis"></geom>
       <geom name="l_pelvis" type="mesh" mesh="l_pelvis"></geom>
       <inertial pos="-0.0721882        0        0" mass="13.5729922649758" fullinertia="0.123517 0.104653 0.0695686        0        0        0"></inertial>
-      <joint name="pelvis_tx" type="slide" pos="0 0 0" axis="       1        0        0" limited="true" range="      -5        5" ref="0" armature="0" damping="0" stiffness="0"></joint>
-      <joint name="pelvis_tz" type="slide" pos="0 0 0" axis="       0        0        1" limited="true" range="      -3        3" ref="0" armature="0" damping="0" stiffness="0"></joint>
-      <joint name="pelvis_ty" type="slide" pos="0 0 0" axis="       0        1        0" limited="true" range="      -1        2" ref="0" armature="0" damping="0" stiffness="0"></joint>
-      <joint name="pelvis_tilt" type="hinge" pos="0 0 0" axis="       0        0        1" limited="true" range=" -1.5708   1.5708" ref="0" armature="0" damping="0" stiffness="0"></joint>
-      <joint name="pelvis_list" type="hinge" pos="0 0 0" axis="       1        0        0" limited="true" range=" -1.5708   1.5708" ref="0" armature="0" damping="0" stiffness="0"></joint>
-      <joint name="pelvis_rotation" type="hinge" pos="0 0 0" axis="       0        1        0" limited="true" range=" -1.5708   1.5708" ref="0" armature="0" damping="0" stiffness="0"></joint>
+      <joint name="pelvis_tx" type="slide" pos="0 0 0" axis="       1        0        0" limited="false" range="-500        500" ref="0" armature="0" damping="0" stiffness="0"></joint>
+      <joint name="pelvis_tz" type="slide" pos="0 0 0" axis="       0        0        1" limited="false" range="-300        300" ref="0" armature="0" damping="0" stiffness="0"></joint>
+      <joint name="pelvis_ty" type="slide" pos="0 0 0" axis="       0        1        0" limited="false" range="-100        200" ref="0" armature="0" damping="0" stiffness="0"></joint>
+      <joint name="pelvis_tilt" type="hinge" pos="0 0 0" axis="       0        0        1" limited="false" range=" -1.5708   1.5708" ref="0" armature="0" damping="0" stiffness="0"></joint>
+      <joint name="pelvis_list" type="hinge" pos="0 0 0" axis="       1        0        0" limited="false" range=" -1.5708   1.5708" ref="0" armature="0" damping="0" stiffness="0"></joint>
+      <joint name="pelvis_rotation" type="hinge" pos="0 0 0" axis="       0        1        0" limited="false" range=" -1.5708   1.5708" ref="0" armature="0" damping="0" stiffness="0"></joint>
       <body name="femur_r" pos="-0.0721882 -0.0674914 0.0852576" quat="1.0 0.0 0.0 0.0">
         <geom name="femur_r" type="mesh" mesh="femur_r"></geom>
         <inertial pos="       0 -0.154514        0" mass="10.7198633143794" fullinertia="0.127486 0.0334185 0.134436        0        0        0"></inertial>
