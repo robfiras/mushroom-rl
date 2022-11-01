@@ -149,7 +149,7 @@ class ReducedHumanoidTorque(BaseHumanoid):
 
 if __name__ == '__main__':
 
-    env = ReducedHumanoidTorque(timestep=1/500, n_substeps=20)
+    env = ReducedHumanoidTorque(timestep=1/1000, n_substeps=10)
 
     action_dim = env.info.action_space.shape[0]
 
@@ -162,10 +162,10 @@ if __name__ == '__main__':
     absorbing = False
     i = 0
     while True:
-        if i == 100:
+        if i == 1000:
             env.reset()
             i = 0
-        action = np.random.randn(action_dim)
+        action = np.random.randn(action_dim)*0.1
         nstate, _, absorbing, _ = env.step(action)
 
         env.render()
