@@ -50,6 +50,9 @@ class BaseHumanoid(MuJoCo):
             raise NotImplementedError("The specified goal reward has not been"
                                       "implemented: ", goal_reward)
 
+        # optionally use foot forces in the observation space
+        self._use_foot_forces = use_foot_forces
+
         self.info.observation_space = spaces.Box(*self._get_observation_space())
 
         # we want the action space to be between -1 and 1
@@ -59,9 +62,6 @@ class BaseHumanoid(MuJoCo):
         self.norm_act_delta = (high - low) / 2.0
         self.info.action_space.low[:] = -1.0
         self.info.action_space.high[:] = 1.0
-
-        # optionally use foot forces in the observation space
-        self._use_foot_forces = use_foot_forces
 
         # setup a running average window for the mean ground forces
         self.mean_grf = RunningAveragedWindow(shape=(12,),
