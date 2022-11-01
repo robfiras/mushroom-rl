@@ -56,8 +56,8 @@ class Trajectory(object):
             keys += ["goal"]
 
         # needed for deep mimic
-        if "rel_feet_xpos_r" in self._trajectory_files.keys():
-            keys += FOOT_KEYS
+        #if "rel_feet_xpos_r" in self._trajectory_files.keys():
+        #    keys += FOOT_KEYS
 
         # remove unwanted keys
         for ik in ignore_keys:
@@ -77,7 +77,7 @@ class Trajectory(object):
         self.control_dt = control_dt
         self.traj_speed_multiplier = 1.0    # todo: delete the trajecotry speed multiplier stuff
 
-        if self.traj_dt != control_dt or traj_speed_mult != 1.0:
+        if self.traj_dt != control_dt:
             new_traj_sampling_factor = (1 / self.traj_speed_multiplier) * (
                     self.traj_dt / control_dt)
 
