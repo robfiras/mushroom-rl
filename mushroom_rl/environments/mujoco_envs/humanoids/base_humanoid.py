@@ -110,10 +110,8 @@ class BaseHumanoid(MuJoCo):
     def setup(self):
         self.goal_reward.reset_state()
         if self.trajectory is not None:
-            len_qpos, len_qvel = self.len_qpos_qvel()
-            qpos, qvel = self.trajectory.reset_trajectory(len_qpos, len_qvel)
-            self._data.qpos = qpos
-            self._data.qvel = qvel
+            sample = self.trajectory.reset_trajectory()
+            self.set_qpos_qvel(sample)
 
     def _preprocess_action(self, action):
         unnormalized_action = ((action.copy() * self.norm_act_delta) + self.norm_act_mean)
@@ -141,7 +139,7 @@ class BaseHumanoid(MuJoCo):
 
         if mujoco_viewer_available:
             self._viewer.render()
-            time.sleep(self.dt)
+            time.sleep(self.dt*100)
         else:
             self._viewer.render(self._data)
 
@@ -170,21 +168,12 @@ class BaseHumanoid(MuJoCo):
         #     cam.distance *= 0.3
         #     cam.elevation = -0  # camera rotation around the axis in the plane going through the frame origin (if 0 you just see a line)
         #     cam.azimuth = 270
-        len_qpos, len_qvel = self.len_qpos_qvel()
-        qpos, qvel = self.trajectory.reset_trajectory(len_qpos, len_qvel, substep_no=1)
-        self._data.qpos = qpos
-        self._data.qvel = qvel
+        sample = self.trajectory.reset_trajectory(substep_no=1)
+        self.set_qpos_qvel(sample)
         while True:
             sample = self.trajectory.get_next_sample()
-            obs_spec = self.obs_helper.observation_spec
-            assert len(sample) == len(obs_spec)
 
-            for key_name_ot, value in zip(obs_spec, sample):
-                key, name, ot = key_name_ot
-                if ot == ObservationType.JOINT_POS:
-                    self._data.joint(name).qpos = value
-                elif ot == ObservationType.JOINT_VEL:
-                    self._data.joint(name).qvel = value
+            self.set_qpos_qvel(sample)
 
             mujoco.mj_forward(self._model, self._data)
 
@@ -193,6 +182,17 @@ class BaseHumanoid(MuJoCo):
                 print("Has Fallen!")
 
             self.render()
+
+    def set_qpos_qvel(self, sample):
+        obs_spec = self.obs_helper.observation_spec
+        assert len(sample) == len(obs_spec)
+
+        for key_name_ot, value in zip(obs_spec, sample):
+            key, name, ot = key_name_ot
+            if ot == ObservationType.JOINT_POS:
+                self._data.joint(name).qpos = value
+            elif ot == ObservationType.JOINT_VEL:
+                self._data.joint(name).qvel = value
 
     def play_trajectory_demo_from_velocity(self, freq=200, view_from_other_side=False):
         """

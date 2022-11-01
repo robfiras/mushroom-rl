@@ -166,7 +166,7 @@ class Trajectory(object):
         sub_traj[0, :] -= initial_x_pos
         return sub_traj
 
-    def reset_trajectory(self, len_q_pos, len_qvel, substep_no=None):
+    def reset_trajectory(self, substep_no=None):
         """
         Resets the trajectory and the model. The trajectory can be forced
         to start on the 'substep_no' if desired, else it starts at
@@ -189,10 +189,7 @@ class Trajectory(object):
         self.subtraj[0, :] -= self.subtraj[0, self.subtraj_step_no]
         self.subtraj[1, :] -= self.subtraj[1, self.subtraj_step_no]
 
-        qpos = self.subtraj[0:len_q_pos, self.subtraj_step_no]
-        qvel = self.subtraj[len_q_pos:len_q_pos + len_qvel, self.subtraj_step_no]
-
-        return qpos, qvel
+        return self.subtraj[:, self.subtraj_step_no]
 
     def get_next_sample(self):
         if self.subtraj_step_no >= self.traj_length:
