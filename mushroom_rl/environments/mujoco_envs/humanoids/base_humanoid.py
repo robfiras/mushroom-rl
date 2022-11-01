@@ -27,7 +27,7 @@ class BaseHumanoid(MuJoCo):
 
     """
     def __init__(self, xml_path, action_spec, observation_spec, collision_groups=[], gamma=0.99, horizon=1000, n_substeps=10,  goal_reward=None,
-                 goal_reward_params=None, traj_params=None, timestep=0.001):
+                 goal_reward_params=None, traj_params=None, timestep=0.001, use_foot_forces=True):
         """
         Constructor.
 
@@ -60,6 +60,9 @@ class BaseHumanoid(MuJoCo):
         self.info.action_space.low[:] = -1.0
         self.info.action_space.high[:] = 1.0
 
+        # optionally use foot forces in the observation space
+        self._use_foot_forces = use_foot_forces
+
         # setup a running average window for the mean ground forces
         self.mean_grf = RunningAveragedWindow(shape=(12,),
                                               window_size=n_substeps)
@@ -73,23 +76,31 @@ class BaseHumanoid(MuJoCo):
         sim_low, sim_high = (self.info.observation_space.low[2:],
                              self.info.observation_space.high[2:])
 
-        grf_low, grf_high = (-np.ones((12,)) * np.inf,
-                             np.ones((12,)) * np.inf)
-
-        r_low, r_high = self.goal_reward.get_observation_space()
-
-        return (np.concatenate([sim_low, grf_low, r_low]),
-                np.concatenate([sim_high, grf_high, r_high]))
+        if self._use_foot_forces:
+            grf_low, grf_high = (-np.ones((12,)) * np.inf,
+                                 np.ones((12,)) * np.inf)
+            r_low, r_high = self.goal_reward.get_observation_space()
+            return (np.concatenate([sim_low, grf_low, r_low]),
+                    np.concatenate([sim_high, grf_high, r_high]))
+        else:
+            r_low, r_high = self.goal_reward.get_observation_space()
+            return (np.concatenate([sim_low, r_low]),
+                    np.concatenate([sim_high, r_high]))
 
     def _create_observation(self, obs):
         """
         Creates full vector of observations:
         """
-        obs = np.concatenate([obs[2:],
-                              self.mean_grf.mean / 1000.,
-                              self.goal_reward.get_observation(),
-                              ]).flatten()
 
+        if self._use_foot_forces:
+            obs = np.concatenate([obs[2:],
+                                  self.mean_grf.mean / 1000.,
+                                  self.goal_reward.get_observation(),
+                                  ]).flatten()
+        else:
+            obs = np.concatenate([obs[2:],
+                                  self.goal_reward.get_observation(),
+                                  ]).flatten()
         return obs
 
     def reward(self, state, action, next_state, absorbing):
@@ -109,12 +120,13 @@ class BaseHumanoid(MuJoCo):
         return unnormalized_action
 
     def _simulation_post_step(self):
-        grf = np.concatenate([self._get_collision_force("floor", "foot_r")[:3],
-                              self._get_collision_force("floor", "front_foot_r")[:3],
-                              self._get_collision_force("floor", "foot_l")[:3],
-                              self._get_collision_force("floor", "front_foot_l")[:3]])
+        if self._use_foot_forces:
+            grf = np.concatenate([self._get_collision_force("floor", "foot_r")[:3],
+                                  self._get_collision_force("floor", "front_foot_r")[:3],
+                                  self._get_collision_force("floor", "foot_l")[:3],
+                                  self._get_collision_force("floor", "front_foot_l")[:3]])
 
-        self.mean_grf.update_stats(grf)
+            self.mean_grf.update_stats(grf)
 
     def is_absorbing(self, obs):
         return self.has_fallen(obs)

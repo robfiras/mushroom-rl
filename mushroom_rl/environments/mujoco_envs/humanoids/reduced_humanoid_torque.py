@@ -165,7 +165,7 @@ if __name__ == '__main__':
         if i == 1000:
             env.reset()
             i = 0
-        action = np.random.randn(action_dim)*0.1
+        action = np.random.randn(action_dim)
         nstate, _, absorbing, _ = env.step(action)
 
         env.render()
