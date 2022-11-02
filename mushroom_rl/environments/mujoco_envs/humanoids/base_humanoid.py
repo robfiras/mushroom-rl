@@ -139,7 +139,7 @@ class BaseHumanoid(MuJoCo):
 
         if mujoco_viewer_available:
             self._viewer.render()
-            time.sleep(self.dt*100)
+            time.sleep(self.dt)
         else:
             self._viewer.render(self._data)
 
