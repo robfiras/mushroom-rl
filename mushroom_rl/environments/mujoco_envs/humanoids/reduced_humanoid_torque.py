@@ -131,6 +131,7 @@ class ReducedHumanoidTorque(BaseHumanoid):
                             ("foot_l", ["l_foot"]),
                             ("front_foot_l", ["l_bofoot"])]
 
+        self._use_brick_foots = use_brick_foots
         if use_brick_foots:
             joints_to_remove =["subtalar_angle_l", "mtp_angle_l", "subtalar_angle_r", "mtp_angle_r"]
             obs_to_remove = ["q_"+j for j in joints_to_remove] + ["dq_"+j for j in joints_to_remove]
@@ -196,16 +197,20 @@ class ReducedHumanoidTorque(BaseHumanoid):
         new_xml_path = Path.joinpath(new_model_dir_path, xml_file_name)
         return new_xml_path.as_posix()
 
-
-    @staticmethod
-    def has_fallen(state):
+    def has_fallen(self, state):
         pelvis_euler = state[1:4]
         pelvis_condition = ((state[0] < -0.46) or (state[0] > 0.0)
                             or (pelvis_euler[0] < (-np.pi / 4.5)) or (pelvis_euler[0] > (np.pi / 12))
                             or (pelvis_euler[1] < -np.pi / 12) or (pelvis_euler[1] > np.pi / 8)
                             or (pelvis_euler[2] < (-np.pi / 10)) or (pelvis_euler[2] > (np.pi / 10))
                            )
+
         lumbar_euler = state[18:21]
+        if self._use_brick_foots:
+            lumbar_euler = state[14:17]
+        else:
+            lumbar_euler = state[18:21]
+
         lumbar_condition = ((lumbar_euler[0] < (-np.pi / 6)) or (lumbar_euler[0] > (np.pi / 10))
                             or (lumbar_euler[1] < -np.pi / 10) or (lumbar_euler[1] > np.pi / 10)
                             or (lumbar_euler[2] < (-np.pi / 4.5)) or (lumbar_euler[2] > (np.pi / 4.5))
