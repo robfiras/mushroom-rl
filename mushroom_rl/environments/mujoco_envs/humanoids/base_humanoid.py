@@ -27,7 +27,7 @@ class BaseHumanoid(MuJoCo):
 
     """
     def __init__(self, xml_path, action_spec, observation_spec, collision_groups=[], gamma=0.99, horizon=1000, n_substeps=10,  goal_reward=None,
-                 goal_reward_params=None, traj_params=None, timestep=0.001, use_foot_forces=True):
+                 goal_reward_params=None, traj_params=None, random_start=True, init_step_no=None, timestep=0.001, use_foot_forces=True):
         """
         Constructor.
 
@@ -72,6 +72,19 @@ class BaseHumanoid(MuJoCo):
         else:
             self.trajectory = None
 
+        if not traj_params and random_start:
+            raise ValueError("Random start not possible without trajectory data.")
+        elif not traj_params and init_step_no is not None:
+            raise ValueError("Setting an initial step is not possible without trajectory data.")
+        elif init_step_no is not None and random_start:
+            raise ValueError("Either use a random start or set an initial step, not both.")
+        elif traj_params is not None and not (random_start or init_step_no is not None):
+            raise ValueError("You have specified a trajectory, you have to use either a random start or "
+                             "set an initial step")
+
+        self._random_start = random_start
+        self._init_step_no = init_step_no
+
     def _get_observation_space(self):
         sim_low, sim_high = (self.info.observation_space.low[2:],
                              self.info.observation_space.high[2:])
@@ -107,10 +120,14 @@ class BaseHumanoid(MuJoCo):
         goal_reward = self.goal_reward(state, action, next_state)
         return goal_reward
 
-    def setup(self):
+    def setup(self, substep_no=None):
         self.goal_reward.reset_state()
         if self.trajectory is not None:
-            sample = self.trajectory.reset_trajectory()
+            if self._random_start:
+                sample = self.trajectory.reset_trajectory()
+            else:
+                sample = self.trajectory.reset_trajectory(self._init_step_no)
+
             self.set_qpos_qvel(sample)
 
     def _preprocess_action(self, action):
@@ -183,6 +200,38 @@ class BaseHumanoid(MuJoCo):
 
             self.render()
 
+    def play_trajectory_demo_from_velocity(self, freq=200, view_from_other_side=False):
+        """
+        Plays a demo of the loaded trajectory by forcing the model
+        positions to the ones in the reference trajectory at every steps
+        """
+
+        assert self.trajectory is not None
+
+        sample = self.trajectory.reset_trajectory(substep_no=1)
+        self.set_qpos_qvel(sample)
+        len_qpos, len_qvel = self.len_qpos_qvel()
+        curr_qpos = sample[0:len_qpos]
+        while True:
+
+            sample = self.trajectory.get_next_sample()
+            qvel = sample[len_qpos:len_qpos + len_qvel]
+            qpos = curr_qpos + self.dt * qvel
+            sample[:len(qpos)] = qpos
+
+            self.set_qpos_qvel(sample)
+
+            mujoco.mj_forward(self._model, self._data)
+
+            # save current qpos
+            curr_qpos = self.get_joint_pos()
+
+            obs = self._create_observation(sample)
+            if self.has_fallen(obs):
+                print("Has Fallen!")
+
+            self.render()
+
     def set_qpos_qvel(self, sample):
         obs_spec = self.obs_helper.observation_spec
         assert len(sample) == len(obs_spec)
@@ -194,46 +243,11 @@ class BaseHumanoid(MuJoCo):
             elif ot == ObservationType.JOINT_VEL:
                 self._data.joint(name).qvel = value
 
-    def play_trajectory_demo_from_velocity(self, freq=200, view_from_other_side=False):
-        """
-        Plays a demo of the loaded trajectory by forcing the model
-        positions to the ones in the reference trajectory at every steps
-        """
+    def get_joint_pos(self):
+        return self.obs_helper.get_joint_pos_from_obs(self.obs_helper.build_obs(self._data))
 
-        assert self.trajectory is not None
-
-        len_qpos, len_qvel = self.len_qpos_qvel()
-        qpos, qvel = self.trajectory.reset_trajectory(len_qpos, len_qvel, substep_no=1)
-        self._data.qpos = qpos
-        self._data.qvel = qvel
-        curr_qpos = qpos
-        while True:
-
-            sample = self.trajectory.get_next_sample()
-            qvel = sample[len_qpos:len_qpos + len_qvel]
-            qpos = curr_qpos + self.dt * qvel
-            sample[:len(qpos)] = qpos
-
-            obs_spec = self.obs_helper.observation_spec
-            assert len(sample) == len(obs_spec)
-
-            for key_name_ot, value in zip(obs_spec, sample):
-                key, name, ot = key_name_ot
-                if ot == ObservationType.JOINT_POS:
-                    self._data.joint(name).qpos = value
-                elif ot == ObservationType.JOINT_VEL:
-                    self._data.joint(name).qvel = value
-
-            mujoco.mj_forward(self._model, self._data)
-
-            # save current qpos
-            curr_qpos = self._data.qpos
-
-            obs = self._create_observation(sample)
-            if self.has_fallen(obs):
-                print("Has Fallen!")
-
-            self.render()
+    def get_joint_vel(self):
+        return self.obs_helper.get_joint_vel_from_obs(self.obs_helper.build_obs(self._data))
 
     def len_qpos_qvel(self):
         keys = self.get_all_observation_keys()
