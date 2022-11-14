@@ -119,7 +119,6 @@ class UnitreeA1(BaseQuadruped):
         # 0: lenken/laufrichtung
         # 1: neigung x achse: schultern wackeln/rollen
         # 2: wiehern
-        # TODO: range for rotation in xml weird ------------------------------------------------------------------------
         trunk_condition = ((trunk_euler[1] < -np.pi * 40 / 180) or (trunk_euler[1] > np.pi * 40 / 180)
                             or (trunk_euler[2] < (-np.pi * 40 / 180)) or (trunk_euler[2] > (np.pi * 40 / 180))
                             or state[1] < -.31
@@ -159,9 +158,11 @@ if __name__ == '__main__':
     print("Finished")
 
     #TODO: frequencies
-    #TODO: mapping action space
+    #TODO: error in trajectory class
+    #TODO: changes offset in xml??
 
-
+    # removed xml from gitignore
+    # still problem with different behavior -> des not for with mul joints
 
     """
     env = UnitreeA1(timestep=1/500,n_substeps=20)
@@ -215,23 +216,6 @@ if __name__ == '__main__':
         i += 1
         """
 
-        # range for rotation in xml with multiple joints weird (->crashes if turns around)
-
-        # yes position maps between 1,-1
-        # need to change ctrl in keyframe for torques?
-
-        # -> working with freejoint
-
-
-        # why 4 dim in locomotion _generate_example_linear_angular_speed?
-        # Noisy and latency observation or true observation ->> True ---------------------------------------------------
-        # 2 freq.
-        # how to use class traj. in mushroom
-        # do i need x,y,z pos (quaternion) - not in locomotion
-
-
-        # only changes local
-        # two errors in trajectory
 
 
 
@@ -239,4 +223,4 @@ if __name__ == '__main__':
 
 
 
-        # still problem with different behavior -> des not for with mul joints
+

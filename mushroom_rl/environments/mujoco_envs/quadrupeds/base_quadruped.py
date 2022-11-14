@@ -47,7 +47,6 @@ class BaseQuadruped(MuJoCo):
         # clip action space between -1,1
         low, high = self.info.action_space.low.copy(), \
                     self.info.action_space.high.copy()
-        print("low, high: ", low, high)
 
         self.norm_act_mean = (high + low) / 2.0
         self.norm_act_delta = (high - low) / 2.0
@@ -152,9 +151,11 @@ class BaseQuadruped(MuJoCo):
 
         len_qpos, len_qvel = self.len_qpos_qvel()
         qpos, qvel = self.trajectory.reset_trajectory(len_qpos, len_qvel, substep_no=1)
+
         self._data.qpos = qpos
         self._data.qvel = qvel
         while True:
+            print("Coord: ", self._data.qpos[:3])
             sample = self.trajectory.get_next_sample()
             obs_spec = self.obs_helper.observation_spec
             assert len(sample) == len(obs_spec)
