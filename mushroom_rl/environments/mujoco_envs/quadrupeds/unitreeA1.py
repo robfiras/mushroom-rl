@@ -1,4 +1,5 @@
 
+
 import time
 from abc import abstractmethod
 import mujoco
@@ -49,8 +50,8 @@ class UnitreeA1(BaseQuadruped):
             # --- Trunk ---
             #("body_freejoint", "body", ObservationType.JOINT_POS),
             ("q_trunk_tx", "trunk_tx", ObservationType.JOINT_POS),
-            ("q_trunk_tz", "trunk_tz", ObservationType.JOINT_POS),
             ("q_trunk_ty", "trunk_ty", ObservationType.JOINT_POS),
+            ("q_trunk_tz", "trunk_tz", ObservationType.JOINT_POS),
             ("q_trunk_tilt", "trunk_tilt", ObservationType.JOINT_POS),
             ("q_trunk_list", "trunk_list", ObservationType.JOINT_POS),
             ("q_trunk_rotation", "trunk_rotation", ObservationType.JOINT_POS),
@@ -121,7 +122,7 @@ class UnitreeA1(BaseQuadruped):
         # 2: wiehern
         trunk_condition = ((trunk_euler[1] < -np.pi * 40 / 180) or (trunk_euler[1] > np.pi * 40 / 180)
                             or (trunk_euler[2] < (-np.pi * 40 / 180)) or (trunk_euler[2] > (np.pi * 40 / 180))
-                            or state[1] < -.31
+                            or state[2] < -.31
                             )
 
         return trunk_condition
@@ -142,7 +143,7 @@ if __name__ == '__main__':
     n_substeps = env_freq // desired_contr_freq
 
     # prepare trajectory params
-    traj_params = dict(traj_path='/home/tim/Documents/locomotion_simulation/log/states_position.npz',
+    traj_params = dict(traj_path='/home/tim/Documents/locomotion_simulation/log/states.npz',
                        traj_dt=(1 / traj_data_freq),
                        control_dt=(1 / desired_contr_freq))
     gamma = 0.99
