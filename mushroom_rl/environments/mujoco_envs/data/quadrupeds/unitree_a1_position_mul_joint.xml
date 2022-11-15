@@ -72,7 +72,7 @@
     <geom name="floor" pos="0 0 0" size="100 100 0.125" type="plane" material="MatPlane" condim="3" rgba="0.8 0.9 0.8 1"></geom>
     <light cutoff="100" diffuse="1 1 1" dir="-0 0 -1.3" directional="true" exponent="1" pos="0 0 1.3" specular=".1 .1 .1" castshadow="false"/>
     <light name="spotlight" mode="targetbodycom" target="trunk" pos="0 -1 2"/>
-    <body name="trunk" pos="0 0 0.2622972779494144" childclass="a1">
+    <body name="trunk" pos="0 0 0.43" childclass="a1">
       <joint name="trunk_tx" type="slide" pos="0 0 0.43" axis="       1        0        0" limited="false" range="-500        500" ref="0" armature="0" damping="0" stiffness="0"></joint>
       <joint name="trunk_tz" type="slide" pos="0 0 0.43" axis="       0        0        1" limited="false" range="-300        300" ref="0" armature="0" damping="0" stiffness="0"></joint>
       <joint name="trunk_ty" type="slide" pos="0 0 0.43" axis="       0        1        0" limited="false" range="-100        200" ref="0" armature="0" damping="0" stiffness="0"></joint>

@@ -38,7 +38,7 @@ class UnitreeA1(BaseQuadruped):
         Constructor.
         """
         xml_path = (Path(__file__).resolve().parent.parent / "data" / "quadrupeds" /
-                    "unitree_a1_torques_mul_joint.xml").as_posix()
+                    "unitree_a1_position_mul_joint.xml").as_posix()
         action_spec = [# motors
             "FR_hip", "FR_thigh", "FR_calf",
             "FL_hip", "FL_thigh", "FL_calf",
@@ -159,7 +159,7 @@ if __name__ == '__main__':
 
     #TODO: frequencies
     #TODO: error in trajectory class
-    #TODO: changes offset in xml?? 0.2622972779494144
+    #TODO: changes offset in xml?? 0.2622972779494144 0.2622972779494144
 
     # removed xml from gitignore
     # still problem with different behavior -> des not for with mul joints
