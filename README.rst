@@ -45,6 +45,11 @@ You can do a minimal installation of ``MushroomRL`` with:
 
 Installing everything
 ---------------------
+``MushroomRL`` contains also some optional components e.g., support for ``OpenAI Gym`` 
+environments, Atari 2600 games from the ``Arcade Learning Environment``, and the support
+for physics simulators such as ``Pybullet`` and ``MuJoCo``. 
+Support for these classes is not enabled by default.
+
 To install the whole set of features, you will need additional packages installed.
 You can install everything by running:
 
@@ -52,7 +57,7 @@ You can install everything by running:
 
     pip3 install mushroom_rl[all]
 
-This will install every dependency of MushroomRL, except MuJoCo and Plots dependencies.
+This will install every dependency of MushroomRL, except the Plots dependency.
 For ubuntu>20.04, you may need to install pygame and gym dependencies:
 
 .. code:: shell
@@ -61,11 +66,7 @@ For ubuntu>20.04, you may need to install pygame and gym dependencies:
                      libsdl1.2-dev libsmpeg-dev libportmidi-dev ffmpeg libswscale-dev \
                      libavformat-dev libavcodec-dev swig
 
-To use the ``mujoco-py`` MushroomRL interface you can run the command:
-
-.. code:: shell
-
-    pip3 install mushroom_rl[mujoco]
+Notice that you still need to install some of these dependencies for different operating systems, e.g. swig for macOS 
 
 Below is the code that you need to run to install the Plots dependencies:
 

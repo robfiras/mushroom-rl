@@ -1,7 +1,6 @@
-try:
-    from .humanoid_gait import HumanoidGait, HumanoidTrajectory
-except:
-    pass
-from .atlas import Atlas, AtlasTrajectory
-from .full_humanoid import FullHumanoid, FullHumanoidTrajectory
-from .reward_goals import *
+from .atlas import Atlas
+from .base_humanoid import BaseHumanoid
+from .reduced_humanoid_torque import ReducedHumanoidTorque
+from .full_humanoid import FullHumanoid
+from .trajectory import Trajectory
+#from .reward_goals import *

@@ -26,7 +26,7 @@ def test_dataset_utils():
                        2.28767925e+00, 4.23911583e-01])
     assert np.allclose(J, J_test)
 
-    L = episodes_length(dataset)
+    L = compute_episodes_length(dataset)
     L_test = np.array([87, 35, 18, 34, 43, 23, 66, 16, 15, 31])
     assert np.array_equal(L, L_test)
 
@@ -34,7 +34,7 @@ def test_dataset_utils():
     J = compute_J(dataset_ep, mdp.info.gamma)
     assert np.allclose(J, J_test[:3])
 
-    L = episodes_length(dataset_ep)
+    L = compute_episodes_length(dataset_ep)
     assert np.allclose(L, L_test[:3])
 
     samples = select_random_samples(dataset, 2)
@@ -52,9 +52,16 @@ def test_dataset_utils():
     assert np.array_equal(ab, ab_test)
     assert np.array_equal(last, last_test)
 
+    s0 = get_init_states(dataset)
+    s0_test = np.zeros((10, 1))
+    assert np.array_equal(s0, s0_test)
+
     index = np.sum(L_test[:2]) + L_test[2]//2
-    min_J, max_J, mean_J, n_episodes = compute_metrics(dataset[:index], mdp.info.gamma)
+    min_J, max_J, mean_J, median_J, n_episodes = compute_metrics(dataset[:index], mdp.info.gamma)
     assert min_J == 0.0011610630703530948
     assert max_J == 0.2781283894436937
     assert mean_J == 0.1396447262570234
+    assert median_J == 0.1396447262570234
     assert n_episodes == 2
+
+

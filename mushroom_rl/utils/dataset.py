@@ -1,5 +1,7 @@
 import numpy as np
 
+from mushroom_rl.utils.frames import LazyFrames
+
 
 def parse_dataset(dataset, features=None):
     """
@@ -75,7 +77,7 @@ def arrays_as_dataset(states, actions, rewards, next_states, absorbings, lasts):
     return dataset
 
 
-def episodes_length(dataset):
+def compute_episodes_length(dataset):
     """
     Compute the length of each episode in the dataset.
 
@@ -149,6 +151,29 @@ def select_random_samples(dataset, n_samples, parse=False):
     return sub_dataset if not parse else parse_dataset(sub_dataset)
 
 
+def get_init_states(dataset):
+    """
+    Get the initial states of a dataset
+
+    Args:
+        dataset (list): the dataset to consider.
+
+    Returns:
+        An array of initial states of the considered dataset.
+
+    """
+    pick = True
+    x_0 = list()
+    for d in dataset:
+        if pick:
+            if isinstance(d[0], LazyFrames):
+                x_0.append(np.array(d[0]))
+            else:
+                x_0.append(d[0])
+        pick = d[-1]
+    return np.array(x_0)
+
+
 def compute_J(dataset, gamma=1.):
     """
     Compute the cumulative discounted reward of each episode in the dataset.
@@ -190,9 +215,10 @@ def compute_metrics(dataset, gamma=1.):
         The minimum score reached in an episode,
         the maximum score reached in an episode,
         the mean score reached,
-        the number of completed games.
+        the median score reached,
+        the number of completed episodes.
 
-        If episode has not been completed, it returns 0 for all values.
+        If no episode has been completed, it returns 0 for all values.
 
     """
     for i in reversed(range(len(dataset))):
@@ -204,6 +230,6 @@ def compute_metrics(dataset, gamma=1.):
 
     if len(dataset) > 0:
         J = compute_J(dataset, gamma)
-        return np.min(J), np.max(J), np.mean(J), len(J)
+        return np.min(J), np.max(J), np.mean(J), np.median(J), len(J)
     else:
-        return 0, 0, 0, 0
+        return 0, 0, 0, 0, 0

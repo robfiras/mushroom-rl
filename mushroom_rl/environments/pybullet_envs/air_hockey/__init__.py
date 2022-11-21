@@ -1,5 +1,11 @@
-from mushroom_rl.environments.pybullet_envs.air_hockey.hit import AirHockeyHit
-from mushroom_rl.environments.pybullet_envs.air_hockey.defend import AirHockeyDefend
+from .hit import AirHockeyHitBullet
+from .defend import AirHockeyDefendBullet
+from .prepare import AirHockeyPrepareBullet
+from .repel import AirHockeyRepelBullet
 
-AirHockeyHit.register()
-AirHockeyDefend.register()
+
+AirHockeyHitBullet.register()
+AirHockeyDefendBullet.register()
+AirHockeyPrepareBullet.register()
+AirHockeyRepelBullet.register()
+
