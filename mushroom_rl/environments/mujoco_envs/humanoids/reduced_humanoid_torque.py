@@ -220,7 +220,7 @@ class ReducedHumanoidTorque(BaseHumanoid):
 
 if __name__ == '__main__':
 
-    env = ReducedHumanoidTorque(timestep=1/1000, n_substeps=10, use_brick_foots=True)
+    env = ReducedHumanoidTorque(timestep=1/1000, n_substeps=10, use_brick_foots=True, random_start=False)
 
     action_dim = env.info.action_space.shape[0]
 
