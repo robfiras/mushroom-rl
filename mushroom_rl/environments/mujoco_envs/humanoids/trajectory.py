@@ -1,4 +1,5 @@
 import time
+import warnings
 from copy import deepcopy
 from time import perf_counter
 from contextlib import contextmanager
@@ -32,7 +33,7 @@ class Trajectory(object):
     the desired cycle.
 
     """
-    def __init__(self, keys, traj_path, traj_dt=0.002, control_dt=0.01, ignore_keys=[]):
+    def __init__(self, keys, traj_path, low, high, joint_pos_idx, traj_dt=0.002, control_dt=0.01, ignore_keys=[]):
         """
         Constructor.
 
@@ -51,6 +52,8 @@ class Trajectory(object):
 
         """
         self._trajectory_files = np.load(traj_path, allow_pickle=True)
+        self._trajectory_files = {k:d for k, d in self._trajectory_files.items()} # convert to dict to be mutable
+        self.check_if_trajectory_is_in_range(low, high, keys, joint_pos_idx)
 
         if "goal" in self._trajectory_files.keys():
             keys += ["goal"]
@@ -198,4 +201,25 @@ class Trajectory(object):
         self.subtraj_step_no += 1
         return sample
 
+    def check_if_trajectory_is_in_range(self, low, high, keys, j_idx):
 
+        # get q_pos indices
+        j_idx = j_idx[2:]   # exclude x and y
+
+        # check if they are in range
+        for i, item in enumerate(self._trajectory_files.items()):
+            k, d = item
+            if i in j_idx:
+                high_i = high[i-2]
+                low_i = low[i-2]
+                if np.max(d) > high_i:
+                    warnings.warn("Trajectory violates joint range in %s. Maximum in trajecotry is %f "
+                                  "and maximum range is %f. Clipping the trajecotry into range!"
+                                  % (keys[i], np.max(d), high_i), RuntimeWarning)
+                elif np.min(d) < low_i:
+                    warnings.warn("Trajectory violates joint range in %s. Minimum in trajecotry is %f "
+                                  "and minimum range is %f. Clipping the trajecotry into range!"
+                                  % (keys[i], np.min(d), low_i), RuntimeWarning)
+
+                # clip trajectory to min & max
+                self._trajectory_files[k] = np.clip(self._trajectory_files[k], low_i, high_i)

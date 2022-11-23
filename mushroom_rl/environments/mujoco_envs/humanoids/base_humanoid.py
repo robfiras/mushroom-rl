@@ -68,7 +68,11 @@ class BaseHumanoid(MuJoCo):
                                               window_size=n_substeps)
 
         if traj_params:
-            self.trajectory = Trajectory(keys=self.get_all_observation_keys(), **traj_params)
+            self.trajectory = Trajectory(keys=self.get_all_observation_keys(),
+                                         low=self.info.observation_space.low,
+                                         high=self.info.observation_space.high,
+                                         joint_pos_idx=self.obs_helper.joint_pos_idx,
+                                         **traj_params)
         else:
             self.trajectory = None
 
@@ -174,6 +178,7 @@ class BaseHumanoid(MuJoCo):
 
         """
         assert self.trajectory is not None
+
         ##Todo: different camera view not working
         # cam = mujoco.MjvCamera()
         # mujoco.mjv_defaultCamera(cam)
