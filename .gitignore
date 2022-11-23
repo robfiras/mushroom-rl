@@ -4,7 +4,7 @@ dist/
 examples/habitat/Replica-Dataset 
 examples/habitat/data
 mushroom_rl.egg-info/
-__pychache__/
+__pycache__/
 .idea/
 *.pyc
 *.pyd
