@@ -1,11 +1,14 @@
 
 import time
+import sys
 from abc import abstractmethod
 import mujoco
 
 from pathlib import Path
 
 import numpy as np
+from scipy import interpolate
+
 
 from mushroom_rl.environments.mujoco import MuJoCo, ObservationType
 from pathlib import Path
@@ -17,6 +20,9 @@ from mushroom_rl.utils.mujoco import *
 from mushroom_rl.environments.mujoco_envs.humanoids.trajectory import Trajectory
 
 from mushroom_rl.environments.mujoco_envs.humanoids.reward import NoGoalReward, CustomReward
+
+import matplotlib.pyplot as plt
+
 
 # optional imports
 try:
@@ -30,7 +36,7 @@ class BaseQuadruped(MuJoCo):
     Mujoco simulation of unitree A1 model
     """
     def __init__(self, xml_path, action_spec, observation_spec, collision_groups=[], gamma=0.99, horizon=1000, n_substeps=10,  goal_reward=None,
-                 goal_reward_params=None, traj_params=None, timestep=0.001):
+                 goal_reward_params=None, traj_params=None, timestep=0.001, use_action_clipping=True):
         """
         Constructor.
         """
@@ -39,25 +45,27 @@ class BaseQuadruped(MuJoCo):
                          timestep=timestep, collision_groups=collision_groups)
 
 
-
+        self.use_action_clipping = use_action_clipping
         self.goal_reward = NoGoalReward()
 
         self.info.observation_space = spaces.Box(*self._get_observation_space())
 
-        # clip action space between -1,1
-        low, high = self.info.action_space.low.copy(), \
-                    self.info.action_space.high.copy()
+        if use_action_clipping:
+            # clip action space between -1,1
+            low, high = self.info.action_space.low.copy(), \
+                        self.info.action_space.high.copy()
 
-        self.norm_act_mean = (high + low) / 2.0
-        self.norm_act_delta = (high - low) / 2.0
-        self.info.action_space.low[:] = -1.0
-        self.info.action_space.high[:] = 1.0
+            self.norm_act_mean = (high + low) / 2.0
+            self.norm_act_delta = (high - low) / 2.0
+            self.info.action_space.low[:] = -1.0
+            self.info.action_space.high[:] = 1.0
+
+
 
         self.mean_grf = RunningAveragedWindow(shape=(12,),
                                               window_size=n_substeps)
 
 
-        #TODO: do I need an extra trajectory class? --------------------------------------------------------------------
         if traj_params:
             self.trajectory = Trajectory(keys=self.get_all_observation_keys(), **traj_params)
             print(self.trajectory)
@@ -103,11 +111,29 @@ class BaseQuadruped(MuJoCo):
             self._data.qpos = qpos
             self._data.qvel = qvel
 
+    def _simulation_pre_step(self):
+        #self._data.qfrc_applied[self._action_indices] = self._data.qfrc_bias[:12]
+        #print(self._data.qfrc_bias[:12])
+        #self._data.ctrl[self._action_indices] = self._data.qfrc_bias[:12] + self._data.ctrl[self._action_indices]
+        #print(self._data.qfrc_bias[:12])
+        #self._data.qfrc_applied[self._action_indices] = self._data.qfrc_bias[:12] + self._data.qfrc_applied[self._action_indices]
+        #self._data.qfrc_actuator[self._action_indices] = self._data.qfrc_bias[:12]
+        #self._data.ctrl[self._action_indices] += self._data.qfrc_bias[:12]
+
+        pass
+
+    #def _compute_action(self, obs, action):
+    #    action = action+self._data.qfrc_bias[self._action_indices]
+    #    return action
 
 
     def _preprocess_action(self, action):
-        unnormalized_action = ((action.copy() * self.norm_act_delta) + self.norm_act_mean)
-        return unnormalized_action
+        if self.use_action_clipping:
+            unnormalized_action = ((action.copy() * self.norm_act_delta) + self.norm_act_mean)
+            return unnormalized_action
+
+
+        return action
 
     def _simulation_post_step(self):
         grf = np.concatenate([self._get_collision_force("floor", "foot_FL")[:3],
@@ -116,6 +142,10 @@ class BaseQuadruped(MuJoCo):
                               self._get_collision_force("floor", "foot_RR")[:3]])
 
         self.mean_grf.update_stats(grf)
+        #self._data.qfrc_applied[self._action_indices] = self._data.qfrc_bias[self._action_indices] + self._data.qfrc_applied[self._action_indices]
+
+        #print(self._data.qfrc_bias[:12])
+
 
     def is_absorbing(self, obs):
         return self.has_fallen(obs)
@@ -151,11 +181,11 @@ class BaseQuadruped(MuJoCo):
 
         len_qpos, len_qvel = self.len_qpos_qvel()
         qpos, qvel = self.trajectory.reset_trajectory(len_qpos, len_qvel, substep_no=1)
+        print(qpos, qvel)
 
         self._data.qpos = qpos
         self._data.qvel = qvel
         while True:
-            print("Coord: ", self._data.qpos[:3])
             sample = self.trajectory.get_next_sample()
             obs_spec = self.obs_helper.observation_spec
             assert len(sample) == len(obs_spec)
@@ -217,7 +247,6 @@ class BaseQuadruped(MuJoCo):
         #
         #         self.render()
 
-    # TODO: do I need it and adapt if own trajectory class --------------------------------------------------------------
     def play_trajectory_demo_from_velocity(self, freq=200, view_from_other_side=False):
         """
         Plays a demo of the loaded trajectory by forcing the model
@@ -264,4 +293,137 @@ class BaseQuadruped(MuJoCo):
         len_qpos = len([key for key in keys if key.startswith("q_")])
         len_qvel = len([key for key in keys if key.startswith("dq_")])
         return len_qpos, len_qvel
+
+    def play_action_demo(self, action_path, states_path, control_dt=0.01, demo_dt=0.01, freq=200):
+        """
+
+        Plays a demo of the loaded actions by using the actions in action_path.
+        action_path: path to the .npz file. Should be in format (number of samples/steps, action dimension)
+        states_path: path to states.npz file, for initial position; should be in format like for play_trajectory_demo
+        control_dt: model control frequency
+        demo_dt: freqency the data was collected
+        make sure action clipping is off
+
+        """
+        # to get the same init position
+        trajectory_files = np.load(states_path, allow_pickle=True)
+        trajectory = np.array([trajectory_files[key] for key in trajectory_files.keys()])
+        obs_spec = self.obs_helper.observation_spec
+        #set x and y to 0: be carefull need to be at 0,1
+        trajectory[0, :] -= trajectory[0, 0]
+        trajectory[1, :] -= trajectory[1, 0]
+        for key_name_ot, value in zip(obs_spec, trajectory[:,0]):
+            key, name, ot = key_name_ot
+            if ot == ObservationType.JOINT_POS:
+                self._data.joint(name).qpos = value
+            elif ot == ObservationType.JOINT_VEL:
+                self._data.joint(name).qvel = value
+
+
+
+
+
+        #np.set_printoptions(threshold=sys.maxsize)
+        action_files = np.load(action_path, allow_pickle=True)
+
+        actions = np.array([action_files[key] for key in action_files.keys()])[0]
+
+        #scale frequencies
+        if demo_dt != control_dt:
+            new_demo_sampling_factor = demo_dt / control_dt
+            x = np.arange(actions.shape[0])
+            x_new = np.linspace(0, actions.shape[0]-1, round(actions.shape[0]*new_demo_sampling_factor), endpoint=True)
+            actions = interpolate.interp1d(x, actions, kind="cubic", axis=0)(x_new)
+
+        true_pos=[]
+        set_point=[]
+        for i in np.arange(actions.shape[0]):
+            #time.sleep(.1)
+            action = actions[i]
+            true_pos.append(list(self._data.qpos[6:]))
+            set_point.append(trajectory[6:18,i])
+            nstate, _, absorbing, _ = self.step(action)
+            self.render()
+
+
+        true_pos=np.array(true_pos)
+        set_point=np.array(set_point)
+        # --------------------------------------------------------------------------------------------------------------
+        data= {
+            "setpoint": set_point[:,0],
+            "actual pos" : true_pos[:,0]
+        }
+
+        fig = plt.figure()
+        ax = fig.gca()
+        colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+
+        for i, v in enumerate(data.items()):
+            ax.plot(v[1], color=colors[i], linestyle='-', label=v[0])
+        plt.legend(loc=4)
+        plt.xlabel("Time")
+        plt.ylabel("Position")
+        plt.savefig("hip.png")
+
+        # --------------------------------------------------------------------------------------------------------------
+        data = {
+            "setpoint": set_point[:, 1],
+            "actual pos": true_pos[:, 1]
+        }
+
+        fig = plt.figure()
+        ax = fig.gca()
+        colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+
+        for i, v in enumerate(data.items()):
+            ax.plot(v[1], color=colors[i], linestyle='-', label=v[0])
+        plt.legend(loc=4)
+        plt.xlabel("Time")
+        plt.ylabel("Position")
+        plt.savefig("thigh.png")
+
+        # --------------------------------------------------------------------------------------------------------------
+
+        data = {
+            "setpoint": set_point[:, 2],
+            "actual pos": true_pos[:, 2]
+        }
+
+        fig = plt.figure()
+        ax = fig.gca()
+        colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+
+        for i, v in enumerate(data.items()):
+            ax.plot(v[1], color=colors[i], linestyle='-', label=v[0])
+        plt.legend(loc=4)
+        plt.xlabel("Time")
+        plt.ylabel("Position")
+        plt.savefig("calf.png")
+
+        # --------------------------------------------------------------------------------------------------------------
+
+        data = {
+            "hip error": set_point[:, 0]-true_pos[:, 0],
+            "thigh error": set_point[:, 1]-true_pos[:, 1],
+            "calf error": set_point[:, 2]-true_pos[:, 2]
+        }
+
+        fig = plt.figure()
+        ax = fig.gca()
+        colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+
+        for i, v in enumerate(data.items()):
+            ax.plot(v[1], color=colors[i], linestyle='-', label=v[0])
+        plt.legend(loc=4)
+        plt.xlabel("Time")
+        plt.ylabel("Position")
+        plt.savefig("error.png")
+
+
+
+
+        
+
+
+
 

@@ -32,14 +32,20 @@ except ModuleNotFoundError:
 class UnitreeA1(BaseQuadruped):
     """
     Mujoco simulation of unitree A1 model
+    to switch between torque and position control: adjust xml file (and if needed action.npz)
+    if using action demo: adjust xml to special height (commented) -> dont fall down
+    to switch between freejoint and mul_joint: adapt obs space and xml path
+    clipping only for action demo off
     """
     def __init__(self, gamma=0.99, horizon=1000, n_substeps=10,
-                 traj_params=None, timestep=0.001):
+                 traj_params=None, timestep=0.001, use_action_clipping=True):
         """
         Constructor.
+        use_action_clipping should be off for action demo
+        for clipping in torques need to adjust xml gear 34 and ctrllimited
         """
         xml_path = (Path(__file__).resolve().parent.parent / "data" / "quadrupeds" /
-                    "unitree_a1_position_mul_joint.xml").as_posix()
+                    "unitree_a1_position_mul_joint.xml").as_posix() #"unitree_a1_torque_mul_joint.xml"
         action_spec = [# motors
             "FR_hip", "FR_thigh", "FR_calf",
             "FL_hip", "FL_thigh", "FL_calf",
@@ -99,8 +105,7 @@ class UnitreeA1(BaseQuadruped):
                             ("foot_RL", ["RL_foot"])]
 
         super().__init__(xml_path, action_spec, observation_spec, gamma=gamma, horizon=horizon, n_substeps=n_substeps,
-                         timestep=timestep, collision_groups=collision_groups, traj_params=traj_params)
-
+                         timestep=timestep, collision_groups=collision_groups, traj_params=traj_params, use_action_clipping=use_action_clipping)
 
     @staticmethod
     def has_fallen(state):
@@ -133,13 +138,14 @@ def catchtime() -> float:
     yield lambda: perf_counter() - start
 
 if __name__ == '__main__':
-
-
+    # TODO: different behavior, action control completed?, for clipping in torques need to adjust xml gear 34 and ctrllimited
+    """
+    #trajectory demo:
     np.random.seed(1)
     # define env and data frequencies
     env_freq = 1000  # hz, added here as a reminder
-    traj_data_freq = 500  # hz, added here as a reminder
-    desired_contr_freq = 100  # hz
+    traj_data_freq = 1000  # hz, added here as a reminder
+    desired_contr_freq = 1000  # hz
     n_substeps = env_freq // desired_contr_freq
 
     # prepare trajectory params
@@ -149,7 +155,7 @@ if __name__ == '__main__':
     gamma = 0.99
     horizon = 1000
 
-    env = UnitreeA1(timestep=1/500, gamma=gamma, horizon=horizon, n_substeps=n_substeps, traj_params=traj_params)
+    env = UnitreeA1(timestep=1/env_freq, gamma=gamma, horizon=horizon, n_substeps=n_substeps, traj_params=traj_params)
 
 
     with catchtime() as t:
@@ -157,24 +163,60 @@ if __name__ == '__main__':
         print("Time: %fs" % t())
 
     print("Finished")
-
-    #TODO: frequencies
-    #TODO: error in trajectory class
-    #TODO: changes offset in xml?? 0.2622972779494144 0.2622972779494144
-
-    # removed xml from gitignore
-    # still problem with different behavior -> des not for with mul joints
-
+    # still problem with different behaviour (if robot rolls to the side - between freejoint and muljoints) action[1] and [7] = -1 (with action clipping)
     """
-    env = UnitreeA1(timestep=1/500,n_substeps=20)
+
+
+
+
+
+    # action demo - need action clipping to be off
+    env_freq = 1000  # hz, added here as a reminder simulation freq
+    traj_data_freq = 1000  # hz, added here as a reminder  controll_freq of data model -> sim_freq/n_substeps
+    desired_contr_freq = 1000  # hz contl freq.
+    n_substeps =  env_freq // desired_contr_freq
+
+    #to interpolate
+    demo_dt = (1 / traj_data_freq)
+    control_dt = (1 / desired_contr_freq)
+
+
+    gamma = 0.99
+    horizon = 1000
+
+
+
+    env = UnitreeA1(timestep=1/env_freq, gamma=gamma, horizon=horizon, n_substeps=n_substeps, use_action_clipping=False)
+
 
     action_dim = env.info.action_space.shape[0]
-    #print("get_obs", env._get_observation_space())
     print("Dimensionality of Obs-space:", env.info.observation_space.shape[0])
     print("Dimensionality of Act-space:", env.info.action_space.shape[0])
 
+    env.reset()
+    #env.render()
+    #action = np.array([0, 0.9, -1.8, 0, 0.9, -1.8, 0, 0.9, -1.8, 0, 0.9, -1.8])
+    #for i in np.arange(1000):
+    #    nstate, _, absorbing, _ = env.step(action)
+        #env.render()
 
 
+    env.play_action_demo(action_path='/home/tim/Documents/locomotion_simulation/log/actions_position_50s.npz', #actions_torque.npz
+                         states_path='/home/tim/Documents/locomotion_simulation/log/states_50s.npz',
+                         control_dt=control_dt, demo_dt=demo_dt)
+
+
+
+
+
+    """
+    #general experiments - easier with action clipping
+
+    env = UnitreeA1(timestep=1 / 500, n_substeps=20)
+
+    action_dim = env.info.action_space.shape[0]
+    print("Dimensionality of Obs-space:", env.info.observation_space.shape[0])
+    print("Dimensionality of Act-space:", env.info.action_space.shape[0])
 
     env.reset()
     env.render()
@@ -182,7 +224,7 @@ if __name__ == '__main__':
     absorbing = False
     i = 0
     while True:
-        if i == 1000: #or absorbing
+        if i == 500:
             print("------ RESET ------")
             env.reset()
             i = 0
@@ -197,9 +239,9 @@ if __name__ == '__main__':
 
         #action = np.random.randn(action_dim)
         action = np.zeros(action_dim)
-        if i > 30: #test turn around rotation
-            action[1] = 10
-            action[7] = 10
+
+        action[1] = -1
+        action[7] = -1
         #action[1] = -1
         #action[7] = -1
 
