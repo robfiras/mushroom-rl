@@ -123,7 +123,8 @@ class BaseQuadruped(MuJoCo):
         pass
 
     #def _compute_action(self, obs, action):
-    #    action = action+self._data.qfrc_bias[self._action_indices]
+    #    gravity = self._data.qfrc_bias[self._action_indices]
+    #    action = action+gravity
     #    return action
 
 
@@ -308,6 +309,8 @@ class BaseQuadruped(MuJoCo):
         # to get the same init position
         trajectory_files = np.load(states_path, allow_pickle=True)
         trajectory = np.array([trajectory_files[key] for key in trajectory_files.keys()])
+        print(trajectory.shape)
+
         obs_spec = self.obs_helper.observation_spec
         #set x and y to 0: be carefull need to be at 0,1
         trajectory[0, :] -= trajectory[0, 0]
@@ -338,7 +341,6 @@ class BaseQuadruped(MuJoCo):
         true_pos=[]
         set_point=[]
         for i in np.arange(actions.shape[0]):
-            #time.sleep(.1)
             action = actions[i]
             true_pos.append(list(self._data.qpos[6:]))
             set_point.append(trajectory[6:18,i])

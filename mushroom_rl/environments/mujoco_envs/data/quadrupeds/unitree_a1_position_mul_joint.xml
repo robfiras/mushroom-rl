@@ -6,9 +6,11 @@
   <default>
     <default class="a1">
       <geom friction="0" margin="0.001"/>
-      <joint axis="0 1 0" damping="3" armature="0.01" frictionloss="0.2"/>
+      <joint axis="0 1 0" damping="2.4" armature="0.01" frictionloss="0.2"/>
       <!--general biastype="affine" biasprm="0 -50 0" gaintype="fixed" gainprm="50"/-->
-      <position kp="200" forcerange="-33.5 33.5"/>
+      <!--position kp="300" forcerange="-33.5 33.5" 300 4 best for correct freq./-->
+      <position kp="10000" forcerange="-20 20"/>
+
 
       <default class="abduction">
         <joint axis="1 0 0" range="-0.802851 0.802851" damping="3"/>

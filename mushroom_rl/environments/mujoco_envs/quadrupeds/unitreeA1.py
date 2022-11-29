@@ -32,8 +32,7 @@ except ModuleNotFoundError:
 class UnitreeA1(BaseQuadruped):
     """
     Mujoco simulation of unitree A1 model
-    to switch between torque and position control: adjust xml file (and if needed action.npz)
-    if using action demo: adjust xml to special height (commented) -> dont fall down
+    to switch between torque and position control: adjust xml file (and if needed action_position.npz/action_position.npz)
     to switch between freejoint and mul_joint: adapt obs space and xml path
     clipping only for action demo off
     """
@@ -112,9 +111,6 @@ class UnitreeA1(BaseQuadruped):
         """
         # with freejoint
         trunk_euler = quat_to_euler(state[3:7])
-        # 0: rollen
-        # 1: wiehern
-        # 2: lenken
         trunk_condition = ((trunk_euler[0] < -np.pi * 40 / 180) or (trunk_euler[0] > np.pi * 40 / 180)
                            or (trunk_euler[1] < (-np.pi * 40 / 180)) or (trunk_euler[1] > (np.pi * 40 / 180))
                            )
@@ -122,9 +118,6 @@ class UnitreeA1(BaseQuadruped):
 
         # without freejoint
         trunk_euler = state[3:6]
-        # 0: lenken/laufrichtung
-        # 1: neigung x achse: schultern wackeln/rollen
-        # 2: wiehern
         trunk_condition = ((trunk_euler[1] < -np.pi * 40 / 180) or (trunk_euler[1] > np.pi * 40 / 180)
                             or (trunk_euler[2] < (-np.pi * 40 / 180)) or (trunk_euler[2] > (np.pi * 40 / 180))
                             or state[2] < -.31
@@ -172,8 +165,8 @@ if __name__ == '__main__':
 
     # action demo - need action clipping to be off
     env_freq = 1000  # hz, added here as a reminder simulation freq
-    traj_data_freq = 1000  # hz, added here as a reminder  controll_freq of data model -> sim_freq/n_substeps
-    desired_contr_freq = 1000  # hz contl freq.
+    traj_data_freq = 500  # hz, added here as a reminder  controll_freq of data model -> sim_freq/n_substeps
+    desired_contr_freq = 500  # hz contl freq.
     n_substeps =  env_freq // desired_contr_freq
 
     #to interpolate
@@ -194,11 +187,6 @@ if __name__ == '__main__':
     print("Dimensionality of Act-space:", env.info.action_space.shape[0])
 
     env.reset()
-    #env.render()
-    #action = np.array([0, 0.9, -1.8, 0, 0.9, -1.8, 0, 0.9, -1.8, 0, 0.9, -1.8])
-    #for i in np.arange(1000):
-    #    nstate, _, absorbing, _ = env.step(action)
-        #env.render()
 
 
     env.play_action_demo(action_path='/home/tim/Documents/locomotion_simulation/log/actions_position_50s.npz', #actions_torque.npz
@@ -229,32 +217,9 @@ if __name__ == '__main__':
             env.reset()
             i = 0
             absorbing = False
-        #print("state", env._obs.copy())
-        #print("obs_keys", env.get_all_observation_keys())
-        #print("rotation z,x,y axis: ", env._obs.copy()[3:6]*180/np.pi) no freejoint
-
-        #print("State: ", env._obs.copy()) #freejoint
-        #print("Coord: ", env._obs.copy()[:3])
-        #print("Rotation: ", env._obs.copy()[3:6]*180/np.pi)
-
-        #action = np.random.randn(action_dim)
-        action = np.zeros(action_dim)
-
-        action[1] = -1
-        action[7] = -1
-        #action[1] = -1
-        #action[7] = -1
-
-        #action[4] = -.5
-        #action[10] = -.5
-        #action[5] = 1
-        #action[11] = 1
-        #action = [0, 0.9, -1.8, 0, 0.9, -1.8, 0, 0.9, -1.8, 0, 0.9, -1.8] -> when clipping action space of -> default pos
-        #print("Action", action)
+        
+        action = np.random.randn(action_dim)
         nstate, _, absorbing, _ = env.step(action)
-        #print(absorbing)
-
-
         env.render()
         i += 1
         """
