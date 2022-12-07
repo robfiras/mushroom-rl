@@ -117,10 +117,12 @@ class UnitreeA1(BaseQuadruped):
         """
 
         # without freejoint
-        trunk_euler = state[3:6]
+
+
+        trunk_euler = state[1:4]
         trunk_condition = ((trunk_euler[1] < -np.pi * 40 / 180) or (trunk_euler[1] > np.pi * 40 / 180)
                             or (trunk_euler[2] < (-np.pi * 40 / 180)) or (trunk_euler[2] > (np.pi * 40 / 180))
-                            or state[2] < -.31
+                            or state[0] < -.25
                             )
 
         return trunk_condition
@@ -137,8 +139,8 @@ if __name__ == '__main__':
     np.random.seed(1)
     # define env and data frequencies
     env_freq = 1000  # hz, added here as a reminder
-    traj_data_freq = 1000  # hz, added here as a reminder
-    desired_contr_freq = 1000  # hz
+    traj_data_freq = 500  # hz, added here as a reminder
+    desired_contr_freq = 500  # hz
     n_substeps = env_freq // desired_contr_freq
 
     # prepare trajectory params
@@ -159,16 +161,20 @@ if __name__ == '__main__':
     # still problem with different behaviour (if robot rolls to the side - between freejoint and muljoints) action[1] and [7] = -1 (with action clipping)
     """
 
+    #solref="0.004 1000" /damping 500, stiffness from 0,93 to 62,5
+    #0.004 1000000
+    #0.004-0.005 1000000 kp=1000
+    # favorite 0.005 1000000 | solref="-0.000001 -400"
 
 
 
-
+    
     # action demo - need action clipping to be off
     env_freq = 1000  # hz, added here as a reminder simulation freq
     traj_data_freq = 500  # hz, added here as a reminder  controll_freq of data model -> sim_freq/n_substeps
     desired_contr_freq = 500  # hz contl freq.
     n_substeps =  env_freq // desired_contr_freq
-
+    # TODO: unstable so that it falls if des_contr_freq!= data_freq
     #to interpolate
     demo_dt = (1 / traj_data_freq)
     control_dt = (1 / desired_contr_freq)
@@ -189,9 +195,11 @@ if __name__ == '__main__':
     env.reset()
 
 
-    env.play_action_demo(action_path='/home/tim/Documents/locomotion_simulation/log/actions_position_50s.npz', #actions_torque.npz
-                         states_path='/home/tim/Documents/locomotion_simulation/log/states_50s.npz',
-                         control_dt=control_dt, demo_dt=demo_dt)
+    env.play_action_demo(action_path='/home/tim/Documents/locomotion_simulation/log/actions_position.npz', #actions_torque.npz
+                         states_path='/home/tim/Documents/locomotion_simulation/log/states.npz',
+                         control_dt=control_dt, demo_dt=demo_dt,
+                         dataset_path='/home/tim/Documents/IRL_unitreeA1/data',
+                         ignore_keys=[0,1])
 
 
 

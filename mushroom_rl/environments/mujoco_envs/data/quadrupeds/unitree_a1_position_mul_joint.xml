@@ -6,14 +6,14 @@
   <default>
     <default class="a1">
       <geom friction="0" margin="0.001"/>
-      <joint axis="0 1 0" damping="2.4" armature="0.01" frictionloss="0.2"/>
+      <joint axis="0 1 0" damping="2" armature="0.01" frictionloss="0.2"/>
       <!--general biastype="affine" biasprm="0 -50 0" gaintype="fixed" gainprm="50"/-->
-      <!--position kp="300" forcerange="-33.5 33.5" 300 4 best for correct freq./-->
-      <position kp="10000" forcerange="-20 20"/>
+      <!--position kp="300"250,2.4,3 forcerange="-33.5 33.5" 300 4 best for correct freq./-->
+      <position kp="1000" forcerange="-20 20"/>
 
 
       <default class="abduction">
-        <joint axis="1 0 0" range="-0.802851 0.802851" damping="3"/>
+        <joint axis="1 0 0" range="-0.802851 0.802851" damping="1"/>
         <position ctrlrange="-0.802851 0.802851"/>
       </default>
       <default class="hip">
@@ -51,7 +51,7 @@
           <geom size="0.01" fromto="0.02 0 -0.13 0 0 -0.2"/>
         </default>
         <default class="foot">
-          <geom type="sphere" size="0.02" pos="0 0 -0.2" priority="1" solimp="0.015 1 0.031"
+          <geom type="sphere" size="0.02" pos="0 0 -0.2" priority="1" solimp="0.015 1 0.062" solref="-0.0000000001 -250"
               condim="6" friction="0.8 0.02 0.01"/>
         </default>
       </default>

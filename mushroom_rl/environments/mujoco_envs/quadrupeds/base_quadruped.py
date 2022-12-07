@@ -5,6 +5,7 @@ from abc import abstractmethod
 import mujoco
 
 from pathlib import Path
+import os
 
 import numpy as np
 from scipy import interpolate
@@ -74,8 +75,8 @@ class BaseQuadruped(MuJoCo):
 
 
     def _get_observation_space(self):
-        sim_low, sim_high = (self.info.observation_space.low,
-                             self.info.observation_space.high)
+        sim_low, sim_high = (self.info.observation_space.low[2:],
+                             self.info.observation_space.high[2:])
 
         grf_low, grf_high = (-np.ones((12,)) * np.inf,
                              np.ones((12,)) * np.inf)
@@ -88,8 +89,9 @@ class BaseQuadruped(MuJoCo):
     def _create_observation(self, obs):
         """
         Creates full vector of observations:
+        needs to be changed for freejoint
         """
-        obs = np.concatenate([obs,
+        obs = np.concatenate([obs[2:],
                               self.mean_grf.mean / 1000.,
                               self.goal_reward.get_observation(),
                               ]).flatten()
@@ -117,7 +119,7 @@ class BaseQuadruped(MuJoCo):
         #self._data.ctrl[self._action_indices] = self._data.qfrc_bias[:12] + self._data.ctrl[self._action_indices]
         #print(self._data.qfrc_bias[:12])
         #self._data.qfrc_applied[self._action_indices] = self._data.qfrc_bias[:12] + self._data.qfrc_applied[self._action_indices]
-        #self._data.qfrc_actuator[self._action_indices] = self._data.qfrc_bias[:12]
+        #self._data.qfrc_actuator[self._action_indices] += self._data.qfrc_bias[:12]
         #self._data.ctrl[self._action_indices] += self._data.qfrc_bias[:12]
 
         pass
@@ -295,7 +297,7 @@ class BaseQuadruped(MuJoCo):
         len_qvel = len([key for key in keys if key.startswith("dq_")])
         return len_qpos, len_qvel
 
-    def play_action_demo(self, action_path, states_path, control_dt=0.01, demo_dt=0.01, freq=200):
+    def play_action_demo(self, action_path, states_path, control_dt=0.01, demo_dt=0.01, dataset_path=None, ignore_keys=[]):
         """
 
         Plays a demo of the loaded actions by using the actions in action_path.
@@ -303,12 +305,17 @@ class BaseQuadruped(MuJoCo):
         states_path: path to states.npz file, for initial position; should be in format like for play_trajectory_demo
         control_dt: model control frequency
         demo_dt: freqency the data was collected
+        dataset_path: if set, method creates a dataset with actions, states, episode_starts, next_states, absorbing, rewards
+        ignore_keys if dataset_path is set; index of keys to ignore in dataset
         make sure action clipping is off
 
         """
+        assert (ignore_keys==[]) or bool(dataset_path), "ignore_keys only available if dataset_path set"
+
         # to get the same init position
         trajectory_files = np.load(states_path, allow_pickle=True)
         trajectory = np.array([trajectory_files[key] for key in trajectory_files.keys()])
+        print(type(trajectory[0]))
         print(trajectory.shape)
 
         obs_spec = self.obs_helper.observation_spec
@@ -331,21 +338,61 @@ class BaseQuadruped(MuJoCo):
 
         actions = np.array([action_files[key] for key in action_files.keys()])[0]
 
+
         #scale frequencies
         if demo_dt != control_dt:
             new_demo_sampling_factor = demo_dt / control_dt
             x = np.arange(actions.shape[0])
-            x_new = np.linspace(0, actions.shape[0]-1, round(actions.shape[0]*new_demo_sampling_factor), endpoint=True)
+            x_new = np.linspace(0, actions.shape[0]-1, round(actions.shape[0]*new_demo_sampling_factor),
+                                endpoint=True)
             actions = interpolate.interp1d(x, actions, kind="cubic", axis=0)(x_new)
+
+            trajectory = interpolate.interp1d(x, trajectory, kind="cubic", axis=1)(x_new)
 
         true_pos=[]
         set_point=[]
-        for i in np.arange(actions.shape[0]):
+
+        if (dataset_path): #format shape[1] is nr motors/observable points
+            actions_dataset=[]
+            states_dataset=[]
+            episode_starts_dataset= [False]*actions.shape[0]
+            episode_starts_dataset[0]=True
+            #next_states_dataset=[]
+            absorbing_dataset=[]
+            rewards_dataset=[]
+
+
+
+        for i in np.arange(actions.shape[0]):#1024
+            #time.sleep(.1)
+            if(dataset_path and i>1024):
+                actions_dataset.append(list(actions[i]))
+                states_dataset_temp = list(self._data.qpos[:]) + list(self._data.qvel[:])
+
+                for x in sorted(ignore_keys, reverse=True):
+                    del states_dataset_temp[x]
+                states_dataset.append(states_dataset_temp)
+                absorbing_dataset.append(self.is_absorbing(self._obs))
+                temp_obs=self._obs
             action = actions[i]
             true_pos.append(list(self._data.qpos[6:]))
             set_point.append(trajectory[6:18,i])
             nstate, _, absorbing, _ = self.step(action)
             self.render()
+            if(dataset_path and i>1024):
+
+                #next_states_dataset_temp = list(self._data.qpos[:]) + list(self._data.qvel[:])
+                #for x in sorted(ignore_keys, reverse=True):
+                #    del next_states_dataset_temp[x]
+                #next_states_dataset.append(next_states_dataset_temp)
+
+
+                rewards_dataset.append(self.reward(temp_obs, action, self._obs, self.is_absorbing(self._obs)))
+
+        if (dataset_path):
+            np.savez(os.path.join(dataset_path, 'dataset_unitreeA1_IRL.npz'),
+                     actions=actions_dataset, states=states_dataset, episode_starts=episode_starts_dataset,
+                      absorbing=absorbing_dataset, rewards=rewards_dataset)# next_states=next_states_dataset,
 
 
         true_pos=np.array(true_pos)

@@ -7,10 +7,10 @@
     <!--motor ctrllimited="true" ctrlrange="-1.0 1.0"/-->
     <default class="a1">
       <geom friction="0.6" margin="0.001"/>
-      <joint axis="0 1 0" damping="0.0" armature="0.01" frictionloss="0.2"/>
+      <joint axis="0 1 0" damping="2" armature="0.01" frictionloss="0.2"/>
       <motor ctrlrange="-33.5 33.5" ctrllimited="true"/>
       <default class="abduction">
-        <joint axis="1 0 0" range="-0.802851 0.802851"/>
+        <joint axis="1 0 0" range="-0.802851 0.802851" damping="1"/>
         <position ctrlrange="-0.802851 0.802851"/>
       </default>
       <default class="hip">
@@ -48,7 +48,7 @@
           <geom size="0.01" fromto="0.02 0 -0.13 0 0 -0.2"/>
         </default>
         <default class="foot">
-          <geom type="sphere" size="0.02" pos="0 0 -0.2" priority="1" solimp="0.015 1 0.031"
+          <geom type="sphere" size="0.02" pos="0 0 -0.2" priority="1" solimp="0.015 1 0.031" 
               condim="6" friction="0.8 0.02 0.01"/>
         </default>
       </default>
