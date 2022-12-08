@@ -7,7 +7,7 @@ mushroom_rl.egg-info/
 .idea/
 *.pyc
 *.pyd
-#*.xml
+*.xml
 logs/
 *.h5
 .pytest_cache
