@@ -67,6 +67,7 @@ class Trajectory(object):
             keys.remove(ik)
 
         self.trajectory = np.array([self._trajectory_files[key] for key in keys])
+        print("--", self.trajectory.shape)
         self.keys = keys
 
         if "split_points" in self._trajectory_files.keys():
@@ -146,6 +147,7 @@ class Trajectory(object):
         x = np.arange(traj.shape[1])
         x_new = np.linspace(0, traj.shape[1] - 1, round(traj.shape[1] * factor),
                             endpoint=True)
+
         new_traj = interpolate.interp1d(x, traj, kind="cubic", axis=1)(x_new)
         return new_traj
 
