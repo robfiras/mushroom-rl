@@ -19,11 +19,15 @@ class ReducedHumanoidTorque(BaseHumanoid):
     Mujoco simulation of simplified humanoid model with torque actuation.
 
     """
-    def __init__(self, use_brick_foots=False, **kwargs):
+    def __init__(self, use_brick_foots=False, disable_arms=False, tmp_dir_name=None, **kwargs):
         """
         Constructor.
 
         """
+        if use_brick_foots:
+            assert tmp_dir_name is not None, "If you want to use brick foots or disable the arms, you have to specify a" \
+                                             "directory name for the xml-files to be saved."
+
         xml_path = (Path(__file__).resolve().parent.parent / "data" / "reduced_humanoid_torque" /
                     "reduced_humanoid_torque.xml").as_posix()
 
@@ -132,53 +136,78 @@ class ReducedHumanoidTorque(BaseHumanoid):
                             ("front_foot_l", ["l_bofoot"])]
 
         self._use_brick_foots = use_brick_foots
+        self._disable_arms = disable_arms
+        joints_to_remove = []
+        motors_to_remove = []
+        equ_constr_to_remove = []
         if use_brick_foots:
-            joints_to_remove =["subtalar_angle_l", "mtp_angle_l", "subtalar_angle_r", "mtp_angle_r"]
-            obs_to_remove = ["q_"+j for j in joints_to_remove] + ["dq_"+j for j in joints_to_remove]
-            observation_spec = [elem for elem in observation_spec if elem[0] not in obs_to_remove]
-            motors_to_remove = ["mot_subtalar_angle_l", "mot_mtp_angle_l", "mot_subtalar_angle_r", "mot_mtp_angle_r"]
-            action_spec = [ac for ac in action_spec if ac not in motors_to_remove]
-            # ToDo: think about a way to not include foot force twice for bricks
+            joints_to_remove +=["subtalar_angle_l", "mtp_angle_l", "subtalar_angle_r", "mtp_angle_r"]
+            motors_to_remove += ["mot_subtalar_angle_l", "mot_mtp_angle_l", "mot_subtalar_angle_r", "mot_mtp_angle_r"]
+            equ_constr_to_remove += [j + "_constraint" for j in joints_to_remove]
+            # ToDo: think about a smarter way to not include foot force twice for bricks
             collision_groups = [("floor", ["floor"]),
                                 ("foot_r", ["foot_brick_r"]),
                                 ("front_foot_r", ["foot_brick_r"]),
                                 ("foot_l", ["foot_brick_l"]),
                                 ("front_foot_l", ["foot_brick_l"])]
-            xml_path = self.modify_xml_to_brick_foots(xml_path, joints_to_remove, motors_to_remove)
 
+        if disable_arms:
+            joints_to_remove +=["arm_flex_r", "arm_add_r", "arm_rot_r", "elbow_flex_r", "pro_sup_r", "wrist_flex_r",
+                                "wrist_dev_r", "arm_flex_l", "arm_add_l", "arm_rot_l", "elbow_flex_l", "pro_sup_l",
+                                "wrist_flex_l", "wrist_dev_l"]
+            motors_to_remove += ["mot_shoulder_flex_r", "mot_shoulder_add_r", "mot_shoulder_rot_r", "mot_elbow_flex_r",
+                                 "mot_pro_sup_r", "mot_wrist_flex_r", "mot_wrist_dev_r", "mot_shoulder_flex_l",
+                                 "mot_shoulder_add_l", "mot_shoulder_rot_l", "mot_elbow_flex_l", "mot_pro_sup_l",
+                                 "mot_wrist_flex_l", "mot_wrist_dev_l"]
+            equ_constr_to_remove += ["wrist_flex_r_constraint", "wrist_dev_r_constraint",
+                                    "wrist_flex_l_constraint", "wrist_dev_l_constraint"]
+
+        if use_brick_foots or disable_arms:
+            obs_to_remove = ["q_" + j for j in joints_to_remove] + ["dq_" + j for j in joints_to_remove]
+            observation_spec = [elem for elem in observation_spec if elem[0] not in obs_to_remove]
+            action_spec = [ac for ac in action_spec if ac not in motors_to_remove]
+            xml_handle = mjcf.from_path(xml_path)
+            xml_handle = self.delete_from_xml_handle(xml_handle, joints_to_remove,
+                                                     motors_to_remove, equ_constr_to_remove)
+            if use_brick_foots:
+                xml_handle = self.add_brick_foots_to_xml_handle(xml_handle)
+            xml_path = self.save_xml_handle(xml_handle, tmp_dir_name)
 
         super().__init__(xml_path, action_spec, observation_spec, collision_groups, **kwargs)
-        self._model
 
-    def modify_xml_to_brick_foots(self, xml_path, joints_to_remove, motors_to_remove):
-        # get the current xml
-        new_model_xlm = mjcf.from_path(xml_path)
+    def delete_from_xml_handle(self, xml_handle, joints_to_remove, motors_to_remove, equ_constraints):
 
-        # remove joints mtp and subtalar joints, motors and equality constraints
         for j in joints_to_remove:
-            j_handle = new_model_xlm.find("joint", j)
-            j_handle.remove()
+            j_handle = xml_handle.find("joint", j)
+            try:
+                j_handle.remove()
+            except AttributeError:
+                print(e)
+                print(j)
         for m in motors_to_remove:
-            m_handle = new_model_xlm.find("actuator", m)
+            m_handle = xml_handle.find("actuator", m)
             m_handle.remove()
-        equ_constraints = [j + "_constraint" for j in joints_to_remove]
         for e in equ_constraints:
-            e_handle = new_model_xlm.find("equality", e)
+            e_handle = xml_handle.find("equality", e)
             e_handle.remove()
 
+        return xml_handle
+
+    def add_brick_foots_to_xml_handle(self, xml_handle):
+
         # find foot and attach bricks
-        toe_l = new_model_xlm.find("body", "toes_l")
+        toe_l = xml_handle.find("body", "toes_l")
         toe_l.add("geom", name="foot_brick_l", type="box", size=[0.112, 0.03, 0.05], pos=[-0.09, 0.019, 0.0],
                   rgba=[0.5, 0.5, 0.5, 0.5], euler=[0.0, 0.15, 0.0])
-        toe_r = new_model_xlm.find("body", "toes_r")
+        toe_r = xml_handle.find("body", "toes_r")
         toe_r.add("geom", name="foot_brick_r", type="box", size=[0.112, 0.03, 0.05], pos=[-0.09, 0.019, 0.0],
                   rgba=[0.5, 0.5, 0.5, 0.5], euler=[0.0, -0.15, 0.0])
 
         # make true foot uncollidable
-        foot_r = new_model_xlm.find("geom", "foot")
-        bofoot_r = new_model_xlm.find("geom", "bofoot")
-        foot_l = new_model_xlm.find("geom", "l_foot")
-        bofoot_l = new_model_xlm.find("geom", "l_bofoot")
+        foot_r = xml_handle.find("geom", "foot")
+        bofoot_r = xml_handle.find("geom", "bofoot")
+        foot_l = xml_handle.find("geom", "l_foot")
+        bofoot_l = xml_handle.find("geom", "l_bofoot")
         foot_r.contype = 0
         foot_r.conaffinity = 0
         bofoot_r.contype = 0
@@ -188,13 +217,18 @@ class ReducedHumanoidTorque(BaseHumanoid):
         bofoot_l.contype = 0
         bofoot_l.conaffinity = 0
 
+        return xml_handle
+
+    def save_xml_handle(self, xml_handle, tmp_dir_name):
+
         # save new model and return new xml path
-        new_model_dir_name = 'new_reduced_humanoid_with_bricks_model'
+        new_model_dir_name = 'new_reduced_humanoid_with_bricks_model/' +  tmp_dir_name + "/"
         cwd = Path.cwd()
         new_model_dir_path = Path.joinpath(cwd, new_model_dir_name)
         xml_file_name =  "modified_reduced_humanoid.xml"
-        mjcf.export_with_assets(new_model_xlm, new_model_dir_path, xml_file_name)
+        mjcf.export_with_assets(xml_handle, new_model_dir_path, xml_file_name)
         new_xml_path = Path.joinpath(new_model_dir_path, xml_file_name)
+
         return new_xml_path.as_posix()
 
     def has_fallen(self, state):
@@ -220,7 +254,8 @@ class ReducedHumanoidTorque(BaseHumanoid):
 
 if __name__ == '__main__':
 
-    env = ReducedHumanoidTorque(timestep=1/1000, n_substeps=10, use_brick_foots=True, random_start=False)
+    env = ReducedHumanoidTorque(timestep=1/1000, n_substeps=10, use_brick_foots=False, random_start=False,
+                                disable_arms=True, tmp_dir_name="test")
 
     action_dim = env.info.action_space.shape[0]
 
