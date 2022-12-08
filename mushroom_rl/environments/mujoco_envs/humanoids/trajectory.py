@@ -67,7 +67,6 @@ class Trajectory(object):
             keys.remove(ik)
 
         self.trajectory = np.array([self._trajectory_files[key] for key in keys])
-        print("--", self.trajectory.shape)
         self.keys = keys
 
         if "split_points" in self._trajectory_files.keys():

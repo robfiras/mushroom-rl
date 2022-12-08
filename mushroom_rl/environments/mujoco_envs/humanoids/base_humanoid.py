@@ -63,6 +63,9 @@ class BaseHumanoid(MuJoCo):
         self.info.action_space.low[:] = -1.0
         self.info.action_space.high[:] = 1.0
 
+        # mask to get kinematic observations (-2 for neglecting x and z)
+        self._kinematic_obs_mask = np.arange(len(observation_spec) - 2)
+
         # setup a running average window for the mean ground forces
         self.mean_grf = RunningAveragedWindow(shape=(12,),
                                               window_size=n_substeps)
@@ -150,8 +153,10 @@ class BaseHumanoid(MuJoCo):
     def is_absorbing(self, obs):
         return self.has_fallen(obs)
 
-    def render(self):
+    def get_kinematic_obs_mask(self):
+        return self._kinematic_obs_mask
 
+    def render(self):
         if self._viewer is None:
             if mujoco_viewer_available:
                 self._viewer = mujoco_viewer.MujocoViewer(self._model, self._data)
