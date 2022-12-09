@@ -47,7 +47,15 @@ class BaseQuadruped(MuJoCo):
 
 
         self.use_action_clipping = use_action_clipping
-        self.goal_reward = NoGoalReward()
+
+        # specify the reward
+        if goal_reward == "custom":
+            self.goal_reward = CustomReward(**goal_reward_params)
+        elif goal_reward is None:
+            self.goal_reward = NoGoalReward()
+        else:
+            raise NotImplementedError("The specified goal reward has not been"
+                                      "implemented: ", goal_reward)
 
         self.info.observation_space = spaces.Box(*self._get_observation_space())
 
