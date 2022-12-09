@@ -315,13 +315,12 @@ class BaseQuadruped(MuJoCo):
         # to get the same init position
         trajectory_files = np.load(states_path, allow_pickle=True)
         trajectory = np.array([trajectory_files[key] for key in trajectory_files.keys()])
-        print(type(trajectory[0]))
         print(trajectory.shape)
-
-        obs_spec = self.obs_helper.observation_spec
         #set x and y to 0: be carefull need to be at 0,1
         trajectory[0, :] -= trajectory[0, 0]
         trajectory[1, :] -= trajectory[1, 0]
+
+        obs_spec = self.obs_helper.observation_spec
         for key_name_ot, value in zip(obs_spec, trajectory[:,0]):
             key, name, ot = key_name_ot
             if ot == ObservationType.JOINT_POS:
@@ -335,7 +334,6 @@ class BaseQuadruped(MuJoCo):
 
         #np.set_printoptions(threshold=sys.maxsize)
         action_files = np.load(action_path, allow_pickle=True)
-
         actions = np.array([action_files[key] for key in action_files.keys()])[0]
 
 
@@ -352,7 +350,7 @@ class BaseQuadruped(MuJoCo):
         true_pos=[]
         set_point=[]
 
-        if (dataset_path): #format shape[1] is nr motors/observable points
+        if (dataset_path):
             actions_dataset=[]
             states_dataset=[]
             episode_starts_dataset= [False]*actions.shape[0]
@@ -363,24 +361,24 @@ class BaseQuadruped(MuJoCo):
 
 
 
-        for i in np.arange(actions.shape[0]):#1024
-            #time.sleep(.1)
-            if(dataset_path and i>1024):
-                actions_dataset.append(list(actions[i]))
-                states_dataset_temp = list(self._data.qpos[:]) + list(self._data.qvel[:])
 
-                for x in sorted(ignore_keys, reverse=True):
-                    del states_dataset_temp[x]
-                states_dataset.append(states_dataset_temp)
+        for i in np.arange(actions.shape[0]):
+            #time.sleep(.1)
+            if(dataset_path and i>1023):
+                actions_dataset.append(list(actions[i]))
+                states_dataset.append(list(self._data.qpos[:]) + list(self._data.qvel[:]))
                 absorbing_dataset.append(self.is_absorbing(self._obs))
                 temp_obs=self._obs
+
             action = actions[i]
             true_pos.append(list(self._data.qpos[6:]))
             set_point.append(trajectory[6:18,i])
             nstate, _, absorbing, _ = self.step(action)
             self.render()
-            if(dataset_path and i>1024):
 
+            if(dataset_path and i>1023):
+
+                #if nextstate is used for training; wasn't compatible with action in the moment
                 #next_states_dataset_temp = list(self._data.qpos[:]) + list(self._data.qvel[:])
                 #for x in sorted(ignore_keys, reverse=True):
                 #    del next_states_dataset_temp[x]
@@ -390,11 +388,65 @@ class BaseQuadruped(MuJoCo):
                 rewards_dataset.append(self.reward(temp_obs, action, self._obs, self.is_absorbing(self._obs)))
 
         if (dataset_path):
+            # extra dataset with only states for initial positions
+            only_states_dataset = [[], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [],
+                                   [], [], [], [], [], [], [], [], [], [], [], [], [], [], []]
+            for j in np.arange(len(states_dataset)):
+                for i in np.arange(len(only_states_dataset)):
+                    only_states_dataset[i].append(states_dataset[j][i])
+
+            np.savez(os.path.join(dataset_path, 'dataset_only_states_unitreeA1_IRL.npz'),
+                     q_trunk_tx=np.array(only_states_dataset[0]),
+                     q_trunk_ty=np.array(only_states_dataset[1]),
+                     q_trunk_tz=np.array(only_states_dataset[2]),
+                     q_trunk_tilt=np.array(only_states_dataset[3]),
+                     q_trunk_list=np.array(only_states_dataset[4]),
+                     q_trunk_rotation=np.array(only_states_dataset[5]),
+                     q_FR_hip_joint=np.array(only_states_dataset[6]),
+                     q_FR_thigh_joint=np.array(only_states_dataset[7]),
+                     q_FR_calf_joint=np.array(only_states_dataset[8]),
+                     q_FL_hip_joint=np.array(only_states_dataset[9]),
+                     q_FL_thigh_joint=np.array(only_states_dataset[10]),
+                     q_FL_calf_joint=np.array(only_states_dataset[11]),
+                     q_RR_hip_joint=np.array(only_states_dataset[12]),
+                     q_RR_thigh_joint=np.array(only_states_dataset[13]),
+                     q_RR_calf_joint=np.array(only_states_dataset[14]),
+                     q_RL_hip_joint=np.array(only_states_dataset[15]),
+                     q_RL_thigh_joint=np.array(only_states_dataset[16]),
+                     q_RL_calf_joint=np.array(only_states_dataset[17]),
+                     dq_trunk_tx=np.array(only_states_dataset[18]),
+                     dq_trunk_tz=np.array(only_states_dataset[19]),
+                     dq_trunk_ty=np.array(only_states_dataset[20]),
+                     dq_trunk_tilt=np.array(only_states_dataset[21]),
+                     dq_trunk_list=np.array(only_states_dataset[22]),
+                     dq_trunk_rotation=np.array(only_states_dataset[23]),
+                     dq_FR_hip_joint=np.array(only_states_dataset[24]),
+                     dq_FR_thigh_joint=np.array(only_states_dataset[25]),
+                     dq_FR_calf_joint=np.array(only_states_dataset[26]),
+                     dq_FL_hip_joint=np.array(only_states_dataset[27]),
+                     dq_FL_thigh_joint=np.array(only_states_dataset[28]),
+                     dq_FL_calf_joint=np.array(only_states_dataset[29]),
+                     dq_RR_hip_joint=np.array(only_states_dataset[30]),
+                     dq_RR_thigh_joint=np.array(only_states_dataset[31]),
+                     dq_RR_calf_joint=np.array(only_states_dataset[32]),
+                     dq_RL_hip_joint=np.array(only_states_dataset[33]),
+                     dq_RL_thigh_joint=np.array(only_states_dataset[34]),
+                     dq_RL_calf_joint=np.array(only_states_dataset[35]))
+
+
+            # remove ignore keys
+            states_dataset = np.array(states_dataset)
+            for x in sorted(ignore_keys, reverse=True):
+                states_dataset = np.delete(states_dataset, x, 1)
+
+            #safe dataset with actions, absorbing etc -> used for learning in gail
             np.savez(os.path.join(dataset_path, 'dataset_unitreeA1_IRL.npz'),
-                     actions=actions_dataset, states=states_dataset, episode_starts=episode_starts_dataset,
+                     actions=actions_dataset, states=list(states_dataset), episode_starts=episode_starts_dataset,
                       absorbing=absorbing_dataset, rewards=rewards_dataset)# next_states=next_states_dataset,
 
 
+
+        # plotting of error and comparison of setpoint and actual position
         true_pos=np.array(true_pos)
         set_point=np.array(set_point)
         # --------------------------------------------------------------------------------------------------------------
@@ -474,5 +526,5 @@ class BaseQuadruped(MuJoCo):
         
 
 
-
+#changed force ranges, kp, removed limp
 

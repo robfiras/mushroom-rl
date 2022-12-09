@@ -195,8 +195,8 @@ if __name__ == '__main__':
     env.reset()
 
 
-    env.play_action_demo(action_path='/home/tim/Documents/locomotion_simulation/log/actions_position.npz', #actions_torque.npz
-                         states_path='/home/tim/Documents/locomotion_simulation/log/states.npz',
+    env.play_action_demo(action_path='/home/tim/Documents/locomotion_simulation/log/actions_position_100s.npz', #actions_torque.npz
+                         states_path='/home/tim/Documents/locomotion_simulation/log/states_100s.npz',
                          control_dt=control_dt, demo_dt=demo_dt,
                          dataset_path='/home/tim/Documents/IRL_unitreeA1/data',
                          ignore_keys=[0,1])
