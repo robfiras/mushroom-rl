@@ -77,7 +77,6 @@ class BaseQuadruped(MuJoCo):
 
         if traj_params:
             self.trajectory = Trajectory(keys=self.get_all_observation_keys(), **traj_params)
-            print(self.trajectory)
         else:
             self.trajectory = None
 
@@ -175,12 +174,101 @@ class BaseQuadruped(MuJoCo):
         else:
             self._viewer.render(self._data)
 
-    def create_dataset(self, ignore_keys=[], normalizer=None):
-        if self.trajectory is not None:
+    # TODO: scaling and ignore keys: generate new coplete dataset
+    def create_dataset(self, ignore_keys=[], normalizer=None, data_path=None, only_state=True):
+        """
+        creates dataset.
+        If data_path is set only states has to be false -> creates dataset with states, actions (next_states)
+        else dataset with only states is created
+        scales/interpolates to the correct frequencies
+        dataset needs to be in the same order as self.obs_helper.observation_spec
+        """
+        if only_state and self.trajectory is not None:# case only states
             return self.trajectory.create_dataset(ignore_keys=ignore_keys, normalizer=normalizer)
-        else:
+        elif not only_state and data_path is not None:
+
+
+
+
+
+
+            # change name in ignore keys into
+            obs_keys = list(np.array(self.obs_helper.observation_spec)[:,0])
+            ignore_index = []
+            for key in ignore_keys:
+                ignore_index.append(obs_keys.index(key))
+
+
+            dataset = dict()
+
+            # load expert training data
+            expert_files = np.load(data_path)
+            dataset["states"] = expert_files["states"]
+            dataset["actions"] = expert_files["actions"]
+
+            dataset["episode_starts"] = expert_files["episode_starts"]
+            assert dataset["episode_starts"][0] and [x for x in dataset["episode_starts"][1:] if x==True] == [], "Implementation only for one long trajectory"
+
+            #remove ignore indices
+            for i in sorted(ignore_index, reverse=True):
+                dataset["states"] = np.delete(dataset["states"], i, 1)
+
+            # scale frequencies
+            demo_dt = self.trajectory.traj_dt
+            control_dt = self.trajectory.control_dt
+            if demo_dt != control_dt:
+                new_demo_sampling_factor = demo_dt / control_dt
+                x = np.arange(dataset["states"].shape[0])
+                x_new = np.linspace(0, dataset["states"].shape[0] - 1, round(dataset["states"].shape[0] * new_demo_sampling_factor),
+                                    endpoint=True)
+                dataset["states"] = interpolate.interp1d(x, dataset["states"], kind="cubic", axis=0)(x_new)
+                dataset["actions"] = interpolate.interp1d(x, dataset["actions"], kind="cubic", axis=0)(x_new)
+                dataset["episode_starts"]=[False]*x_new
+                dataset["episode_starts"][0]=True
+
+
+
+            # maybe we have next action and next next state
+            try:
+                dataset["next_actions"] = expert_files["next_actions"]
+                dataset["next_next_states"] = expert_files["next_next_states"]
+                # remove ignore indices
+                for i in sorted(ignore_index, reverse=True):
+                    dataset["next_next_states"] = np.delete(dataset["next_next_states"], i, 1)
+                #scaling
+                if demo_dt != control_dt:
+                    dataset["next_actions"] = interpolate.interp1d(x, dataset["next_actions"], kind="cubic", axis=0)(x_new)
+                    dataset["next_next_states"] = interpolate.interp1d(x, dataset["next_next_states"], kind="cubic", axis=0)(x_new)
+
+            except KeyError as e:
+                print("Did not find next action or next next state.")
+
+            # maybe we have next states and dones in the dataset
+            try:
+                dataset["next_states"] = expert_files["next_states"]
+                dataset["absorbing"] = expert_files["absorbing"]
+
+                # remove ignore indices
+                for i in sorted(ignore_index, reverse=True):
+                    dataset["next_states"] = np.delete(dataset["next_states"], i, 1)
+
+                #scaling
+                if demo_dt != control_dt:
+                    dataset["next_states"] = interpolate.interp1d(x, dataset["next_states"], kind="cubic", axis=0)(x_new)
+                    # TODO: not sure about this
+                    dataset["absorbing"] = interpolate.interp1d(x, dataset["absorbing"], kind="cubic", axis=0)(x_new)
+
+            except KeyError as e:
+                print("Warning Dataset: %s" % e)
+            return dataset
+
+
+
+        elif only_state and self.trajectory is None:
             raise ValueError("No trajecory was passed to the environment. To create a dataset,"
                              "pass a trajectory to the dataset first.")
+        else:
+            raise ValueError("data_path must be set iff you use actions/not only states")
 
     def play_trajectory_demo(self, freq=200, view_from_other_side=False):
         """
@@ -305,7 +393,7 @@ class BaseQuadruped(MuJoCo):
         len_qvel = len([key for key in keys if key.startswith("dq_")])
         return len_qpos, len_qvel
 
-    def play_action_demo(self, action_path, states_path, control_dt=0.01, demo_dt=0.01, dataset_path=None, ignore_keys=[]):
+    def play_action_demo(self, action_path, states_path, control_dt=0.01, demo_dt=0.01, dataset_path=None):
         """
 
         Plays a demo of the loaded actions by using the actions in action_path.
@@ -314,17 +402,15 @@ class BaseQuadruped(MuJoCo):
         control_dt: model control frequency
         demo_dt: freqency the data was collected
         dataset_path: if set, method creates a dataset with actions, states, episode_starts, next_states, absorbing, rewards
-        ignore_keys if dataset_path is set; index of keys to ignore in dataset
         make sure action clipping is off
 
         """
-        assert (ignore_keys==[]) or bool(dataset_path), "ignore_keys only available if dataset_path set"
 
         # to get the same init position
         trajectory_files = np.load(states_path, allow_pickle=True)
         trajectory = np.array([trajectory_files[key] for key in trajectory_files.keys()])
-        print(trajectory.shape)
-        #set x and y to 0: be carefull need to be at 0,1
+        print("Trajectory shape: ",trajectory.shape)
+        #set x and y to 0: be carefull need to be at index 0,1
         trajectory[0, :] -= trajectory[0, 0]
         trajectory[1, :] -= trajectory[1, 0]
 
@@ -335,9 +421,6 @@ class BaseQuadruped(MuJoCo):
                 self._data.joint(name).qpos = value
             elif ot == ObservationType.JOINT_VEL:
                 self._data.joint(name).qvel = value
-
-
-
 
 
         #np.set_printoptions(threshold=sys.maxsize)
@@ -352,30 +435,31 @@ class BaseQuadruped(MuJoCo):
             x_new = np.linspace(0, actions.shape[0]-1, round(actions.shape[0]*new_demo_sampling_factor),
                                 endpoint=True)
             actions = interpolate.interp1d(x, actions, kind="cubic", axis=0)(x_new)
-
             trajectory = interpolate.interp1d(x, trajectory, kind="cubic", axis=1)(x_new)
 
         true_pos=[]
         set_point=[]
 
+
         if (dataset_path):
+            traj_start_offset = 1023  # offset where to start logging the trajectory
             actions_dataset=[]
             states_dataset=[]
-            episode_starts_dataset= [False]*actions.shape[0]
+            episode_starts_dataset = [False]*(actions.shape[0]-traj_start_offset-1)
             episode_starts_dataset[0]=True
             #next_states_dataset=[]
-            absorbing_dataset=[]
-            rewards_dataset=[]
+            #absorbing_dataset=[]
+            #rewards_dataset=[]
 
 
 
 
         for i in np.arange(actions.shape[0]):
             #time.sleep(.1)
-            if(dataset_path and i>1023):
+            if(dataset_path and i>traj_start_offset):
                 actions_dataset.append(list(actions[i]))
                 states_dataset.append(list(self._data.qpos[:]) + list(self._data.qvel[:]))
-                absorbing_dataset.append(self.is_absorbing(self._obs))
+                #absorbing_dataset.append(self.is_absorbing(self._obs))
                 temp_obs=self._obs
 
             action = actions[i]
@@ -384,16 +468,12 @@ class BaseQuadruped(MuJoCo):
             nstate, _, absorbing, _ = self.step(action)
             self.render()
 
-            if(dataset_path and i>1023):
+            #if(dataset_path and i>traj_start_offset):
 
                 #if nextstate is used for training; wasn't compatible with action in the moment
-                #next_states_dataset_temp = list(self._data.qpos[:]) + list(self._data.qvel[:])
-                #for x in sorted(ignore_keys, reverse=True):
-                #    del next_states_dataset_temp[x]
-                #next_states_dataset.append(next_states_dataset_temp)
+                #next_states_dataset.append(list(self._data.qpos[:]) + list(self._data.qvel[:]))
 
-
-                rewards_dataset.append(self.reward(temp_obs, action, self._obs, self.is_absorbing(self._obs)))
+                #rewards_dataset.append(self.reward(temp_obs, action, self._obs, self.is_absorbing(self._obs)))
 
         if (dataset_path):
             # extra dataset with only states for initial positions
@@ -442,15 +522,11 @@ class BaseQuadruped(MuJoCo):
                      dq_RL_calf_joint=np.array(only_states_dataset[35]))
 
 
-            # remove ignore keys
-            states_dataset = np.array(states_dataset)
-            for x in sorted(ignore_keys, reverse=True):
-                states_dataset = np.delete(states_dataset, x, 1)
 
             #safe dataset with actions, absorbing etc -> used for learning in gail
             np.savez(os.path.join(dataset_path, 'dataset_unitreeA1_IRL.npz'),
-                     actions=actions_dataset, states=list(states_dataset), episode_starts=episode_starts_dataset,
-                      absorbing=absorbing_dataset, rewards=rewards_dataset)# next_states=next_states_dataset,
+                     actions=actions_dataset, states=list(states_dataset), episode_starts=episode_starts_dataset)
+                      #absorbing=absorbing_dataset, rewards=rewards_dataset)# next_states=next_states_dataset,
 
 
 
