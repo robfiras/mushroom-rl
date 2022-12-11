@@ -11,7 +11,7 @@ from mushroom_rl.utils.running_stats import *
 from mushroom_rl.utils.mujoco import *
 from mushroom_rl.environments.mujoco_envs.humanoids.trajectory import Trajectory
 
-from mushroom_rl.environments.mujoco_envs.humanoids.reward import NoGoalReward, CustomReward
+from mushroom_rl.environments.mujoco_envs.humanoids.reward import NoGoalReward, CustomReward, TargetVelocityReward
 
 # optional imports
 try:
@@ -44,6 +44,11 @@ class BaseHumanoid(MuJoCo):
         # todo: update all rewards to new mujoco interface and not rely on sim anymore
         if goal_reward == "custom":
             self.goal_reward = CustomReward(**goal_reward_params)
+        elif goal_reward == "target_velocity":
+            x_vel_idx = self.get_obs_idx("dq_pelvis_tx")
+            assert len(x_vel_idx) == 1
+            x_vel_idx = x_vel_idx[0]
+            self.goal_reward = TargetVelocityReward(x_vel_idx=x_vel_idx, **goal_reward_params)
         elif goal_reward is None:
             self.goal_reward = NoGoalReward()
         else:
@@ -155,6 +160,10 @@ class BaseHumanoid(MuJoCo):
 
     def get_kinematic_obs_mask(self):
         return self._kinematic_obs_mask
+
+    def get_obs_idx(self, name):
+        idx = self.obs_helper.obs_idx_map[name]
+        return [i-2 for i in idx]
 
     def render(self):
         if self._viewer is None:

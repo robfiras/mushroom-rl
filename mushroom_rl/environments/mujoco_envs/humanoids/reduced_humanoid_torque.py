@@ -179,11 +179,7 @@ class ReducedHumanoidTorque(BaseHumanoid):
 
         for j in joints_to_remove:
             j_handle = xml_handle.find("joint", j)
-            try:
-                j_handle.remove()
-            except AttributeError:
-                print(e)
-                print(j)
+            j_handle.remove()
         for m in motors_to_remove:
             m_handle = xml_handle.find("actuator", m)
             m_handle.remove()
