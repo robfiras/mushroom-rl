@@ -37,7 +37,7 @@ class BaseQuadruped(MuJoCo):
     Mujoco simulation of unitree A1 model
     """
     def __init__(self, xml_path, action_spec, observation_spec, collision_groups=[], gamma=0.99, horizon=1000, n_substeps=10,  goal_reward=None,
-                 goal_reward_params=None, traj_params=None, timestep=0.001, use_action_clipping=True):
+                 goal_reward_params=None, traj_params=None, random_start=True, init_step_no=None, timestep=0.001, use_action_clipping=True):
         """
         Constructor.
         """
@@ -76,10 +76,26 @@ class BaseQuadruped(MuJoCo):
 
 
         if traj_params:
-            self.trajectory = Trajectory(keys=self.get_all_observation_keys(), **traj_params)
+            self.trajectory = Trajectory(keys=self.get_all_observation_keys(),
+                                         low=self.info.observation_space.low,
+                                         high=self.info.observation_space.high,
+                                         joint_pos_idx=self.obs_helper.joint_pos_idx,
+                                         **traj_params)
         else:
             self.trajectory = None
 
+        if not traj_params and random_start:
+            raise ValueError("Random start not possible without trajectory data.")
+        elif not traj_params and init_step_no is not None:
+            raise ValueError("Setting an initial step is not possible without trajectory data.")
+        elif init_step_no is not None and random_start:
+            raise ValueError("Either use a random start or set an initial step, not both.")
+        elif traj_params is not None and not (random_start or init_step_no is not None):
+            raise ValueError("You have specified a trajectory, you have to use either a random start or "
+                             "set an initial step")
+
+        self._random_start = random_start
+        self._init_step_no = init_step_no
 
     def _get_observation_space(self):
         sim_low, sim_high = (self.info.observation_space.low[2:],
@@ -111,14 +127,15 @@ class BaseQuadruped(MuJoCo):
         goal_reward = self.goal_reward(state, action, next_state)
         return goal_reward
 
-
-    def setup(self):
+    def setup(self, substep_no=None):
         self.goal_reward.reset_state()
         if self.trajectory is not None:
-            len_qpos, len_qvel = self.len_qpos_qvel()
-            qpos, qvel = self.trajectory.reset_trajectory(len_qpos, len_qvel)
-            self._data.qpos = qpos
-            self._data.qvel = qvel
+            if self._random_start:
+                sample = self.trajectory.reset_trajectory()
+            else:
+                sample = self.trajectory.reset_trajectory(self._init_step_no)
+
+            self.set_qpos_qvel(sample)
 
     def _simulation_pre_step(self):
         #self._data.qfrc_applied[self._action_indices] = self._data.qfrc_bias[:12]
@@ -141,9 +158,18 @@ class BaseQuadruped(MuJoCo):
         if self.use_action_clipping:
             unnormalized_action = ((action.copy() * self.norm_act_delta) + self.norm_act_mean)
             return unnormalized_action
-
-
         return action
+
+    def set_qpos_qvel(self, sample):
+        obs_spec = self.obs_helper.observation_spec
+        assert len(sample) == len(obs_spec)
+
+        for key_name_ot, value in zip(obs_spec, sample):
+            key, name, ot = key_name_ot
+            if ot == ObservationType.JOINT_POS:
+                self._data.joint(name).qpos = value
+            elif ot == ObservationType.JOINT_VEL:
+                self._data.joint(name).qvel = value
 
     def _simulation_post_step(self):
         grf = np.concatenate([self._get_collision_force("floor", "foot_FL")[:3],
