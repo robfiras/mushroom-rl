@@ -81,7 +81,7 @@ class Atlas(BaseHumanoid):
 
 if __name__ == '__main__':
 
-    env = Atlas()
+    env = Atlas(random_start=False)
 
     action_dim = env.info.action_space.shape[0]
 
@@ -93,7 +93,7 @@ if __name__ == '__main__':
     absorbing = False
     while True:
         print('test')
-        action = np.random.randn(action_dim)/10
+        action = np.random.randn(action_dim)
         nstate, _, absorbing, _ = env.step(action)
 
         env.render()
