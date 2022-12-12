@@ -37,7 +37,7 @@ class UnitreeA1(BaseQuadruped):
     clipping only for action demo off
     """
     def __init__(self, gamma=0.99, horizon=1000, n_substeps=10,
-                 traj_params=None, timestep=0.001, use_action_clipping=True):
+                 traj_params=None, timestep=0.001, use_action_clipping=True, goal_reward=None, goal_reward_params=None):
         """
         Constructor.
         use_action_clipping should be off for action demo
@@ -104,7 +104,8 @@ class UnitreeA1(BaseQuadruped):
                             ("foot_RL", ["RL_foot"])]
 
         super().__init__(xml_path, action_spec, observation_spec, gamma=gamma, horizon=horizon, n_substeps=n_substeps,
-                         timestep=timestep, collision_groups=collision_groups, traj_params=traj_params, use_action_clipping=use_action_clipping)
+                         timestep=timestep, collision_groups=collision_groups, traj_params=traj_params, use_action_clipping=use_action_clipping,
+                         goal_reward=goal_reward, goal_reward_params=goal_reward_params)
 
     @staticmethod
     def has_fallen(state):
@@ -195,11 +196,10 @@ if __name__ == '__main__':
     env.reset()
 
 
-    env.play_action_demo(action_path='/home/tim/Documents/locomotion_simulation/log/actions_position.npz', #actions_torque.npz
-                         states_path='/home/tim/Documents/locomotion_simulation/log/states.npz',
+    env.play_action_demo(action_path='/home/tim/Documents/locomotion_simulation/log/actions_position_100s.npz', #actions_torque.npz
+                         states_path='/home/tim/Documents/locomotion_simulation/log/states_100s.npz',
                          control_dt=control_dt, demo_dt=demo_dt,
-                         dataset_path='/home/tim/Documents/IRL_unitreeA1/data',
-                         ignore_keys=[0,1])
+                         dataset_path='/home/tim/Documents/IRL_unitreeA1/data')
 
 
 
