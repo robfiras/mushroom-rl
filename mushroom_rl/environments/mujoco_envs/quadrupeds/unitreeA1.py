@@ -104,7 +104,7 @@ class UnitreeA1(BaseQuadruped):
                             ("foot_RL", ["RL_foot"])]
 
         super().__init__(xml_path, action_spec, observation_spec, gamma=gamma, horizon=horizon, n_substeps=n_substeps,
-                         timestep=timestep, collision_groups=collision_groups, traj_params=traj_params, use_action_clipping=use_action_clipping,
+                         timestep=timestep, collision_groups=collision_groups, traj_params=traj_params,
                          goal_reward=goal_reward, goal_reward_params=goal_reward_params)
 
     @staticmethod
@@ -186,7 +186,7 @@ if __name__ == '__main__':
 
 
 
-    env = UnitreeA1(timestep=1/env_freq, gamma=gamma, horizon=horizon, n_substeps=n_substeps, use_action_clipping=False)
+    env = UnitreeA1(timestep=1/env_freq, gamma=gamma, horizon=horizon, n_substeps=n_substeps)
 
 
     action_dim = env.info.action_space.shape[0]
@@ -196,8 +196,8 @@ if __name__ == '__main__':
     env.reset()
 
 
-    env.play_action_demo(action_path='/home/tim/Documents/locomotion_simulation/log/actions_position_100s.npz', #actions_torque.npz
-                         states_path='/home/tim/Documents/locomotion_simulation/log/states_100s.npz',
+    env.play_action_demo(action_path='/home/tim/Documents/locomotion_simulation/log/actions_position_100s_norm.npz', #actions_torque.npz
+                         states_path='/home/tim/Documents/locomotion_simulation/log/states_100s_norm.npz',
                          control_dt=control_dt, demo_dt=demo_dt,
                          dataset_path='/home/tim/Documents/IRL_unitreeA1/data')
 
