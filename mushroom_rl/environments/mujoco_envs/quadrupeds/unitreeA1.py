@@ -144,13 +144,14 @@ if __name__ == '__main__':
     n_substeps = env_freq // desired_contr_freq
 
     # prepare trajectory params
-    traj_params = dict(traj_path='/home/tim/Documents/locomotion_simulation/log/states.npz',
+    traj_params = dict(traj_path='/home/tim/Documents/locomotion_simulation/log/states_500s_norm.npz',
                        traj_dt=(1 / traj_data_freq),
                        control_dt=(1 / desired_contr_freq))
     gamma = 0.99
     horizon = 1000
 
-    env = UnitreeA1(timestep=1/env_freq, gamma=gamma, horizon=horizon, n_substeps=n_substeps, traj_params=traj_params)
+    env = UnitreeA1(timestep=1/env_freq, gamma=gamma, horizon=horizon, n_substeps=n_substeps,
+                    traj_params=traj_params, init_step_no=0)
 
 
     with catchtime() as t:
@@ -159,8 +160,8 @@ if __name__ == '__main__':
 
     print("Finished")
     # still problem with different behaviour (if robot rolls to the side - between freejoint and muljoints) action[1] and [7] = -1 (with action clipping)
-    """
 
+    """
     #solref="0.004 1000" /damping 500, stiffness from 0,93 to 62,5
     #0.004 1000000
     #0.004-0.005 1000000 kp=1000
@@ -195,10 +196,10 @@ if __name__ == '__main__':
     env.reset()
 
 
-    env.play_action_demo(action_path='/home/tim/Documents/locomotion_simulation/log/actions_position_100s_norm.npz', #actions_torque.npz
-                         states_path='/home/tim/Documents/locomotion_simulation/log/states_100s_norm.npz',
-                         control_dt=control_dt, demo_dt=demo_dt)#,
-                         #dataset_path='/home/tim/Documents/IRL_unitreeA1/data')
+    env.play_action_demo(action_path='/home/tim/Documents/locomotion_simulation/log/actions_position.npz', #actions_torque.npz
+                         states_path='/home/tim/Documents/locomotion_simulation/log/states.npz',
+                         control_dt=control_dt, demo_dt=demo_dt,
+                         dataset_path='/home/tim/Documents/IRL_unitreeA1/data')
 
 
 
@@ -232,6 +233,33 @@ if __name__ == '__main__':
         """
 
 
+
+
+    """
+    
+    Did:
+        finetuned xml - more stable version (changed the position of the mass)
+        changed observation space -> changed has_fallen
+        leave out initial stepping
+        created bigger datasets
+        added interpolation to gail/vail -> wrote own create_dataset method
+        -> intermediate step -> 
+        added traj to gail for init position
+        
+        refactoring of base_qudrued
+        fixed problems because of merging/new constructor of base humanoid
+        removed flag action_normalization & generatet dataset
+        tried to generate 250k dataset
+        
+        
+    Questions:
+        normalization ranges sligthly different
+        init weight position ok?
+        Talks in the Oberseminar
+        
+    
+    
+    """
 
 
 
