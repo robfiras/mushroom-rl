@@ -49,56 +49,7 @@ class BaseQuadruped(BaseHumanoid):
         #    pass
 
 
-    def _get_observation_space(self):
-        sim_low, sim_high = (self.info.observation_space.low[2:],
-                             self.info.observation_space.high[2:])
 
-        grf_low, grf_high = (-np.ones((12,)) * np.inf,
-                             np.ones((12,)) * np.inf)
-
-        r_low, r_high = self.goal_reward.get_observation_space()
-
-        return (np.concatenate([sim_low, grf_low, r_low]),
-                np.concatenate([sim_high, grf_high, r_high]))
-
-    def _create_observation(self, obs):
-        """
-        Creates full vector of observations:
-        needs to be changed for freejoint
-        """
-        obs = np.concatenate([obs[2:],
-                              self.mean_grf.mean / 1000.,
-                              self.goal_reward.get_observation(),
-                              ]).flatten()
-
-        return obs
-
-
-    def reward(self, state, action, next_state, absorbing):
-        #return -1 if self.has_fallen(self._obs) else 1
-        goal_reward = self.goal_reward(state, action, next_state)
-        return goal_reward
-
-    def setup(self, substep_no=None):
-        self.goal_reward.reset_state()
-        if self.trajectory is not None:
-            if self._random_start:
-                sample = self.trajectory.reset_trajectory()
-            else:
-                sample = self.trajectory.reset_trajectory(self._init_step_no)
-
-            self.set_qpos_qvel(sample)
-
-    #def _simulation_pre_step(self):
-        #self._data.qfrc_applied[self._action_indices] = self._data.qfrc_bias[:12]
-        #print(self._data.qfrc_bias[:12])
-        #self._data.ctrl[self._action_indices] = self._data.qfrc_bias[:12] + self._data.ctrl[self._action_indices]
-        #print(self._data.qfrc_bias[:12])
-        #self._data.qfrc_applied[self._action_indices] = self._data.qfrc_bias[:12] + self._data.qfrc_applied[self._action_indices]
-        #self._data.qfrc_actuator[self._action_indices] += self._data.qfrc_bias[:12]
-        #self._data.ctrl[self._action_indices] += self._data.qfrc_bias[:12]
-
-        #pass
 
     #def _compute_action(self, obs, action):
     #    gravity = self._data.qfrc_bias[self._action_indices]
