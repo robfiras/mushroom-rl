@@ -35,8 +35,8 @@ class UnitreeA1(BaseQuadruped):
     to switch between torque and position control: adjust xml file (and if needed action_position.npz/action_position.npz)
     to switch between freejoint and mul_joint: adapt obs space and xml path
     """
-    def __init__(self, gamma=0.99, horizon=1000, n_substeps=10, random_start=False,
-                 traj_params=None, timestep=0.001, use_action_clipping=True, goal_reward=None, goal_reward_params=None):
+    def __init__(self, gamma=0.99, horizon=1000, n_substeps=10, random_start=False, init_step_no=None,
+                 traj_params=None, timestep=0.001, goal_reward=None, goal_reward_params=None):
         """
         Constructor.
         use_action_clipping should be off for action demo
@@ -103,7 +103,7 @@ class UnitreeA1(BaseQuadruped):
                             ("foot_RL", ["RL_foot"])]
 
         super().__init__(xml_path, action_spec, observation_spec, gamma=gamma, horizon=horizon, n_substeps=n_substeps,
-                         timestep=timestep, collision_groups=collision_groups, traj_params=traj_params,
+                         timestep=timestep, collision_groups=collision_groups, traj_params=traj_params, init_step_no=init_step_no,
                          goal_reward=goal_reward, goal_reward_params=goal_reward_params, random_start=random_start)
 
     @staticmethod
