@@ -35,73 +35,19 @@ class BaseQuadruped(BaseHumanoid):
     """
     Mujoco simulation of unitree A1 model
     """
-<<<<<<< HEAD
-=======
-    def __init__(self, xml_path, action_spec, observation_spec, collision_groups=[], gamma=0.99, horizon=1000, n_substeps=10,  goal_reward=None,
-                 goal_reward_params=None, traj_params=None, random_start=True, init_step_no=None, timestep=0.001, use_action_clipping=True):
-        """
-        Constructor.
-        """
 
-        super().__init__(xml_path, action_spec, observation_spec, gamma=gamma, horizon=horizon, n_substeps=n_substeps,
-                         timestep=timestep, collision_groups=collision_groups)
-
-
-        self.use_action_clipping = use_action_clipping
-
-        # specify the reward
-        if goal_reward == "custom":
-            self.goal_reward = CustomReward(**goal_reward_params)
-        elif goal_reward is None:
-            self.goal_reward = NoGoalReward()
-        else:
-            raise NotImplementedError("The specified goal reward has not been"
-                                      "implemented: ", goal_reward)
-
-        self.info.observation_space = spaces.Box(*self._get_observation_space())
->>>>>>> 66f49e4a8cd3edf91eee06b04b39c460accaecb8
 
     # def _simulation_pre_step(self):
-    # self._data.qfrc_applied[self._action_indices] = self._data.qfrc_bias[:12]
-    # print(self._data.qfrc_bias[:12])
-    # self._data.ctrl[self._action_indices] = self._data.qfrc_bias[:12] + self._data.ctrl[self._action_indices]
-    # print(self._data.qfrc_bias[:12])
-    # self._data.qfrc_applied[self._action_indices] = self._data.qfrc_bias[:12] + self._data.qfrc_applied[self._action_indices]
-    # self._data.qfrc_actuator[self._action_indices] += self._data.qfrc_bias[:12]
-    # self._data.ctrl[self._action_indices] += self._data.qfrc_bias[:12]
+        # self._data.qfrc_applied[self._action_indices] = self._data.qfrc_bias[:12]
+        # print(self._data.qfrc_bias[:12])
+        # self._data.ctrl[self._action_indices] = self._data.qfrc_bias[:12] + self._data.ctrl[self._action_indices]
+        # print(self._data.qfrc_bias[:12])
+        # self._data.qfrc_applied[self._action_indices] = self._data.qfrc_bias[:12] + self._data.qfrc_applied[self._action_indices]
+        # self._data.qfrc_actuator[self._action_indices] += self._data.qfrc_bias[:12]
+        # self._data.ctrl[self._action_indices] += self._data.qfrc_bias[:12]
 
-    #    pass
+        #    pass
 
-<<<<<<< HEAD
-    # def _compute_action(self, obs, action):
-=======
-
-
-        self.mean_grf = RunningAveragedWindow(shape=(12,),
-                                              window_size=n_substeps)
-
-
-        if traj_params:
-            self.trajectory = Trajectory(keys=self.get_all_observation_keys(),
-                                         low=self.info.observation_space.low,
-                                         high=self.info.observation_space.high,
-                                         joint_pos_idx=self.obs_helper.joint_pos_idx,
-                                         **traj_params)
-        else:
-            self.trajectory = None
-
-        if not traj_params and random_start:
-            raise ValueError("Random start not possible without trajectory data.")
-        elif not traj_params and init_step_no is not None:
-            raise ValueError("Setting an initial step is not possible without trajectory data.")
-        elif init_step_no is not None and random_start:
-            raise ValueError("Either use a random start or set an initial step, not both.")
-        elif traj_params is not None and not (random_start or init_step_no is not None):
-            raise ValueError("You have specified a trajectory, you have to use either a random start or "
-                             "set an initial step")
-
-        self._random_start = random_start
-        self._init_step_no = init_step_no
 
     def _get_observation_space(self):
         sim_low, sim_high = (self.info.observation_space.low[2:],
@@ -143,7 +89,7 @@ class BaseQuadruped(BaseHumanoid):
 
             self.set_qpos_qvel(sample)
 
-    def _simulation_pre_step(self):
+    #def _simulation_pre_step(self):
         #self._data.qfrc_applied[self._action_indices] = self._data.qfrc_bias[:12]
         #print(self._data.qfrc_bias[:12])
         #self._data.ctrl[self._action_indices] = self._data.qfrc_bias[:12] + self._data.ctrl[self._action_indices]
@@ -152,35 +98,14 @@ class BaseQuadruped(BaseHumanoid):
         #self._data.qfrc_actuator[self._action_indices] += self._data.qfrc_bias[:12]
         #self._data.ctrl[self._action_indices] += self._data.qfrc_bias[:12]
 
-        pass
+        #pass
 
     #def _compute_action(self, obs, action):
->>>>>>> 66f49e4a8cd3edf91eee06b04b39c460accaecb8
     #    gravity = self._data.qfrc_bias[self._action_indices]
     #    action = action+gravity
     #    return action
 
-<<<<<<< HEAD
-=======
 
-    def _preprocess_action(self, action):
-        if self.use_action_clipping:
-            unnormalized_action = ((action.copy() * self.norm_act_delta) + self.norm_act_mean)
-            return unnormalized_action
-        return action
-
-    def set_qpos_qvel(self, sample):
-        obs_spec = self.obs_helper.observation_spec
-        assert len(sample) == len(obs_spec)
-
-        for key_name_ot, value in zip(obs_spec, sample):
-            key, name, ot = key_name_ot
-            if ot == ObservationType.JOINT_POS:
-                self._data.joint(name).qpos = value
-            elif ot == ObservationType.JOINT_VEL:
-                self._data.joint(name).qvel = value
-
->>>>>>> 66f49e4a8cd3edf91eee06b04b39c460accaecb8
     def _simulation_post_step(self):
         grf = np.concatenate([self._get_collision_force("floor", "foot_FL")[:3],
                               self._get_collision_force("floor", "foot_FR")[:3],
