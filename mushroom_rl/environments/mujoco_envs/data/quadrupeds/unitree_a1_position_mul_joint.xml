@@ -1,5 +1,3 @@
-
-
 <mujoco model="a1">
   <compiler angle="radian" meshdir="assets" texturedir="assets" autolimits="true"/>
 
@@ -8,14 +6,14 @@
   <default>
     <default class="a1">
       <geom friction="0" margin="0.001"/>
-      <joint axis="0 1 0" damping="2" armature="0.01" frictionloss="0.2"/>
+      <joint axis="0 1 0" damping="4" armature="0.01" frictionloss="0.2"/>
       <!--general biastype="affine" biasprm="0 -50 0" gaintype="fixed" gainprm="50"/-->
       <!--position kp="300"250,2.4,3 forcerange="-33.5 33.5" 300 4 best for correct freq./-->
-      <position kp="1000" forcerange="-20 20"/>
+      <position kp="700" forcerange="-33.5 33.5"/>
 
 
       <default class="abduction">
-        <joint axis="1 0 0" range="-0.802851 0.802851" damping="1"/>
+        <joint axis="1 0 0" range="-0.802851 0.802851" damping="2"/>
         <position ctrlrange="-0.802851 0.802851"/>
       </default>
       <default class="hip">
@@ -53,7 +51,7 @@
           <geom size="0.01" fromto="0.02 0 -0.13 0 0 -0.2"/>
         </default>
         <default class="foot">
-          <geom type="sphere" size="0.02" pos="0 0 -0.2" priority="1" solimp="0.015 1 0.062" solref="-0.0000000001 -250"
+          <geom type="sphere" size="0.02" pos="0 0 -0.2" priority="1"
               condim="6" friction="0.8 0.02 0.01"/>
         </default>
       </default>
@@ -87,7 +85,7 @@
       <joint name="trunk_list" type="hinge" pos="0 0 0" axis="       1        0        0" limited="false" range=" -1.5708   1.5708" ref="0" armature="0" damping="0" stiffness="0"></joint>
       <joint name="trunk_rotation" type="hinge" pos="0 0 0" axis="       0        1        0" limited="false" range=" -1.5708   1.5708" ref="0" armature="0" damping="0" stiffness="0"></joint>
 
-      <inertial mass="4.713" pos="0 0 -0.0005"
+      <inertial mass="4.713" pos="0.1 0 -0.0005"
           fullinertia="0.0158533 0.0377999 0.0456542 -3.66e-05 -6.11e-05 -2.75e-05"/>
 
 
@@ -236,3 +234,4 @@
         ctrl="0 0.9 -1.8 0 0.9 -1.8 0 0.9 -1.8 0 0.9 -1.8"/>
   </keyframe -->
 </mujoco>
+
