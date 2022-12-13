@@ -68,7 +68,7 @@ class BaseQuadruped(BaseHumanoid):
 
         # print(self._data.qfrc_bias[:12])
 
-    def create_dataset(self, ignore_keys=[], normalizer=None, data_path=None, only_state=True):
+    def create_dataset(self, ignore_keys=[], normalizer=None, data_path=None, only_state=True, use_next_states=True):
         """
         creates dataset.
         If data_path is set only states has to be false -> creates dataset with states, actions (next_states)
@@ -76,9 +76,9 @@ class BaseQuadruped(BaseHumanoid):
         scales/interpolates to the correct frequencies
         dataset needs to be in the same order as self.obs_helper.observation_spec
         """
-        if only_state and self.trajectory is not None:  # case only states
+        if only_state and self.trajectory is not None and use_next_states:  # case only states
             return self.trajectory.create_dataset(ignore_keys=ignore_keys, normalizer=normalizer)
-        elif not only_state and data_path is not None:
+        elif not only_state and data_path is not None and not use_next_states and self.trajectory is not None:
 
             # change name in ignore keys into
             obs_keys = list(np.array(self.obs_helper.observation_spec)[:, 0])
@@ -157,8 +157,10 @@ class BaseQuadruped(BaseHumanoid):
         elif only_state and self.trajectory is None:
             raise ValueError("No trajecory was passed to the environment. To create a dataset,"
                              "pass a trajectory to the dataset first.")
+        elif not only_state and data_path is not None and not use_next_states and self.trajectory is None:
+            raise ValueError("need trajectory for initial positions")
         else:
-            raise ValueError("data_path must be set iff you use actions/not only states")
+            raise ValueError("wrong input or method doesn't support this type now")
 
     def play_action_demo(self, action_path, states_path, control_dt=0.01, demo_dt=0.01, dataset_path=None):
         """
