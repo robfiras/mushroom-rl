@@ -34,9 +34,8 @@ class UnitreeA1(BaseQuadruped):
     Mujoco simulation of unitree A1 model
     to switch between torque and position control: adjust xml file (and if needed action_position.npz/action_position.npz)
     to switch between freejoint and mul_joint: adapt obs space and xml path
-    clipping only for action demo off
     """
-    def __init__(self, gamma=0.99, horizon=1000, n_substeps=10,
+    def __init__(self, gamma=0.99, horizon=1000, n_substeps=10, random_start=False,
                  traj_params=None, timestep=0.001, use_action_clipping=True, goal_reward=None, goal_reward_params=None):
         """
         Constructor.
@@ -105,7 +104,7 @@ class UnitreeA1(BaseQuadruped):
 
         super().__init__(xml_path, action_spec, observation_spec, gamma=gamma, horizon=horizon, n_substeps=n_substeps,
                          timestep=timestep, collision_groups=collision_groups, traj_params=traj_params,
-                         goal_reward=goal_reward, goal_reward_params=goal_reward_params)
+                         goal_reward=goal_reward, goal_reward_params=goal_reward_params, random_start=random_start)
 
     @staticmethod
     def has_fallen(state):
@@ -198,8 +197,8 @@ if __name__ == '__main__':
 
     env.play_action_demo(action_path='/home/tim/Documents/locomotion_simulation/log/actions_position_100s_norm.npz', #actions_torque.npz
                          states_path='/home/tim/Documents/locomotion_simulation/log/states_100s_norm.npz',
-                         control_dt=control_dt, demo_dt=demo_dt,
-                         dataset_path='/home/tim/Documents/IRL_unitreeA1/data')
+                         control_dt=control_dt, demo_dt=demo_dt)#,
+                         #dataset_path='/home/tim/Documents/IRL_unitreeA1/data')
 
 
 
