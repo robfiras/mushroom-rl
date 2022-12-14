@@ -68,6 +68,7 @@ class Trajectory(object):
 
         self.trajectory = np.array([self._trajectory_files[key] for key in keys])
         self.keys = keys
+        print("Trajectory shape: ", self.trajectory.shape)
 
         if "split_points" in self._trajectory_files.keys():
             self.split_points = self._trajectory_files["split_points"]

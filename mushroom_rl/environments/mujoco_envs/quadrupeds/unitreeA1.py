@@ -140,11 +140,11 @@ if __name__ == '__main__':
     # define env and data frequencies
     env_freq = 1000  # hz, added here as a reminder
     traj_data_freq = 500  # hz, added here as a reminder
-    desired_contr_freq = 500  # hz
+    desired_contr_freq = 100  # hz
     n_substeps = env_freq // desired_contr_freq
 
     # prepare trajectory params
-    traj_params = dict(traj_path='/home/tim/Documents/locomotion_simulation/log/states_500s_norm.npz',
+    traj_params = dict(traj_path='/home/tim/Documents/locomotion_simulation/log/states_100s_norm.npz',
                        traj_dt=(1 / traj_data_freq),
                        control_dt=(1 / desired_contr_freq))
     gamma = 0.99
@@ -160,8 +160,8 @@ if __name__ == '__main__':
 
     print("Finished")
     # still problem with different behaviour (if robot rolls to the side - between freejoint and muljoints) action[1] and [7] = -1 (with action clipping)
-
     """
+
     #solref="0.004 1000" /damping 500, stiffness from 0,93 to 62,5
     #0.004 1000000
     #0.004-0.005 1000000 kp=1000
@@ -196,8 +196,8 @@ if __name__ == '__main__':
     env.reset()
 
 
-    env.play_action_demo(action_path='/home/tim/Documents/locomotion_simulation/log/actions_position.npz', #actions_torque.npz
-                         states_path='/home/tim/Documents/locomotion_simulation/log/states.npz',
+    env.play_action_demo(action_path='/home/tim/Documents/locomotion_simulation/log/actions_position_100s_norm.npz', #actions_torque.npz
+                         states_path='/home/tim/Documents/locomotion_simulation/log/states_100s_norm.npz',
                          control_dt=control_dt, demo_dt=demo_dt,
                          dataset_path='/home/tim/Documents/IRL_unitreeA1/data')
 
@@ -260,8 +260,17 @@ if __name__ == '__main__':
     
     
     """
-
-
+"""
+[ 2.63039797e+01 -1.72159116e+00 -1.79501342e-01 -4.79486061e-02
+  9.66714284e-03  2.95516467e-03  1.11039073e-01  7.48249769e-01
+ -1.94188781e+00 -1.04573289e-01  8.11246088e-01 -2.30495642e+00
+ -4.40014626e-02  8.70473827e-01 -2.27038650e+00  4.75352151e-02
+  7.88706282e-01 -1.86333508e+00  5.30650250e-01 -9.58593118e-02
+  3.05199296e-02  1.91519152e-01  1.16558842e-01 -1.22728722e-01
+  2.11449957e-01  2.35350118e+00 -7.83321843e-01  5.69501340e-02
+ -4.40937427e+00  3.06797058e+00 -9.05516404e-02 -5.27219641e+00
+  3.25290910e+00 -6.67275858e-03  2.02203667e+00  4.05815065e-02]
+60024"""
 
 
 
