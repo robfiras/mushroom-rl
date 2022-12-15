@@ -120,9 +120,10 @@ class UnitreeA1(BaseQuadruped):
 
 
         trunk_euler = state[1:4]
-        trunk_condition = ((trunk_euler[1] < -np.pi * 40 / 180) or (trunk_euler[1] > np.pi * 40 / 180)
-                            or (trunk_euler[2] < (-np.pi * 40 / 180)) or (trunk_euler[2] > (np.pi * 40 / 180))
-                            or state[0] < -.25
+        trunk_condition = ((trunk_euler[0] < -np.pi * 8.0787049 / 180) or (trunk_euler[0] > np.pi * 0.865166271 / 180)
+                            or (trunk_euler[1] < -np.pi * 1.4896903 / 180) or (trunk_euler[1] > np.pi * 2.349127 / 180)
+                            or (trunk_euler[2] < (-np.pi * 3.04240589 / 180)) or (trunk_euler[2] > (np.pi * 1.83919452 / 180))
+                            or state[0] < -.185 #.25
                             )
 
         return trunk_condition
@@ -196,13 +197,13 @@ if __name__ == '__main__':
     env.reset()
 
 
-    env.play_action_demo(action_path='/home/tim/Documents/locomotion_simulation/log/actions_position_100s_norm.npz', #actions_torque.npz
-                         states_path='/home/tim/Documents/locomotion_simulation/log/states_100s_norm.npz',
-                         control_dt=control_dt, demo_dt=demo_dt,
-                         dataset_path='/home/tim/Documents/IRL_unitreeA1/data')
+    env.play_action_demo(action_path='/home/tim/Documents/locomotion_simulation/log/actions_position.npz', #actions_torque.npz
+                         states_path='/home/tim/Documents/locomotion_simulation/log/states.npz',
+                         control_dt=control_dt, demo_dt=demo_dt)#,
+                         #dataset_path='/home/tim/Documents/IRL_unitreeA1/data')
 
 
-
+    #reduce noise; find problem with 250k; concatenate trajectories; stricter has_fallen; generate new datasets
 
 
     """
