@@ -25,6 +25,7 @@
       <geom name="pelvis" type="mesh" mesh="pelvis"></geom>
       <geom name="l_pelvis" type="mesh" mesh="l_pelvis"></geom>
       <inertial pos="-0.0721882        0        0" mass="13.5729922649758" fullinertia="0.123517 0.104653 0.0695686        0        0        0"></inertial>
+      <camera name="track" mode="trackcom" pos="0 0 4" xyaxes="1 0 0 0 1 0"/>
       <joint name="pelvis_tx" type="slide" pos="0 0 0" axis="       1        0        0" limited="false" range="-500        500" ref="0" armature="0" damping="0" stiffness="0"></joint>
       <joint name="pelvis_tz" type="slide" pos="0 0 0" axis="       0        0        1" limited="false" range="-300        300" ref="0" armature="0" damping="0" stiffness="0"></joint>
       <joint name="pelvis_ty" type="slide" pos="0 0 0" axis="       0        1        0" limited="false" range="-100        200" ref="0" armature="0" damping="0" stiffness="0"></joint>
@@ -196,7 +197,6 @@
         </body>
       </body>
     </body>
-    <camera name="for_testing" pos="0 0 0" euler="0 0 0"></camera>
   </worldbody>
   <asset>
     <mesh name="sacrum" file="meshes/sacrum.stl" scale=" 1.02105  1.02105  1.02105"></mesh>
