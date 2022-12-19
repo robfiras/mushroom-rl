@@ -120,12 +120,25 @@ class UnitreeA1(BaseQuadruped):
 
 
         trunk_euler = state[1:4]
-        trunk_condition = ((trunk_euler[0] < -np.pi * 8.0787049 / 180) or (trunk_euler[0] > np.pi * 0.865166271 / 180)
-                            or (trunk_euler[1] < -np.pi * 1.4896903 / 180) or (trunk_euler[1] > np.pi * 2.349127 / 180)
-                            or (trunk_euler[2] < (-np.pi * 3.04240589 / 180)) or (trunk_euler[2] > (np.pi * 1.83919452 / 180))
-                            or state[0] < -.185 #.25
-                            )
+        """
+        trunk_condition = ((trunk_euler[0] < -0.5) or (trunk_euler[0] > 0.02)
+                            or (trunk_euler[1] < -0.095) or (trunk_euler[1] > 0.095)
+                            or (trunk_euler[2] < -0.075) or (trunk_euler[2] > 0.075)
+                            or state[0] < -.22 #.25
+                            )"""
 
+        #for cluster datasets
+        trunk_condition = ((trunk_euler[0] < -0.6981) or (trunk_euler[0] > 0.6981)
+                           or (trunk_euler[1] < -0.6981) or (trunk_euler[1] > 0.6981)
+                           or (trunk_euler[2] < -0.6981) or (trunk_euler[2] > 0.6981)
+                           or state[0] < -.25
+                           )
+        #if trunk_condition:
+        #    print("con1: ", (trunk_euler[0] < -0.5) or (trunk_euler[0] > 0.02), trunk_euler[0])
+        #    print("con2: ", (trunk_euler[1] < -0.095) or (trunk_euler[1] > 0.095), trunk_euler[1])
+        #    print("con3: ", (trunk_euler[2] < -0.075) or (trunk_euler[2] > 0.075), trunk_euler[2])
+        #    print("con4: ", state[0] < -.22, state[0])
+        #    print(state)
         return trunk_condition
 
 @contextmanager
@@ -145,7 +158,7 @@ if __name__ == '__main__':
     n_substeps = env_freq // desired_contr_freq
 
     # prepare trajectory params
-    traj_params = dict(traj_path='/home/tim/Documents/locomotion_simulation/log/states_100s_norm.npz',
+    traj_params = dict(traj_path='/home/tim/Documents/locomotion_simulation/log/states_50k_noise1.npz',
                        traj_dt=(1 / traj_data_freq),
                        control_dt=(1 / desired_contr_freq))
     gamma = 0.99
@@ -197,14 +210,15 @@ if __name__ == '__main__':
     env.reset()
 
 
-    env.play_action_demo(action_path='/home/tim/Documents/locomotion_simulation/log/actions_position.npz', #actions_torque.npz
-                         states_path='/home/tim/Documents/locomotion_simulation/log/states.npz',
-                         control_dt=control_dt, demo_dt=demo_dt)#,
-                         #dataset_path='/home/tim/Documents/IRL_unitreeA1/data')
+    env.play_action_demo(action_path='/home/tim/Documents/locomotion_simulation/log/actions_position_50k_noise4.npz', #actions_torque.npz
+                         states_path='/home/tim/Documents/locomotion_simulation/log/states_50k_noise4.npz',
+                         control_dt=control_dt, demo_dt=demo_dt,
+                         dataset_path='/home/tim/Documents/IRL_unitreeA1/data')
 
 
     #reduce noise; find problem with 250k; concatenate trajectories; stricter has_fallen; generate new datasets
 
+    # TODO: concatenate datasets
 
     """
     #general experiments - easier with action clipping
