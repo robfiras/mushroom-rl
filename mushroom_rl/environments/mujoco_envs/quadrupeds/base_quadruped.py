@@ -80,7 +80,7 @@ class BaseQuadruped(BaseHumanoid):
 
             trajectory_files = np.load(data_path, allow_pickle=True)
             trajectory_files = {k: d for k, d in trajectory_files.items()}  # convert to dict to be mutable
-            
+
             keys = trajectory_files.keys()
 
             trajectory = np.array([trajectory_files[key] for key in keys])
@@ -97,7 +97,7 @@ class BaseQuadruped(BaseHumanoid):
                 x_new = np.linspace(0, trajectory.shape[1] - 1, round(trajectory.shape[1] * new_traj_sampling_factor),
                                     endpoint=True)
 
-                trajectory = interpolate.interp1d(x, trajectory, kind="cubic", axis=1)(x_new)        
+                trajectory = interpolate.interp1d(x, trajectory, kind="cubic", axis=1)(x_new)
 
             # create a dict and extract all elements except the ones specified in ignore_keys.
             all_data = dict(zip(keys, list(trajectory)))
@@ -119,11 +119,11 @@ class BaseQuadruped(BaseHumanoid):
             absorbing = np.zeros(len(new_states))
 
             return dict(states=new_states, next_states=new_next_states, absorbing=absorbing)
-        
-        
-        
-        
-        
+
+
+
+
+
         elif not only_state:
 
             # change name in ignore keys into
@@ -199,9 +199,9 @@ class BaseQuadruped(BaseHumanoid):
             return dataset
         else:
             raise ValueError("Wrong input or method doesn't support this type now")
-        
-        
-        
+
+
+
 
     def play_action_demo(self, action_path, states_path, control_dt=0.01, demo_dt=0.01, dataset_path=None):
         """
@@ -314,7 +314,8 @@ class BaseQuadruped(BaseHumanoid):
             action = actions[i]
             true_pos.append(list(self._data.qpos[6:]))
             set_point.append(trajectory[6:18, i])
-            nstate, _, absorbing, _ = self.step(action)
+            #action = 1000*(trajectory[6:18, i+1]-self._data.qpos[6:])+np.array([2,2,1,2,2,1,2,2,1,2,2,1])*(trajectory[24:36, i+1]-self._data.qvel[6:])
+            nstate, _, absorbing, _ = self.step(action) #clipping in xml torque needeed?
             self.render()
 
 

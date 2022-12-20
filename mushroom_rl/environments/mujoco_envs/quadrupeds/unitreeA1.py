@@ -43,7 +43,7 @@ class UnitreeA1(BaseQuadruped):
         for clipping in torques need to adjust xml gear 34 and ctrllimited
         """
         xml_path = (Path(__file__).resolve().parent.parent / "data" / "quadrupeds" /
-                    "unitree_a1_position_mul_joint.xml").as_posix() #"unitree_a1_torque_mul_joint.xml"
+                    "unitree_a1_torque_mul_joint.xml").as_posix() #"unitree_a1_torque_mul_joint.xml"
         action_spec = [# motors
             "FR_hip", "FR_thigh", "FR_calf",
             "FL_hip", "FL_thigh", "FL_calf",
@@ -128,8 +128,7 @@ class UnitreeA1(BaseQuadruped):
                             )"""
 
         #for cluster datasets
-        trunk_condition = ((trunk_euler[0] < -0.6981) or (trunk_euler[0] > 0.6981)
-                           or (trunk_euler[1] < -0.6981) or (trunk_euler[1] > 0.6981)
+        trunk_condition = ((trunk_euler[1] < -0.6981) or (trunk_euler[1] > 0.6981)
                            or (trunk_euler[2] < -0.6981) or (trunk_euler[2] > 0.6981)
                            or state[0] < -.25
                            )
@@ -183,7 +182,7 @@ if __name__ == '__main__':
 
 
 
-    
+
     # action demo - need action clipping to be off
     env_freq = 1000  # hz, added here as a reminder simulation freq
     traj_data_freq = 500  # hz, added here as a reminder  controll_freq of data model -> sim_freq/n_substeps
@@ -212,8 +211,8 @@ if __name__ == '__main__':
 
     env.play_action_demo(action_path='/home/tim/Documents/locomotion_simulation/log/actions_position_50k_noise4.npz', #actions_torque.npz
                          states_path='/home/tim/Documents/locomotion_simulation/log/states_50k_noise4.npz',
-                         control_dt=control_dt, demo_dt=demo_dt,
-                         dataset_path='/home/tim/Documents/IRL_unitreeA1/data')
+                         control_dt=control_dt, demo_dt=demo_dt)#,
+                         #dataset_path='/home/tim/Documents/IRL_unitreeA1/data')
 
 
     #reduce noise; find problem with 250k; concatenate trajectories; stricter has_fallen; generate new datasets
