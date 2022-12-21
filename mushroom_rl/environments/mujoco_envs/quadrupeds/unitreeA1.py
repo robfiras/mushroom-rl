@@ -202,7 +202,7 @@ if __name__ == '__main__':
 
 
 
-    env = UnitreeA1(timestep=1/env_freq, gamma=gamma, horizon=horizon, n_substeps=n_substeps, use_torque_ctrl=True)
+    env = UnitreeA1(timestep=1/env_freq, gamma=gamma, horizon=horizon, n_substeps=n_substeps, use_torque_ctrl=False)
 
 
     action_dim = env.info.action_space.shape[0]
