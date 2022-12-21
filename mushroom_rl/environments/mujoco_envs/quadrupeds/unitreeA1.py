@@ -36,14 +36,17 @@ class UnitreeA1(BaseQuadruped):
     to switch between freejoint and mul_joint: adapt obs space and xml path
     """
     def __init__(self, gamma=0.99, horizon=1000, n_substeps=10, random_start=False, init_step_no=None,
-                 traj_params=None, timestep=0.001, goal_reward=None, goal_reward_params=None):
+                 traj_params=None, timestep=0.001, goal_reward=None, goal_reward_params=None, use_torque_ctrl=False):
         """
         Constructor.
-        use_action_clipping should be off for action demo
         for clipping in torques need to adjust xml gear 34 and ctrllimited
         """
-        xml_path = (Path(__file__).resolve().parent.parent / "data" / "quadrupeds" /
-                    "unitree_a1_torque_mul_joint.xml").as_posix() #"unitree_a1_torque_mul_joint.xml"
+        if use_torque_ctrl:
+            xml_path = (Path(__file__).resolve().parent.parent / "data" / "quadrupeds" /
+                    "unitree_a1_torque_mul_joint.xml").as_posix()
+        else:
+            xml_path = (Path(__file__).resolve().parent.parent / "data" / "quadrupeds" /
+                        "unitree_a1_position_mul_joint.xml").as_posix()
         action_spec = [# motors
             "FR_hip", "FR_thigh", "FR_calf",
             "FL_hip", "FL_thigh", "FL_calf",
@@ -199,7 +202,7 @@ if __name__ == '__main__':
 
 
 
-    env = UnitreeA1(timestep=1/env_freq, gamma=gamma, horizon=horizon, n_substeps=n_substeps)
+    env = UnitreeA1(timestep=1/env_freq, gamma=gamma, horizon=horizon, n_substeps=n_substeps, use_torque_ctrl=True)
 
 
     action_dim = env.info.action_space.shape[0]
