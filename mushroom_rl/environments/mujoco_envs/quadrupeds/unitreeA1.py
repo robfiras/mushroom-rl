@@ -104,10 +104,24 @@ class UnitreeA1(BaseQuadruped):
                             ("foot_FL", ["FL_foot"]),
                             ("foot_RR", ["RR_foot"]),
                             ("foot_RL", ["RL_foot"])]
-
         super().__init__(xml_path, action_spec, observation_spec, gamma=gamma, horizon=horizon, n_substeps=n_substeps,
                          timestep=timestep, collision_groups=collision_groups, traj_params=traj_params, init_step_no=init_step_no,
                          goal_reward=goal_reward, goal_reward_params=goal_reward_params, random_start=random_start)
+
+
+
+    def setup(self, substep_no=None):
+        self.goal_reward.reset_state()
+        if self.trajectory is not None:
+            if self._random_start:
+                sample = self.trajectory.reset_trajectory()
+            else:
+                sample = self.trajectory.reset_trajectory(self._init_step_no)
+
+            self.set_qpos_qvel(sample)
+        else: # TODO: add this fuctionality in base_humanoid for all env
+            self._data.qpos = [0, 0, -0.16, 0, 0, 0, 0, 0.9, -1.8, 0, 0.9, -1.8, 0, 0.9, -1.8, 0, 0.9, -1.8]
+            self._data.qvel = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 
     @staticmethod
     def has_fallen(state):
@@ -221,13 +235,27 @@ if __name__ == '__main__':
 
     #reduce noise; find problem with 250k; concatenate trajectories; stricter has_fallen; generate new datasets
 
-    # TODO: concatenate datasets
 
     """
     #general experiments - easier with action clipping
 
-    env = UnitreeA1(timestep=1 / 500, n_substeps=20)
+    # action demo - need action clipping to be off
+    env_freq = 1000  # hz, added here as a reminder simulation freq
+    traj_data_freq = 500  # hz, added here as a reminder  controll_freq of data model -> sim_freq/n_substeps
+    desired_contr_freq = 500  # hz contl freq.
+    n_substeps =  env_freq // desired_contr_freq
+    # TODO: unstable so that it falls if des_contr_freq!= data_freq
+    #to interpolate
+    demo_dt = (1 / traj_data_freq)
+    control_dt = (1 / desired_contr_freq)
 
+
+    gamma = 0.99
+    horizon = 1000
+
+
+
+    env = UnitreeA1(timestep=1/env_freq, gamma=gamma, horizon=horizon, n_substeps=n_substeps, use_torque_ctrl=True)
     action_dim = env.info.action_space.shape[0]
     print("Dimensionality of Obs-space:", env.info.observation_space.shape[0])
     print("Dimensionality of Act-space:", env.info.action_space.shape[0])
@@ -238,6 +266,7 @@ if __name__ == '__main__':
     absorbing = False
     i = 0
     while True:
+        #time.sleep(.1)
         if i == 500:
             print("------ RESET ------")
             env.reset()
@@ -246,9 +275,12 @@ if __name__ == '__main__':
         
         action = np.random.randn(action_dim)
         nstate, _, absorbing, _ = env.step(action)
+        print(nstate)
+        if(i%2):
+            env.reset()
         env.render()
         i += 1
-        """
+    """
 
 
 
