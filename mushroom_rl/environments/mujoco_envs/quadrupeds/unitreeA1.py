@@ -44,9 +44,12 @@ class UnitreeA1(BaseQuadruped):
         if use_torque_ctrl:
             xml_path = (Path(__file__).resolve().parent.parent / "data" / "quadrupeds" /
                     "unitree_a1_torque_mul_joint.xml").as_posix()
+            print("Using torque control for unitreeA1")
         else:
             xml_path = (Path(__file__).resolve().parent.parent / "data" / "quadrupeds" /
                         "unitree_a1_position_mul_joint.xml").as_posix()
+            print("Using position control for unitreeA1")
+
         action_spec = [# motors
             "FR_hip", "FR_thigh", "FR_calf",
             "FL_hip", "FL_thigh", "FL_calf",
@@ -170,7 +173,7 @@ if __name__ == '__main__':
     # define env and data frequencies
     env_freq = 1000  # hz, added here as a reminder
     traj_data_freq = 500  # hz, added here as a reminder
-    desired_contr_freq = 100  # hz
+    desired_contr_freq = 500  # hz
     n_substeps = env_freq // desired_contr_freq
 
     # prepare trajectory params
@@ -190,7 +193,7 @@ if __name__ == '__main__':
 
     print("Finished")
     # still problem with different behaviour (if robot rolls to the side - between freejoint and muljoints) action[1] and [7] = -1 (with action clipping)
-    """
+
 
     #solref="0.004 1000" /damping 500, stiffness from 0,93 to 62,5
     #0.004 1000000
@@ -198,10 +201,10 @@ if __name__ == '__main__':
     # favorite 0.005 1000000 | solref="-0.000001 -400"
     # final: solref="-0.0000000001 -250"
 
+    """
 
 
-
-    # action demo - need action clipping to be off
+    # action demo
     env_freq = 1000  # hz, added here as a reminder simulation freq
     traj_data_freq = 500  # hz, added here as a reminder  controll_freq of data model -> sim_freq/n_substeps
     desired_contr_freq = 500  # hz contl freq.
@@ -211,14 +214,37 @@ if __name__ == '__main__':
     demo_dt = (1 / traj_data_freq)
     control_dt = (1 / desired_contr_freq)
 
+    #dataset settings:
+    use_torque_ctrl = True
 
+    actions_path = ['/home/tim/Documents/locomotion_simulation/log/actions_torque_100s_norm.npz',
+                    '/home/tim/Documents/locomotion_simulation/log/actions_torque_50k_noise1.npz',
+                    '/home/tim/Documents/locomotion_simulation/log/actions_torque_50k_noise2.npz',
+                    '/home/tim/Documents/locomotion_simulation/log/actions_torque_50k_noise3.npz',
+                    '/home/tim/Documents/locomotion_simulation/log/actions_torque_50k_noise4.npz'] #actions_torque.npz
+    states_path = ['/home/tim/Documents/locomotion_simulation/log/states_100s_norm.npz',
+                   '/home/tim/Documents/locomotion_simulation/log/states_50k_noise1.npz',
+                   '/home/tim/Documents/locomotion_simulation/log/states_50k_noise2.npz',
+                   '/home/tim/Documents/locomotion_simulation/log/states_50k_noise3.npz',
+                   '/home/tim/Documents/locomotion_simulation/log/states_50k_noise4.npz']
+    dataset_path = '/home/tim/Documents/'#None # '/home/tim/Documents/IRL_unitreeA1/data'
+    use_rendering = False
+    use_plotting = False
+    state_type = "optimal"
+    action_type = "optimal"
+
+    assert not (action_type == "p-controller" and not use_torque_ctrl)
+
+
+    #Todo: untersuchen torque actions, print statements bereinigen, datensätze für torque action mit data-actions und p-controller erzeugen und auf cluster laufen
+    # todo: blöd dass unterschiedlich große datensätze
+    #TODO unterschiedlich große datensätze; p-controller muss simuliert werden -> blöd bei springen/in boden treten zumindest mit opt states
     gamma = 0.99
     horizon = 1000
 
 
 
-    env = UnitreeA1(timestep=1/env_freq, gamma=gamma, horizon=horizon, n_substeps=n_substeps, use_torque_ctrl=False)
-
+    env = UnitreeA1(timestep=1/env_freq, gamma=gamma, horizon=horizon, n_substeps=n_substeps, use_torque_ctrl=use_torque_ctrl)
 
     action_dim = env.info.action_space.shape[0]
     print("Dimensionality of Obs-space:", env.info.observation_space.shape[0])
@@ -227,10 +253,48 @@ if __name__ == '__main__':
     env.reset()
 
 
-    env.play_action_demo(action_path='/home/tim/Documents/locomotion_simulation/log/actions_position_50k_noise4.npz', #actions_torque.npz
-                         states_path='/home/tim/Documents/locomotion_simulation/log/states_50k_noise4.npz',
-                         control_dt=control_dt, demo_dt=demo_dt)#,
-                         #dataset_path='/home/tim/Documents/IRL_unitreeA1/data')
+    """
+    env.play_action_demo(states_path=states_path,
+                         #dataset_path=dataset_path,
+
+                         action_path=actions_path,
+
+                         control_dt=control_dt, demo_dt=demo_dt
+                        )
+    exit()"""
+
+
+    #env.play_action_demo2(actions_path=actions_path, states_path=states_path, control_dt=control_dt, demo_dt=demo_dt,
+     #                     use_rendering=use_rendering, use_plotting=use_plotting, use_pd_controller=True)
+
+    if type(actions_path) == list and type(states_path) == list:
+        assert len(actions_path) == len(states_path)
+        for i in range(len(actions_path)):
+            env.preprocess_expert_data(dataset_path=dataset_path+str(i),
+                                       state_type=state_type,
+                                       action_type=action_type,
+                                       states_path=states_path[i],
+                                       actions_path=actions_path[i],
+                                       use_rendering=use_rendering,
+                                       use_plotting=use_plotting,
+                                       demo_dt=demo_dt,
+                                       control_dt=control_dt
+                                       )
+    else:
+        env.preprocess_expert_data(dataset_path=dataset_path,
+                                state_type=state_type,
+                                action_type=action_type,
+                                states_path=states_path,
+                                actions_path=actions_path,
+                                use_rendering=use_rendering,
+                                use_plotting=use_plotting,
+                                demo_dt=demo_dt,
+                                control_dt=control_dt
+                                )
+
+
+
+
 
 
     #reduce noise; find problem with 250k; concatenate trajectories; stricter has_fallen; generate new datasets
