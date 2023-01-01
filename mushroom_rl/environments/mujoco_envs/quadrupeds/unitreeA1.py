@@ -177,7 +177,7 @@ if __name__ == '__main__':
     n_substeps = env_freq // desired_contr_freq
 
     # prepare trajectory params
-    traj_params = dict(traj_path='/home/tim/Documents/locomotion_simulation/log/states_50k_noise1.npz',
+    traj_params = dict(traj_path='/home/tim/Documents/locomotion_simulation/log/states_50k_noise0_new.npz',
                        traj_dt=(1 / traj_data_freq),
                        control_dt=(1 / desired_contr_freq))
     gamma = 0.99
@@ -194,14 +194,14 @@ if __name__ == '__main__':
     print("Finished")
     # still problem with different behaviour (if robot rolls to the side - between freejoint and muljoints) action[1] and [7] = -1 (with action clipping)
 
-
+    """
     #solref="0.004 1000" /damping 500, stiffness from 0,93 to 62,5
     #0.004 1000000
     #0.004-0.005 1000000 kp=1000
     # favorite 0.005 1000000 | solref="-0.000001 -400"
     # final: solref="-0.0000000001 -250"
 
-    """
+
 
 
     # action demo
@@ -216,28 +216,35 @@ if __name__ == '__main__':
 
     #dataset settings:
     use_torque_ctrl = True
+    #action...50k_noise0... has correct acions for torque and one more datapoint
 
-    actions_path = ['/home/tim/Documents/locomotion_simulation/log/actions_torque_100s_norm.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/actions_torque_50k_noise1.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/actions_torque_50k_noise2.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/actions_torque_50k_noise3.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/actions_torque_50k_noise4.npz'] #actions_torque.npz
-    states_path = ['/home/tim/Documents/locomotion_simulation/log/states_100s_norm.npz',
-                   '/home/tim/Documents/locomotion_simulation/log/states_50k_noise1.npz',
-                   '/home/tim/Documents/locomotion_simulation/log/states_50k_noise2.npz',
-                   '/home/tim/Documents/locomotion_simulation/log/states_50k_noise3.npz',
-                   '/home/tim/Documents/locomotion_simulation/log/states_50k_noise4.npz']
-    dataset_path = '/home/tim/Documents/'#None # '/home/tim/Documents/IRL_unitreeA1/data'
+    actions_path = ['/home/tim/Documents/locomotion_simulation/log/actions_torque_50k_new.npz',
+                    '/home/tim/Documents/locomotion_simulation/log/actions_torque_50k_noise0_new.npz',
+                    '/home/tim/Documents/locomotion_simulation/log/actions_torque_50k_noise1_new.npz',
+                    '/home/tim/Documents/locomotion_simulation/log/actions_torque_50k_noise2_new.npz',
+                    '/home/tim/Documents/locomotion_simulation/log/actions_torque_50k_noise3_new.npz'] #actions_torque.npz
+    states_path = ['/home/tim/Documents/locomotion_simulation/log/states_50k_new.npz',
+                   '/home/tim/Documents/locomotion_simulation/log/states_50k_noise0_new.npz',
+                   '/home/tim/Documents/locomotion_simulation/log/states_50k_noise1_new.npz',
+                   '/home/tim/Documents/locomotion_simulation/log/states_50k_noise2_new.npz',
+                   '/home/tim/Documents/locomotion_simulation/log/states_50k_noise3_new.npz']
+    actions_path = '/home/tim/Documents/locomotion_simulation/log/actions_torque_50k_noise0_new.npz'
+    states_path = '/home/tim/Documents/locomotion_simulation/log/states_50k_new.npz'
+    dataset_path = '/home/tim/Documents/test_datasets/'#None # '/home/tim/Documents/IRL_unitreeA1/data'
     use_rendering = False
     use_plotting = False
     state_type = "optimal"
     action_type = "optimal"
 
+    #TODO optimal states and torques IRL launcher vorbereiten und launchen /home/tim/Documents/test_datasets/dataset_only_states_unitreeA1_IRL_new_0.npz
+    # TODO finetune kp controller for torque control
+    # TODO dataset and launcher für kp controller vorbereiten
+    #TODO neue Datasets
+
     assert not (action_type == "p-controller" and not use_torque_ctrl)
 
 
     #Todo: untersuchen torque actions, print statements bereinigen, datensätze für torque action mit data-actions und p-controller erzeugen und auf cluster laufen
-    # todo: blöd dass unterschiedlich große datensätze
     #TODO unterschiedlich große datensätze; p-controller muss simuliert werden -> blöd bei springen/in boden treten zumindest mit opt states
     gamma = 0.99
     horizon = 1000
@@ -264,9 +271,9 @@ if __name__ == '__main__':
     exit()"""
 
 
-    #env.play_action_demo2(actions_path=actions_path, states_path=states_path, control_dt=control_dt, demo_dt=demo_dt,
-     #                     use_rendering=use_rendering, use_plotting=use_plotting, use_pd_controller=True)
-
+    env.play_action_demo2(actions_path=actions_path, states_path=states_path, control_dt=control_dt, demo_dt=demo_dt,
+                          use_rendering=True, use_plotting=use_plotting, use_pd_controller=True)
+    exit()
     if type(actions_path) == list and type(states_path) == list:
         assert len(actions_path) == len(states_path)
         for i in range(len(actions_path)):
