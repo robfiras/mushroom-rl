@@ -9,7 +9,7 @@
       <joint axis="0 1 0" damping="2" armature="0.01" frictionloss="0.2"/>
       <!--general biastype="affine" biasprm="0 -50 0" gaintype="fixed" gainprm="50"/-->
       <!--position kp="300"250,2.4,3 forcerange="-33.5 33.5" 300 4 best for correct freq./-->
-      <position kp="1000" forcerange="-20 20"/>
+      <position kp="100" forcerange="-20 20"/>
 
 
       <default class="abduction">
