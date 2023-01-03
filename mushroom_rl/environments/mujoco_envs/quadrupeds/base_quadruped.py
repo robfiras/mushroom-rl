@@ -68,138 +68,6 @@ class BaseQuadruped(BaseHumanoid):
 
         # print(self._data.qfrc_bias[:12])
 
-    def create_dataset(self, data_path, ignore_keys=[], normalizer=None, only_state=True, use_next_states=True):
-        """
-        creates dataset.
-        If data_path is set only states has to be false -> creates dataset with states, actions (next_states)
-        else dataset with only states is created
-        scales/interpolates to the correct frequencies
-        dataset needs to be in the same order as self.obs_helper.observation_spec
-        """
-        if only_state and use_next_states:
-
-            trajectory_files = np.load(data_path, allow_pickle=True)
-            trajectory_files = {k: d for k, d in trajectory_files.items()}  # convert to dict to be mutable
-
-            keys = trajectory_files.keys()
-
-            trajectory = np.array([trajectory_files[key] for key in keys])
-
-            demo_dt = self.trajectory.traj_dt
-            control_dt = self.trajectory.control_dt
-
-
-            #interpolation
-            if demo_dt != control_dt:
-                new_traj_sampling_factor = demo_dt / control_dt
-
-                x = np.arange(trajectory.shape[1])
-                x_new = np.linspace(0, trajectory.shape[1] - 1, round(trajectory.shape[1] * new_traj_sampling_factor),
-                                    endpoint=True)
-
-                trajectory = interpolate.interp1d(x, trajectory, kind="cubic", axis=1)(x_new)
-
-            # create a dict and extract all elements except the ones specified in ignore_keys.
-            all_data = dict(zip(keys, list(trajectory)))
-            for ikey in ignore_keys:
-                del all_data[ikey]
-            traj = list(all_data.values())
-            states = np.transpose(np.array(traj))
-
-            # normalize if needed
-            if normalizer:
-                normalizer.set_state(dict(mean=np.mean(states, axis=0),
-                                          var=1 * (np.std(states, axis=0) ** 2),
-                                          count=1))
-                states = np.array([normalizer(st) for st in states])
-
-            # convert to dict with states and next_states
-            new_states = states[:-1]
-            new_next_states = states[1:]
-            absorbing = np.zeros(len(new_states))
-
-            return dict(states=new_states, next_states=new_next_states, absorbing=absorbing)
-
-
-
-
-
-        elif not only_state:
-
-            # change name in ignore keys into
-            obs_keys = list(np.array(self.obs_helper.observation_spec)[:, 0])
-            ignore_index = []
-            for key in ignore_keys:
-                ignore_index.append(obs_keys.index(key))
-
-            dataset = dict()
-
-            # load expert training data
-            expert_files = np.load(data_path)
-            dataset["states"] = expert_files["states"]
-            dataset["actions"] = expert_files["actions"]
-
-            dataset["episode_starts"] = expert_files["episode_starts"]
-            assert dataset["episode_starts"][0] and [x for x in dataset["episode_starts"][1:] if
-                                                     x == True] == [], "Implementation only for one long trajectory"
-
-            # remove ignore indices
-            for i in sorted(ignore_index, reverse=True):
-                dataset["states"] = np.delete(dataset["states"], i, 1)
-
-            # scale frequencies
-            demo_dt = self.trajectory.traj_dt
-            control_dt = self.trajectory.control_dt
-            if demo_dt != control_dt:
-                new_demo_sampling_factor = demo_dt / control_dt
-                x = np.arange(dataset["states"].shape[0])
-                x_new = np.linspace(0, dataset["states"].shape[0] - 1,
-                                    round(dataset["states"].shape[0] * new_demo_sampling_factor),
-                                    endpoint=True)
-                dataset["states"] = interpolate.interp1d(x, dataset["states"], kind="cubic", axis=0)(x_new)
-                dataset["actions"] = interpolate.interp1d(x, dataset["actions"], kind="cubic", axis=0)(x_new)
-                dataset["episode_starts"] = [False] * x_new
-                dataset["episode_starts"][0] = True
-
-            # maybe we have next action and next next state
-            try:
-                dataset["next_actions"] = expert_files["next_actions"]
-                dataset["next_next_states"] = expert_files["next_next_states"]
-                # remove ignore indices
-                for i in sorted(ignore_index, reverse=True):
-                    dataset["next_next_states"] = np.delete(dataset["next_next_states"], i, 1)
-                # scaling
-                if demo_dt != control_dt:
-                    dataset["next_actions"] = interpolate.interp1d(x, dataset["next_actions"], kind="cubic", axis=0)(
-                        x_new)
-                    dataset["next_next_states"] = interpolate.interp1d(x, dataset["next_next_states"], kind="cubic",
-                                                                       axis=0)(x_new)
-
-            except KeyError as e:
-                print("Did not find next action or next next state.")
-
-            # maybe we have next states and dones in the dataset
-            try:
-                dataset["next_states"] = expert_files["next_states"]
-                dataset["absorbing"] = expert_files["absorbing"]
-
-                # remove ignore indices
-                for i in sorted(ignore_index, reverse=True):
-                    dataset["next_states"] = np.delete(dataset["next_states"], i, 1)
-
-                # scaling
-                if demo_dt != control_dt:
-                    dataset["next_states"] = interpolate.interp1d(x, dataset["next_states"], kind="cubic", axis=0)(
-                        x_new)
-                    # TODO: not sure about this
-                    dataset["absorbing"] = interpolate.interp1d(x, dataset["absorbing"], kind="cubic", axis=0)(x_new)
-
-            except KeyError as e:
-                print("Warning Dataset: %s" % e)
-            return dataset
-        else:
-            raise ValueError("Wrong input or method doesn't support this type now")
-
 
 
 
@@ -715,6 +583,14 @@ class BaseQuadruped(BaseHumanoid):
     #states action dataset not in all cases needed (onlystates)
 
 
+
+
+
+
+
+
+
+
     def play_action_demo2(self, actions_path, states_path, control_dt=0.01, demo_dt=0.01,
                           use_rendering=True, use_plotting=False, use_pd_controller=False):
         """
@@ -786,10 +662,20 @@ class BaseQuadruped(BaseHumanoid):
             if not use_pd_controller:
                 action = actions[i]
             else:
+                self._data.qpos = trajectory[:18, i]
+                self._data.qvel = trajectory[18:, i]
                 e = trajectory[6:18, i+1]-self._data.qpos[6:]
                 de = e-e_old
-                kp = 10
-                kd = .15
+                # TODO wenn jedes mal zurück setzten kann auch ohne mujoco actions berechnen
+                """
+                kp = np.array([100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100])
+                kd = np.array([1, 2, 2, 1, 2, 2, 1, 2, 2, 1, 2, 2])
+                """
+                #maybe try pos with actions but with optimal states
+                kp = 10 #np.array([10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10])
+                hip = 0.2 #0.62
+                rest = .4 #1.24
+                kd = np.array([hip, rest, rest, hip, rest, rest, hip, rest, rest, hip, rest, rest])
                 action = kp*e+(kd/control_dt)*de
                 e_old = e
 
@@ -812,7 +698,7 @@ class BaseQuadruped(BaseHumanoid):
 
         if use_plotting:
         # plotting of error and comparison of setpoint and actual position
-            plot_set_actual_position(true_pos=true_pos, set_point=set_point)
+            self.plot_set_actual_position(true_pos=true_pos, set_point=set_point)
 
         return np.array(states_dataset), np.array(actions_dataset)
 
@@ -822,8 +708,8 @@ class BaseQuadruped(BaseHumanoid):
         set_point = np.array(set_point)
         # --------------------------------------------------------------------------------------------------------------
         data = {
-            "setpoint": set_point[:, 0],
-            "actual pos": true_pos[:, 0]
+            "setpoint": set_point[:, 6],
+            "actual pos": true_pos[:, 6]
         }
 
         fig = plt.figure()
@@ -839,8 +725,8 @@ class BaseQuadruped(BaseHumanoid):
 
         # --------------------------------------------------------------------------------------------------------------
         data = {
-            "setpoint": set_point[:, 1],
-            "actual pos": true_pos[:, 1]
+            "setpoint": set_point[:, 7],
+            "actual pos": true_pos[:, 7]
         }
 
         fig = plt.figure()
@@ -857,8 +743,8 @@ class BaseQuadruped(BaseHumanoid):
         # --------------------------------------------------------------------------------------------------------------
 
         data = {
-            "setpoint": set_point[:, 2],
-            "actual pos": true_pos[:, 2]
+            "setpoint": set_point[:, 8],
+            "actual pos": true_pos[:, 8]
         }
 
         fig = plt.figure()
@@ -875,9 +761,9 @@ class BaseQuadruped(BaseHumanoid):
         # --------------------------------------------------------------------------------------------------------------
 
         data = {
-            "hip error": set_point[:, 0] - true_pos[:, 0],
-            "thigh error": set_point[:, 1] - true_pos[:, 1],
-            "calf error": set_point[:, 2] - true_pos[:, 2]
+            "hip error": set_point[:, 6] - true_pos[:, 6],
+            "thigh error": set_point[:, 7] - true_pos[:, 7],
+            "calf error": set_point[:, 8] - true_pos[:, 8]
         }
 
         fig = plt.figure()
