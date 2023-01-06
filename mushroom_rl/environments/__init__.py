@@ -85,3 +85,28 @@ Segway.register()
 
 from .ship_steering import ShipSteering
 ShipSteering.register()
+
+if Gym:
+    from gym.envs.registration import register
+
+    register(
+        id='AntPOMDP-v3',
+        entry_point='mushroom_rl.environments.gym_mujoco_pomdp:AntEnvPOMPD',
+    )
+    register(
+        id='HalfCheetahPOMDP-v3',
+        entry_point='mushroom_rl.environments.gym_mujoco_pomdp:HalfCheetahEnvPOMPD',
+    )
+    register(
+        id='HopperPOMDP-v3',
+        entry_point='mushroom_rl.environments.gym_mujoco_pomdp:HopperEnvPOMPD',
+    )
+    register(
+        id='HumanoidPOMDP-v3',
+        entry_point='mushroom_rl.environments.gym_mujoco_pomdp:HumanoidEnvPOMPD',
+    )
+    register(
+        id='Walker2dPOMDP-v3',
+        entry_point='mushroom_rl.environments.gym_mujoco_pomdp:Walker2dEnvPOMPD',
+    )
+

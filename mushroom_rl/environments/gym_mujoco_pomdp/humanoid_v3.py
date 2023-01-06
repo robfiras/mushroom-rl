@@ -1,0 +1,48 @@
+import numpy as np
+from gym.envs.mujoco.humanoid_v3 import HumanoidEnv
+
+
+class HumanoidEnvPOMPD(HumanoidEnv):
+
+    def __init__(self, obs_to_hide=("velocities",), **kwargs):
+
+        self._hidable_obs = ("positions", "velocities", "com_inertia", "com_velocity",
+                             "actuator_forces", "external_contact_forces")
+        if type(obs_to_hide) == str:
+            obs_to_hide = (obs_to_hide,)
+        assert not all(x in obs_to_hide for x in self._hidable_obs), "You are not allowed to hide all observations!"
+        assert all(x in self._hidable_obs for x in obs_to_hide), "Some of the observations you want to hide are not" \
+                                                                 "supported. Valid observations to hide are %s."\
+                                                                 % (self._hidable_obs,)
+        self._obs_to_hide = obs_to_hide
+        super().__init__(**kwargs)
+
+    def _get_obs(self):
+        observations = []
+        if "positions" not in self._obs_to_hide:
+            position = self.sim.data.qpos.flat.copy()
+            if self._exclude_current_positions_from_observation:
+                position = position[2:]
+            observations += [position]
+
+        if "velocities" not in self._obs_to_hide:
+            velocity = self.sim.data.qvel.flat.copy()
+            observations += [velocity]
+
+        if "com_inertia" not in self._obs_to_hide:
+            com_inertia = self.sim.data.cinert.flat.copy()
+            observations += [com_inertia]
+
+        if "com_velocity" not in self._obs_to_hide:
+            com_velocity = self.sim.data.cvel.flat.copy()
+            observations += [com_velocity]
+
+        if "actuator_forces" not in self._obs_to_hide:
+            actuator_forces = self.sim.data.qfrc_actuator.flat.copy()
+            observations += [actuator_forces]
+
+        if "external_contact_forces" not in self._obs_to_hide:
+            external_contact_forces = self.sim.data.cfrc_ext.flat.copy()
+            observations += [external_contact_forces]
+
+        return np.concatenate(observations)
