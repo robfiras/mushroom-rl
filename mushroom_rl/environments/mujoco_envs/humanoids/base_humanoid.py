@@ -80,6 +80,7 @@ class BaseHumanoid(MuJoCo):
                                          low=self.info.observation_space.low,
                                          high=self.info.observation_space.high,
                                          joint_pos_idx=self.obs_helper.joint_pos_idx,
+                                         observation_spec=self.obs_helper.observation_spec,
                                          **traj_params)
         else:
             self.trajectory = None
@@ -207,17 +208,44 @@ class BaseHumanoid(MuJoCo):
         sample = self.trajectory.reset_trajectory(substep_no=1)
         self.set_qpos_qvel(sample)
         while True:
-            sample = self.trajectory.get_next_sample()
 
+            sample = self.trajectory.get_next_sample()
+            #sample[-1] = 1
             self.set_qpos_qvel(sample)
 
+
+
+            xmat, xpos = self.traj_pre_step()
+
             mujoco.mj_forward(self._model, self._data)
+
+            self.traj_post_step(xmat, xpos)
+
 
             obs = self._create_observation(sample)
             if self.has_fallen(obs):
                 print("Has Fallen!")
 
             self.render()
+
+    def traj_pre_step(self):
+        # TODO: needs changes
+        if self.use_2d_ctrl:
+            xmat = self._data.site("dir_arrow").xmat.copy()
+            temp = np.dot(xmat.reshape((3, 3)), np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]])).reshape((9,))
+            angle = np.arctan2(temp[3], temp[0])
+            xpos = self._data.body("dir_arrow").xpos + [
+                -0.1 * np.cos(angle), -0.1 * np.sin(angle), 0]
+
+            self._direction_xmat = xmat
+            self._direction_angle = angle
+            return xmat, xpos
+        return None, None
+
+    def traj_post_step(self, xmat, xpos):
+        if self.use_2d_ctrl:
+            self._data.site("dir_arrow").xmat = xmat
+            self._data.site("dir_arrow_ball").xpos = xpos
 
     def play_trajectory_demo_from_velocity(self, freq=200, view_from_other_side=False):
         """
@@ -230,17 +258,31 @@ class BaseHumanoid(MuJoCo):
         sample = self.trajectory.reset_trajectory(substep_no=1)
         self.set_qpos_qvel(sample)
         len_qpos, len_qvel = self.len_qpos_qvel()
+        #len_qvel+=1
         curr_qpos = sample[0:len_qpos]
+        #curr_qpos = np.append(curr_qpos, 0)
+
         while True:
 
             sample = self.trajectory.get_next_sample()
+            #if self.
             qvel = sample[len_qpos:len_qpos + len_qvel]
+            #qvel = np.append(qvel, 0)
+            print("qpos", curr_qpos.shape)
             qpos = curr_qpos + self.dt * qvel
             sample[:len(qpos)] = qpos
 
             self.set_qpos_qvel(sample)
 
+
+
+            xmat, xpos = self.traj_pre_step()
+
             mujoco.mj_forward(self._model, self._data)
+
+            self.traj_post_step(xmat, xpos)
+
+
 
             # save current qpos
             curr_qpos = self.get_joint_pos()
@@ -261,6 +303,8 @@ class BaseHumanoid(MuJoCo):
                 self._data.joint(name).qpos = value
             elif ot == ObservationType.JOINT_VEL:
                 self._data.joint(name).qvel = value
+            elif ot == ObservationType.SITE_ROT:
+                self._data.site(name).xmat = value
 
     def get_joint_pos(self):
         return self.obs_helper.get_joint_pos_from_obs(self.obs_helper.build_obs(self._data))

@@ -23,6 +23,20 @@ from scipy import signal, interpolate
 #              "feet_xvelr_l", "feet_yvelr_l", "feet_zvelr_l"]
 
 
+# TODO needs changes:
+
+
+# TODO --------------------------------------------------------------------------------------------------------------------------------------------------------------
+DIM_OF_OBS_TYPE = {
+    ObservationType.BODY_POS: 3,
+    ObservationType.BODY_ROT: 4,
+    ObservationType.BODY_VEL: 6,
+    ObservationType.JOINT_POS: 1,  # can be 7
+    ObservationType.JOINT_VEL: 1,  # can be 6
+    ObservationType.SITE_POS: 3,
+    ObservationType.SITE_ROT: 9
+}
+
 class Trajectory(object):
     """
     Builds a general trajectory from a numpy bin file(.npy), and automatically
@@ -33,7 +47,7 @@ class Trajectory(object):
     the desired cycle.
 
     """
-    def __init__(self, keys, traj_path, low, high, joint_pos_idx, traj_dt=0.002, control_dt=0.01, ignore_keys=[]):
+    def __init__(self, keys, traj_path, low, high, joint_pos_idx, observation_spec=None, traj_dt=0.002, control_dt=0.01, ignore_keys=[], interpolate_map=None, interpolate_remap=None):
         """
         Constructor.
 
@@ -51,6 +65,11 @@ class Trajectory(object):
                 synchronize trajectory with the control step);
 
         """
+
+
+
+
+
         self._trajectory_files = np.load(traj_path, allow_pickle=True)
         self._trajectory_files = {k:d for k, d in self._trajectory_files.items()} # convert to dict to be mutable
         self.check_if_trajectory_is_in_range(low, high, keys, joint_pos_idx)
@@ -66,14 +85,24 @@ class Trajectory(object):
         for ik in ignore_keys:
             keys.remove(ik)
 
-        self.trajectory = np.array([self._trajectory_files[key] for key in keys])
+        self._keys_dim = {}
+        i = 0
+        for key, name, ot in observation_spec:
+            if key in keys:
+                self._keys_dim[i] = DIM_OF_OBS_TYPE[ot]
+                i+=1
+        temp = np.array([self._trajectory_files[key].flatten() for key in keys], dtype=object)
+        length = int(temp[0].shape[0]/list(self._keys_dim.values())[0])
+        # change every multi dimensional obs into an array that contains as many elemnts as the obs spec needs to have (450,) to (50,9)
+        self.trajectory = np.array([list(temp[i].reshape((length ,self._keys_dim[i]))) if self._keys_dim[i] != 1 else list(temp[i]) for i in range(len(keys))], dtype=object)
+
         self.keys = keys
-        print("Trajectory shape: ", self.trajectory.shape)
+        print("Trajectory shape: ", self.trajectory.shape[0], length)
 
         if "split_points" in self._trajectory_files.keys():
             self.split_points = self._trajectory_files["split_points"]
         else:
-            self.split_points = np.array([0, self.trajectory.shape[1]])
+            self.split_points = np.array([0, self.trajectory[0].shape[0]/list(self._keys_dim.values())[0]])
 
         self.n_repeating_steps = len(self.split_points) - 1
 
@@ -81,12 +110,14 @@ class Trajectory(object):
         self.control_dt = control_dt
         self.traj_speed_multiplier = 1.0    # todo: delete the trajecotry speed multiplier stuff
 
+        #TODO works now???? - (with mltiple dimension obs spoec)
         if self.traj_dt != control_dt:
             new_traj_sampling_factor = (1 / self.traj_speed_multiplier) * (
                     self.traj_dt / control_dt)
 
             self.trajectory = self._interpolate_trajectory(
-                self.trajectory, factor=new_traj_sampling_factor
+                self.trajectory, factor=new_traj_sampling_factor,
+                map_funct=interpolate_map, re_map_funct=interpolate_remap
             )
 
             self.split_points = np.round(
@@ -98,8 +129,9 @@ class Trajectory(object):
 
     @property
     def traj_length(self):
-        return self.subtraj.shape[1]
+        return self.subtraj[0].shape[0]/list(self._keys_dim.values())[0]
 
+    #TODO not adapted to multi dim obs_spec
     def create_dataset(self, ignore_keys=[], normalizer=None):
 
         # create a dict and extract all elements except the ones specified in ignore_keys.
@@ -123,6 +155,7 @@ class Trajectory(object):
 
         return dict(states=new_states, next_states=new_next_states, absorbing=absorbing)
 
+    #TODO not adapted to multi dim obs_spec
     def create_datase_with_triplet_states(self, normalizer=None):
 
         # get relevant data
@@ -143,13 +176,20 @@ class Trajectory(object):
         return dict(states=states, next_states=next_states, next_next_states=next_next_states)
 
 
-    def _interpolate_trajectory(self, traj, factor):
-        x = np.arange(traj.shape[1])
-        x_new = np.linspace(0, traj.shape[1] - 1, round(traj.shape[1] * factor),
+    def _interpolate_trajectory(self, traj, factor, map_funct=None, re_map_funct=None):
+        assert (map_funct is not None and re_map_funct is not None) or (map_funct is None and re_map_funct is None)
+        shape1=traj[0].shape[0] / list(self._keys_dim.values())[0]
+        if map_funct is not None:
+            #TODO: weiß nicht wieso aber shape von traj is 37, sollte 37, 51025
+            traj = map_funct(traj)
+        x = np.arange(shape1)
+        x_new = np.linspace(0, shape1 - 1, round(shape1 * factor),
                             endpoint=True)
-
         new_traj = interpolate.interp1d(x, traj, kind="cubic", axis=1)(x_new)
+        if re_map_funct is not None:
+            new_traj = re_map_funct(new_traj)
         return new_traj
+
 
     def get_next_sub_trajectory(self):
         """
@@ -159,6 +199,7 @@ class Trajectory(object):
         self.x_dist += self.subtraj[0][-1]
         self.reset_trajectory()
 
+    #TODO: i think it needs changes because of the multi dim obs spec
     def _get_traj_gait_sub_steps(self, initial_walking_step,
                                  number_of_walking_steps=1):
         start_sim_step = self.split_points[initial_walking_step]
@@ -191,15 +232,23 @@ class Trajectory(object):
         self.subtraj = self.trajectory.copy()
 
         # reset x and y to middle position
-        self.subtraj[0, :] -= self.subtraj[0, self.subtraj_step_no]
-        self.subtraj[1, :] -= self.subtraj[1, self.subtraj_step_no]
 
-        return self.subtraj[:, self.subtraj_step_no]
+        self.subtraj[0] -= self.subtraj[0][self.subtraj_step_no]
+        self.subtraj[1] -= self.subtraj[1][self.subtraj_step_no]
+
+        a = self.subtraj_step_no*self._keys_dim[36]+self._keys_dim[36]
+        b = self.subtraj_step_no*self._keys_dim[36]
+        c = self.subtraj[36][b:a]
+        return np.array([self.subtraj[i][self.subtraj_step_no] for i in range(len(self.subtraj))], dtype=object)
+
 
     def get_next_sample(self):
         if self.subtraj_step_no >= self.traj_length:
             self.get_next_sub_trajectory()
-        sample = deepcopy(self.subtraj[:, self.subtraj_step_no])
+
+        indize_not_one = [i for i in range(len(self.subtraj)) if self._keys_dim[i] != 1]
+
+        sample = deepcopy([self.subtraj[i][self.subtraj_step_no] for i in range(len(self.subtraj))])
         self.subtraj_step_no += 1
         return sample
 
