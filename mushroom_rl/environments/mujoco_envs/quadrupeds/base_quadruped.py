@@ -203,8 +203,9 @@ class BaseQuadruped(BaseHumanoid):
 
         if (dataset_path):
             # extra dataset with only states for initial positions
-            only_states_dataset = [[], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [],
-                                   [], [], [], [], [], [], [], [], [], [], [], [], [], [], []]
+
+            only_states_dataset = [list() for j in range(len(states_dataset[0]))]
+
             for j in np.arange(len(states_dataset)):
                 for i in np.arange(len(only_states_dataset)):
                     only_states_dataset[i].append(states_dataset[j][i])
@@ -348,9 +349,8 @@ class BaseQuadruped(BaseHumanoid):
 
             trajectory = np.array([trajectory_files[key].flatten() for key in keys], dtype=object)
             if self.use_2d_ctrl:
-                traj_list = [[], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [],
-                             [], [],
-                             [], [], [], [], [], [], [], [], [], [], [], []]
+                traj_list = [list() for j in range(len(trajectory))]
+
                 for i in range(len(traj_list)):
                     traj_list[i] = list(trajectory[i])
                 traj_list[36] = [
@@ -671,7 +671,7 @@ class BaseQuadruped(BaseHumanoid):
 
 
         if action_type is not None:
-            action_states_dataset = []#[[], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []]
+            action_states_dataset = []
             for i in range(states_dataset.shape[1]):
                 action_states_dataset.append(states_dataset[:, i])
             action_states_dataset = np.array(action_states_dataset)
@@ -758,7 +758,7 @@ class BaseQuadruped(BaseHumanoid):
 
 
         actions_dataset = []
-        states_dataset = [[], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []]
+        states_dataset = [list() for j in range(len(self.obs_helper.observation_spec))]
         assert len(states_dataset) == len(self.obs_helper.observation_spec)
         # next_states_dataset=[]
         # absorbing_dataset=[]

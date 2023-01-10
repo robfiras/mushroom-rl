@@ -236,9 +236,6 @@ class Trajectory(object):
         self.subtraj[0] -= self.subtraj[0][self.subtraj_step_no]
         self.subtraj[1] -= self.subtraj[1][self.subtraj_step_no]
 
-        a = self.subtraj_step_no*self._keys_dim[36]+self._keys_dim[36]
-        b = self.subtraj_step_no*self._keys_dim[36]
-        c = self.subtraj[36][b:a]
         return np.array([self.subtraj[i][self.subtraj_step_no] for i in range(len(self.subtraj))], dtype=object)
 
 

@@ -327,8 +327,8 @@ def catchtime() -> float:
 
 
 def interpolate_map(traj):
-    traj_list = [[], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [],
-                 [], [], [], [], [], [], [], [], [], [], [], []]
+    traj_list = [list() for j in range(len(traj))]
+    #traj_list = [list() for i in range()]
     for i in range(len(traj_list)):
         traj_list[i] = list(traj[i])
     temp = []
@@ -344,8 +344,7 @@ def interpolate_map(traj):
 
 
 def interpolate_remap(traj):
-    traj_list = [[], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [],
-                 [], [], [], [], [], [], [], [], [], [], [], []]
+    traj_list = [list() for j in range(len(traj))]
     for i in range(len(traj_list)):
         traj_list[i] = list(traj[i])
     traj_list[36] = [
@@ -370,7 +369,7 @@ if __name__ == '__main__':
     desired_contr_freq = 500  # hz
     n_substeps = env_freq // desired_contr_freq
 
-    traj_path = '/home/tim/Documents/IRL_unitreeA1/data/2D_Walking/dataset_only_states_unitreeA1_IRL_50k_FL_noise1_optimal.npz'
+    traj_path = '/home/tim/Documents/IRL_unitreeA1/data/2D_Walking/dataset_only_states_unitreeA1_IRL_50k_right_optimal.npz'
 
     #traj_path = test_rotate_data(traj_path, store_path='./new_unitree_a1_with_dir_vec_model')
 
