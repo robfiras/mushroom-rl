@@ -340,6 +340,7 @@ class BaseQuadruped(BaseHumanoid):
         scales/interpolates to the correct frequencies
         dataset needs to be in the same order as self.obs_helper.observation_spec
         """
+        assert interpolate_map is None, "not needed when rot matrix is transformed to angle for learning"
         if only_state and use_next_states:
 
             trajectory_files = np.load(data_path, allow_pickle=True)
@@ -349,6 +350,7 @@ class BaseQuadruped(BaseHumanoid):
 
             trajectory = np.array([trajectory_files[key].flatten() for key in keys], dtype=object)
             if self.use_2d_ctrl:
+                # transform rot mat into angle
                 traj_list = [list() for j in range(len(trajectory))]
 
                 for i in range(len(traj_list)):
@@ -428,6 +430,23 @@ class BaseQuadruped(BaseHumanoid):
             for i in sorted(ignore_index, reverse=True):
                 dataset["states"] = np.delete(dataset["states"], i, 1)
 
+            # tranform rot mat into rot angle
+            if self.use_2d_ctrl:
+                traj_list = [list() for j in range(len(dataset["states"]))]
+
+                for i in range(len(traj_list)):
+                    traj_list[i] = list(dataset["states"][i])
+                traj_list[36] = [
+                    np.arctan2(
+                        np.dot(mat.reshape((3, 3)), np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]])).reshape((9,))[3],
+                        np.dot(mat.reshape((3, 3)), np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]])).reshape((9,))[0])
+                    for mat in dataset["states"][36].reshape((len(dataset["states"][0]), 9))]
+                # for mat in traj[36].reshape((len(traj[0]), 9)):
+                #    arrow = np.dot(mat.reshape((3, 3)), np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]])).reshape((9,))
+                #   temp.append(np.arctan2(arrow[3], arrow[0]))
+                # traj_list[36] = temp
+                dataset["states"] = np.array(traj_list)
+
             # scale frequencies
             demo_dt = self.trajectory.traj_dt
             control_dt = self.trajectory.control_dt
@@ -453,6 +472,19 @@ class BaseQuadruped(BaseHumanoid):
                 # remove ignore indices
                 for i in sorted(ignore_index, reverse=True):
                     dataset["next_next_states"] = np.delete(dataset["next_next_states"], i, 1)
+
+                # tranform rot mat into rot angle
+                if self.use_2d_ctrl:
+                    traj_list = [list() for j in range(len(dataset["next_next_states"]))]
+
+                    for i in range(len(traj_list)):
+                        traj_list[i] = list(dataset["next_next_states"][i])
+                    traj_list[36] = [
+                        np.arctan2(
+                            np.dot(mat.reshape((3, 3)), np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]])).reshape((9,))[3],
+                            np.dot(mat.reshape((3, 3)), np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]])).reshape((9,))[0])
+                        for mat in dataset["states"][36].reshape((len(dataset["next_next_states"][0]), 9))]
+                    dataset["next_next_states"] = np.array(traj_list)
                 # scaling
                 if demo_dt != control_dt:
                     dataset["next_actions"] = interpolate.interp1d(x, dataset["next_actions"], kind="cubic", axis=0)(
@@ -473,6 +505,19 @@ class BaseQuadruped(BaseHumanoid):
                 # remove ignore indices
                 for i in sorted(ignore_index, reverse=True):
                     dataset["next_states"] = np.delete(dataset["next_states"], i, 1)
+
+                # tranform rot mat into rot angle
+                if self.use_2d_ctrl:
+                    traj_list = [list() for j in range(len(dataset["next_states"]))]
+
+                    for i in range(len(traj_list)):
+                        traj_list[i] = list(dataset["next_states"][i])
+                    traj_list[36] = [
+                        np.arctan2(
+                            np.dot(mat.reshape((3, 3)), np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]])).reshape((9,))[3],
+                            np.dot(mat.reshape((3, 3)), np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]])).reshape((9,))[0])
+                        for mat in dataset["states"][36].reshape((len(dataset["next_states"][0]), 9))]
+                    dataset["next_states"] = np.array(traj_list)
 
                 # scaling
                 if demo_dt != control_dt:
