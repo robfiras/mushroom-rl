@@ -21,7 +21,9 @@ class HalfCheetahEnvPOMPD(HalfCheetahEnv):
 
     def reset_model(self):
         if self._random_force_com:
-            self._force_strength = np.random.uniform(-self._max_force_strength, self._max_force_strength)
+            self._force_strength = np.random.choice([-self._max_force_strength, self._max_force_strength])
+            sign = -1.0 if self._force_strength < 0 else 1.0
+            self._forward_reward_weight = np.abs(self._forward_reward_weight) * sign
         return super().reset_model()
 
     def step(self, action):
