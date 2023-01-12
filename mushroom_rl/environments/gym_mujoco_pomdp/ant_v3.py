@@ -4,7 +4,7 @@ from gym.envs.mujoco.ant_v3 import AntEnv
 
 class AntEnvPOMPD(AntEnv):
 
-    def __init__(self, obs_to_hide=("velocities",), random_force_com=False, max_force_strength=5.0,
+    def __init__(self, obs_to_hide=("velocities",), random_force_com=False, max_force_strength=0.5,
                  forward_reward_weight=1.0, **kwargs):
 
         self._hidable_obs = ("positions", "velocities", "contact_forces")
