@@ -611,7 +611,24 @@ class BaseQuadruped(BaseHumanoid):
             opt_states = np.array([trajectory_files[key].flatten() for key in trajectory_files.keys()], dtype=object)
 
             states_dataset = [opt_states[i][:-1*self._keys_dim[i]] for i in range(len(opt_states))]
-                 #opt_states[:,:-1]
+
+
+        # check if states dataset has any fallen states
+        try:
+            index = self._keys_dim
+            transposed = [[x for lst in [states_dataset[j][i*index[j]:i*index[j]+index[j]] for j in range(len(states_dataset))]for x in lst][2:] for i in range(len(states_dataset[0]))]
+            has_fallen_violation = next(x for x in transposed if self.has_fallen(x))
+            np.set_printoptions(threshold=sys.maxsize)
+            raise RuntimeError("has_fallen violation occured: ", has_fallen_violation)
+        except StopIteration:
+            print("No has_fallen violation found")
+            # opt_states[:,:-1]
+
+
+        print(dataset_name, " minimal height:", min(states_dataset[2]))
+        print(dataset_name, " max x-rotation:", max(states_dataset[4], key=abs))
+        print(dataset_name, " max y-rotation:", max(states_dataset[5], key=abs))
+
 
 
 
