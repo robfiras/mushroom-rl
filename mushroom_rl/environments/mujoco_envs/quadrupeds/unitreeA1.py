@@ -230,17 +230,33 @@ class UnitreeA1(BaseQuadruped):
 
         trunk_euler = state[1:4]
         """
+        # old/first strict has_fallen; only for forward walking
         trunk_condition = ((trunk_euler[0] < -0.5) or (trunk_euler[0] > 0.02)
                             or (trunk_euler[1] < -0.095) or (trunk_euler[1] > 0.095)
                             or (trunk_euler[2] < -0.075) or (trunk_euler[2] > 0.075)
                             or state[0] < -.22 #.25
+                            ca 30 degree
+                            remove z rot
                             )"""
-
-        #for cluster datasets
+        """
+        #less strict has_fallen (old)
+        for cluster datasets
         trunk_condition = ((trunk_euler[1] < -0.6981) or (trunk_euler[1] > 0.6981)
                            or (trunk_euler[2] < -0.6981) or (trunk_euler[2] > 0.6981)
                            or state[0] < -.25
                            )
+        """
+
+        #new stricter has_fallen, adapted to 8 walking dir
+        # minimal height : -0.19103749641009019
+        # max x-rot: 0.21976069929211345 -> 12.5914 degree
+        # max y-rot: -0.1311784030716909 -> -7.516 degree
+
+        trunk_condition = ((trunk_euler[1] < -0.2793) or (trunk_euler[1] > 0.2793) # x-rotation 16 degree
+                           or (trunk_euler[2] < -0.192) or (trunk_euler[2] > 0.192) # y-rotation 11 degree
+                           or state[0] < -.24
+                           )
+
         #if trunk_condition:
         #    print("con1: ", (trunk_euler[0] < -0.5) or (trunk_euler[0] > 0.02), trunk_euler[0])
         #    print("con2: ", (trunk_euler[1] < -0.095) or (trunk_euler[1] > 0.095), trunk_euler[1])
@@ -360,7 +376,7 @@ def interpolate_remap(traj):
 
 if __name__ == '__main__':
     # TODO: different behavior, action control completed?, for clipping in torques need to adjust xml gear 34 and ctrllimited
-
+    """
     #trajectory demo:
     np.random.seed(1)
     # define env and data frequencies
@@ -369,7 +385,13 @@ if __name__ == '__main__':
     desired_contr_freq = 500  # hz
     n_substeps = env_freq // desired_contr_freq
 
-    traj_path = '/home/tim/Documents/IRL_unitreeA1/data/2D_Walking/dataset_only_states_unitreeA1_IRL_50k_right_optimal.npz'
+    traj_path = '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_forward.npz'
+
+    #found solution: adjust npc model
+    # weird that opposite directions need different rotations
+    # should I adjust the backwalking?
+    # remaining question: should the arrow in the dataset be corresponding/relative to the robot
+    # Should for same seed etc get the same result? stricter has_fallen seems a little bit better
 
     #traj_path = test_rotate_data(traj_path, store_path='./new_unitree_a1_with_dir_vec_model')
 
@@ -403,7 +425,7 @@ if __name__ == '__main__':
     # favorite 0.005 1000000 | solref="-0.000001 -400"
     # final: solref="-0.0000000001 -250"
 
-
+    """
 
 
     # action demo
@@ -417,64 +439,67 @@ if __name__ == '__main__':
     control_dt = (1 / desired_contr_freq)
 
     #dataset settings:
-    use_torque_ctrl = True
     #action...50k_noise0... has correct acions for torque and one more datapoint
 
     actions_path = ['/home/tim/Documents/locomotion_simulation/log/2D_Walking/actions_torque_50k_backward.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/actions_torque_50k_backward_noise0.npz',
                     '/home/tim/Documents/locomotion_simulation/log/2D_Walking/actions_torque_50k_backward_noise1.npz',
+                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/actions_torque_50k_backward_noise2.npz',
                     '/home/tim/Documents/locomotion_simulation/log/2D_Walking/actions_torque_50k_BL.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/actions_torque_50k_BL_noise0.npz',
                     '/home/tim/Documents/locomotion_simulation/log/2D_Walking/actions_torque_50k_BL_noise1.npz',
+                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/actions_torque_50k_BL_noise2.npz',
                     '/home/tim/Documents/locomotion_simulation/log/2D_Walking/actions_torque_50k_BR.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/actions_torque_50k_BR_noise0.npz',
                     '/home/tim/Documents/locomotion_simulation/log/2D_Walking/actions_torque_50k_BR_noise1.npz',
+                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/actions_torque_50k_BR_noise2.npz',
                     '/home/tim/Documents/locomotion_simulation/log/2D_Walking/actions_torque_50k_FL.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/actions_torque_50k_FL_noise0.npz',
                     '/home/tim/Documents/locomotion_simulation/log/2D_Walking/actions_torque_50k_FL_noise1.npz',
+                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/actions_torque_50k_FL_noise2.npz',
                     '/home/tim/Documents/locomotion_simulation/log/2D_Walking/actions_torque_50k_forward.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/actions_torque_50k_forward_noise0.npz',
                     '/home/tim/Documents/locomotion_simulation/log/2D_Walking/actions_torque_50k_forward_noise1.npz',
+                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/actions_torque_50k_forward_noise2.npz',
                     '/home/tim/Documents/locomotion_simulation/log/2D_Walking/actions_torque_50k_FR.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/actions_torque_50k_FR_noise0.npz',
                     '/home/tim/Documents/locomotion_simulation/log/2D_Walking/actions_torque_50k_FR_noise1.npz',
+                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/actions_torque_50k_FR_noise2.npz',
                     '/home/tim/Documents/locomotion_simulation/log/2D_Walking/actions_torque_50k_left.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/actions_torque_50k_left_noise0.npz',
                     '/home/tim/Documents/locomotion_simulation/log/2D_Walking/actions_torque_50k_left_noise1.npz',
+                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/actions_torque_50k_left_noise2.npz',
                     '/home/tim/Documents/locomotion_simulation/log/2D_Walking/actions_torque_50k_right.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/actions_torque_50k_right_noise0.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/actions_torque_50k_right_noise1.npz'] #actions_torque.npz
+                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/actions_torque_50k_right_noise1.npz',
+                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/actions_torque_50k_right_noise2.npz'] #actions_torque.npz
     states_path = ['/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_backward.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_backward_noise0.npz',
                     '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_backward_noise1.npz',
+                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_backward_noise2.npz',
                     '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_BL.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_BL_noise0.npz',
                     '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_BL_noise1.npz',
+                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_BL_noise2.npz',
                     '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_BR.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_BR_noise0.npz',
                     '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_BR_noise1.npz',
+                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_BR_noise2.npz',
                     '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_FL.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_FL_noise0.npz',
                     '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_FL_noise1.npz',
+                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_FL_noise2.npz',
                     '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_forward.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_forward_noise0.npz',
                     '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_forward_noise1.npz',
+                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_forward_noise2.npz',
                     '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_FR.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_FR_noise0.npz',
                     '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_FR_noise1.npz',
+                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_FR_noise2.npz',
                     '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_left.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_left_noise0.npz',
                     '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_left_noise1.npz',
+                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_left_noise2.npz',
                     '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_right.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_right_noise0.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_right_noise1.npz']
+                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_right_noise1.npz',
+                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_right_noise2.npz']
     #actions_path = '/home/tim/Documents/locomotion_simulation/log/actions_torque.npz'
-    #states_path = '/home/tim/Documents/locomotion_simulation/log/states.npz'
-    dataset_path = '/home/tim/Documents/IRL_unitreeA1/data/2D_Walking' #'/home/tim/Documents/test_datasets/'#None # '/home/tim/Documents/IRL_unitreeA1/data'
-    use_rendering = False
+    #states_path = '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_right_noise1.npz' #'/home/tim/Documents/locomotion_simulation/log/states.npz'
+    dataset_path = '/home/tim/Documents/test_datasets/' #'/home/tim/Documents/IRL_unitreeA1/data/2D_Walking' #'/home/tim/Documents/test_datasets/'#None # '/home/tim/Documents/IRL_unitreeA1/data'
+    use_rendering = False # both only for mujoco generated states
     use_plotting = False
     state_type = "optimal"
     action_type = None#"optimal"
+
+    use_2d_ctrl = True
+    use_torque_ctrl = True
+
 
 
 
@@ -488,7 +513,7 @@ if __name__ == '__main__':
 
 
     env = UnitreeA1(timestep=1/env_freq, gamma=gamma, horizon=horizon, n_substeps=n_substeps,
-                    use_torque_ctrl=use_torque_ctrl, use_2d_ctrl=True, tmp_dir_name=".")
+                    use_torque_ctrl=use_torque_ctrl, use_2d_ctrl=use_2d_ctrl, tmp_dir_name=".")
 
     action_dim = env.info.action_space.shape[0]
     print("Dimensionality of Obs-space:", env.info.observation_space.shape[0])
