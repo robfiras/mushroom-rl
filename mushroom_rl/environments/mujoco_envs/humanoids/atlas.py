@@ -71,11 +71,12 @@ class Atlas(BaseHumanoid):
     @staticmethod
     def has_fallen(state):
         pelvis_euler = state[1:4]
-        pelvis_condition = ((state[0] < -0.46) or (state[0] > 0.0)
-                            or (pelvis_euler[0] < (-np.pi / 4.5)) or (pelvis_euler[0] > (np.pi / 12))
-                            or (pelvis_euler[1] < -np.pi / 12) or (pelvis_euler[1] > np.pi / 8)
-                            or (pelvis_euler[2] < (-np.pi / 10)) or (pelvis_euler[2] > (np.pi / 10))
-                           )
+        pelvis_y_cond = (state[0] < -0.46) or (state[0] > 0.1)
+        pelvis_tilt_cond = (pelvis_euler[0] < (-np.pi / 4.5)) or (pelvis_euler[0] > (np.pi / 12))
+        pelvis_list_cond = (pelvis_euler[1] < -np.pi / 12) or (pelvis_euler[1] > np.pi / 8)
+        pelvis_rot_cond = (pelvis_euler[2] < (-np.pi / 10)) or (pelvis_euler[2] > (np.pi / 10))
+        pelvis_condition = (pelvis_y_cond or pelvis_tilt_cond or pelvis_list_cond or pelvis_rot_cond)
+
         return pelvis_condition
 
 
