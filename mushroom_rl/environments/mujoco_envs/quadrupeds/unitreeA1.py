@@ -344,14 +344,16 @@ def catchtime() -> float:
 
 def interpolate_map(traj):
     traj_list = [list() for j in range(len(traj))]
-    #traj_list = [list() for i in range()]
     for i in range(len(traj_list)):
-        traj_list[i] = list(traj[i])
+        if i in [3,4,5]:
+            traj_list[i] = list(np.unwrap(traj[i]))
+        else:
+            traj_list[i] = list(traj[i])
     temp = []
-    traj_list[36] = [
+    traj_list[36] = list(np.unwrap([
         np.arctan2(np.dot(mat.reshape((3, 3)), np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]])).reshape((9,))[3],
                    np.dot(mat.reshape((3, 3)), np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]])).reshape((9,))[0])
-        for mat in traj[36]]
+        for mat in traj[36]]))
     # for mat in traj[36].reshape((len(traj[0]), 9)):
     #    arrow = np.dot(mat.reshape((3, 3)), np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]])).reshape((9,))
     #   temp.append(np.arctan2(arrow[3], arrow[0]))
@@ -375,17 +377,16 @@ def interpolate_remap(traj):
 
 
 if __name__ == '__main__':
-    # TODO: different behavior, action control completed?, for clipping in torques need to adjust xml gear 34 and ctrllimited
-    """
+
     #trajectory demo:
     np.random.seed(1)
     # define env and data frequencies
     env_freq = 1000  # hz, added here as a reminder
     traj_data_freq = 500  # hz, added here as a reminder
-    desired_contr_freq = 500  # hz
+    desired_contr_freq = 100  # hz
     n_substeps = env_freq // desired_contr_freq
 
-    traj_path = '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_forward.npz'
+    traj_path =  '/home/tim/Documents/IRL_unitreeA1/data/2D_Walking/dataset_only_states_unitreeA1_IRL_50k_backward_noise1_optimal.npz' #'/home/tim/Documents/locomotion_simulation/locomotion/examples/log/2023_01_23_19_46_26/states.npz' #
 
     #found solution: adjust npc model
     # weird that opposite directions need different rotations
@@ -396,6 +397,13 @@ if __name__ == '__main__':
     #traj_path = test_rotate_data(traj_path, store_path='./new_unitree_a1_with_dir_vec_model')
 
 
+            #TODO: reset trajectory 0.45 ändern -> welcher wert macht mehr sinn?
+            #TODO: noise erhöhen/testen
+            #TODO: Interpolation von allen Datensätzen einzeln -> als extra attribut oder anstelle ein trajectory attribut oder nur bei init?
+            #TODO: warum nicht mehr episode starts in create dataset
+            #TODO: Interpolation auch scheiße bei npc beipiel run wenn runter skaliert
+            #TODO: dir pfeil flattert bei rückwärts wenn auf 100hz interpoliert -> problem -pi und pi gleicher winkel -> interpolation scheiße
+            #TODO: np.unwrap() be interpolation_map ok? -> probleme bei xml range?
 
     # prepare trajectory params
     traj_params = dict(traj_path=traj_path,
@@ -408,7 +416,8 @@ if __name__ == '__main__':
     horizon = 1000
 
     env = UnitreeA1(timestep=1/env_freq, gamma=gamma, horizon=horizon, n_substeps=n_substeps,use_torque_ctrl=True,
-                    traj_params=traj_params, random_start=True, use_2d_ctrl=True, tmp_dir_name=".")
+                    traj_params=traj_params, random_start=True,
+                    use_2d_ctrl=True, tmp_dir_name=".")
 
 
     with catchtime() as t:
@@ -425,7 +434,7 @@ if __name__ == '__main__':
     # favorite 0.005 1000000 | solref="-0.000001 -400"
     # final: solref="-0.0000000001 -250"
 
-    """
+
 
 
     # action demo
