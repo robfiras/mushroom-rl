@@ -234,6 +234,7 @@ class BaseHumanoid(MuJoCo):
             xmat = self._data.site("dir_arrow").xmat.copy()
             temp = np.dot(xmat.reshape((3, 3)), np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]])).reshape((9,))
             angle = np.arctan2(temp[3], temp[0])
+            print(angle)
             xpos = self._data.body("dir_arrow").xpos + [
                 -0.1 * np.cos(angle), -0.1 * np.sin(angle), 0]
 

@@ -23,19 +23,7 @@ from scipy import signal, interpolate
 #              "feet_xvelr_l", "feet_yvelr_l", "feet_zvelr_l"]
 
 
-# TODO needs changes:
 
-
-# TODO --------------------------------------------------------------------------------------------------------------------------------------------------------------
-DIM_OF_OBS_TYPE = {
-    ObservationType.BODY_POS: 3,
-    ObservationType.BODY_ROT: 4,
-    ObservationType.BODY_VEL: 6,
-    ObservationType.JOINT_POS: 1,  # can be 7
-    ObservationType.JOINT_VEL: 1,  # can be 6
-    ObservationType.SITE_POS: 3,
-    ObservationType.SITE_ROT: 9
-}
 
 class Trajectory(object):
     """
@@ -85,24 +73,15 @@ class Trajectory(object):
         for ik in ignore_keys:
             keys.remove(ik)
 
-        self._keys_dim = {}
-        i = 0
-        for key, name, ot in observation_spec:
-            if key in keys:
-                self._keys_dim[i] = DIM_OF_OBS_TYPE[ot]
-                i+=1
-        temp = np.array([self._trajectory_files[key].flatten() for key in keys], dtype=object)
-        length = int(temp[0].shape[0]/list(self._keys_dim.values())[0])
-        # change every multi dimensional obs into an array that contains as many elemnts as the obs spec needs to have (450,) to (50,9)
-        self.trajectory = np.array([list(temp[i].reshape((length ,self._keys_dim[i]))) if self._keys_dim[i] != 1 else list(temp[i]) for i in range(len(keys))], dtype=object)
+        self.trajectory = np.array([list(self._trajectory_files[key]) for key in keys], dtype=object)
 
         self.keys = keys
-        print("Trajectory shape: ", self.trajectory.shape[0], length)
+        print("Trajectory shape: ", self.trajectory.shape)
 
         if "split_points" in self._trajectory_files.keys():
             self.split_points = self._trajectory_files["split_points"]
         else:
-            self.split_points = np.array([0, self.trajectory[0].shape[0]/list(self._keys_dim.values())[0]])
+            self.split_points = np.array([0, self.trajectory.shape[1]])
 
         self.n_repeating_steps = len(self.split_points) - 1
 
@@ -129,7 +108,7 @@ class Trajectory(object):
 
     @property
     def traj_length(self):
-        return self.subtraj[0].shape[0]/list(self._keys_dim.values())[0]
+        return self.subtraj.shape[1]
 
     #TODO not adapted to multi dim obs_spec
     def create_dataset(self, ignore_keys=[], normalizer=None):
@@ -178,7 +157,7 @@ class Trajectory(object):
 
     def _interpolate_trajectory(self, traj, factor, map_funct=None, re_map_funct=None):
         assert (map_funct is not None and re_map_funct is not None) or (map_funct is None and re_map_funct is None)
-        shape1=traj[0].shape[0] / list(self._keys_dim.values())[0]
+        shape1=traj.shape[1]
         if map_funct is not None:
             #TODO: weiß nicht wieso aber shape von traj is 37, sollte 37, 51025
             traj = map_funct(traj)
@@ -242,8 +221,6 @@ class Trajectory(object):
     def get_next_sample(self):
         if self.subtraj_step_no >= self.traj_length:
             self.get_next_sub_trajectory()
-
-        indize_not_one = [i for i in range(len(self.subtraj)) if self._keys_dim[i] != 1]
 
         sample = deepcopy([self.subtraj[i][self.subtraj_step_no] for i in range(len(self.subtraj))])
         self.subtraj_step_no += 1

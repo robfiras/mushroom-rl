@@ -379,7 +379,7 @@ def interpolate_remap(traj):
 
 
 if __name__ == '__main__':
-
+    """
     #trajectory demo:
     np.random.seed(1)
     # define env and data frequencies
@@ -439,7 +439,7 @@ if __name__ == '__main__':
     #0.004-0.005 1000000 kp=1000
     # favorite 0.005 1000000 | solref="-0.000001 -400"
     # final: solref="-0.0000000001 -250"
-
+    """
 
 
 
@@ -504,8 +504,8 @@ if __name__ == '__main__':
                     '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_right.npz',
                     '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_right_noise1.npz',
                     '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_right_noise2.npz']
-    #actions_path = '/home/tim/Documents/locomotion_simulation/log/actions_torque.npz'
-    #states_path = '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_right_noise1.npz' #'/home/tim/Documents/locomotion_simulation/log/states.npz'
+    actions_path = '/home/tim/Documents/locomotion_simulation/log/actions_torque.npz'
+    states_path = '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_right_noise1.npz' #'/home/tim/Documents/locomotion_simulation/log/states.npz'
     dataset_path = '/home/tim/Documents/test_datasets/' #'/home/tim/Documents/IRL_unitreeA1/data/2D_Walking' #'/home/tim/Documents/test_datasets/'#None # '/home/tim/Documents/IRL_unitreeA1/data'
     use_rendering = False # both only for mujoco generated states
     use_plotting = False
@@ -547,12 +547,13 @@ if __name__ == '__main__':
                         )
     exit()
 
-    
+   
     
     env.play_action_demo2(actions_path=actions_path, states_path=states_path, control_dt=control_dt, demo_dt=demo_dt,
                           use_rendering=True, use_plotting=False, use_pd_controller=True)
     exit()
     """
+
     if type(actions_path) == list and type(states_path) == list:
         assert len(actions_path) == len(states_path)
         for i in range(len(actions_path)):
