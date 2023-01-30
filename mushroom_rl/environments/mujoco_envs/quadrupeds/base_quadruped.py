@@ -74,261 +74,7 @@ class BaseQuadruped(BaseHumanoid):
 
 
 
-    def play_action_demo(self, action_path, states_path, control_dt=0.01, demo_dt=0.01, dataset_path=None, interpolate_map=None, interpolate_remap=None):
-        """
 
-        Plays a demo of the loaded actions by using the actions in action_path.
-        action_path: path to the .npz file. Should be in format (number of samples/steps, action dimension)
-        states_path: path to states.npz file, for initial position; should be in format like for play_trajectory_demo
-        control_dt: model control frequency
-        demo_dt: freqency the data was collected
-        dataset_path: if set, method creates a dataset with actions, states, episode_starts, next_states, absorbing, rewards
-        make sure action clipping is off
-
-        """
-        assert demo_dt == control_dt, "needs changes for that"
-        # to get the same init position
-        trajectory_files = np.load(states_path, allow_pickle=True)
-        trajectory = np.array([trajectory_files[key] for key in trajectory_files.keys()])
-
-
-        #to safe the optimal trajectory for states only in IRL repo -> update all datasets in the same step
-        if dataset_path:
-            traj_start_offset = 1023  # offset where to start logging the trajectory
-            print("Shape optimal states: ", trajectory[:,traj_start_offset + 1:].shape)
-
-            np.savez(os.path.join(dataset_path, 'dataset_only_states_unitreeA1_IRL_optimal.npz'),
-                     q_trunk_tx=np.array(trajectory[0][traj_start_offset + 1:]),
-                     q_trunk_ty=np.array(trajectory[1][traj_start_offset + 1:]),
-                     q_trunk_tz=np.array(trajectory[2][traj_start_offset + 1:]),
-                     q_trunk_tilt=np.array(trajectory[3][traj_start_offset + 1:]),
-                     q_trunk_list=np.array(trajectory[4][traj_start_offset + 1:]),
-                     q_trunk_rotation=np.array(trajectory[5][traj_start_offset + 1:]),
-                     q_FR_hip_joint=np.array(trajectory[6][traj_start_offset + 1:]),
-                     q_FR_thigh_joint=np.array(trajectory[7][traj_start_offset + 1:]),
-                     q_FR_calf_joint=np.array(trajectory[8][traj_start_offset + 1:]),
-                     q_FL_hip_joint=np.array(trajectory[9][traj_start_offset + 1:]),
-                     q_FL_thigh_joint=np.array(trajectory[10][traj_start_offset + 1:]),
-                     q_FL_calf_joint=np.array(trajectory[11][traj_start_offset + 1:]),
-                     q_RR_hip_joint=np.array(trajectory[12][traj_start_offset + 1:]),
-                     q_RR_thigh_joint=np.array(trajectory[13][traj_start_offset + 1:]),
-                     q_RR_calf_joint=np.array(trajectory[14][traj_start_offset + 1:]),
-                     q_RL_hip_joint=np.array(trajectory[15][traj_start_offset + 1:]),
-                     q_RL_thigh_joint=np.array(trajectory[16][traj_start_offset + 1:]),
-                     q_RL_calf_joint=np.array(trajectory[17][traj_start_offset + 1:]),
-                     dq_trunk_tx=np.array(trajectory[18][traj_start_offset + 1:]),
-                     dq_trunk_tz=np.array(trajectory[19][traj_start_offset + 1:]),
-                     dq_trunk_ty=np.array(trajectory[20][traj_start_offset + 1:]),
-                     dq_trunk_tilt=np.array(trajectory[21][traj_start_offset + 1:]),
-                     dq_trunk_list=np.array(trajectory[22][traj_start_offset + 1:]),
-                     dq_trunk_rotation=np.array(trajectory[23][traj_start_offset + 1:]),
-                     dq_FR_hip_joint=np.array(trajectory[24][traj_start_offset + 1:]),
-                     dq_FR_thigh_joint=np.array(trajectory[25][traj_start_offset + 1:]),
-                     dq_FR_calf_joint=np.array(trajectory[26][traj_start_offset + 1:]),
-                     dq_FL_hip_joint=np.array(trajectory[27][traj_start_offset + 1:]),
-                     dq_FL_thigh_joint=np.array(trajectory[28][traj_start_offset + 1:]),
-                     dq_FL_calf_joint=np.array(trajectory[29][traj_start_offset + 1:]),
-                     dq_RR_hip_joint=np.array(trajectory[30][traj_start_offset + 1:]),
-                     dq_RR_thigh_joint=np.array(trajectory[31][traj_start_offset + 1:]),
-                     dq_RR_calf_joint=np.array(trajectory[32][traj_start_offset + 1:]),
-                     dq_RL_hip_joint=np.array(trajectory[33][traj_start_offset + 1:]),
-                     dq_RL_thigh_joint=np.array(trajectory[34][traj_start_offset + 1:]),
-                     dq_RL_calf_joint=np.array(trajectory[35][traj_start_offset + 1:]))
-
-        print("Trajectory shape: ", trajectory.shape)
-        # set x and y to 0: be carefull need to be at index 0,1
-        trajectory[0, :] -= trajectory[0, 0]
-        trajectory[1, :] -= trajectory[1, 0]
-
-        obs_spec = self.obs_helper.observation_spec
-        for key_name_ot, value in zip(obs_spec, trajectory[:, 0]):
-            key, name, ot = key_name_ot
-            if ot == ObservationType.JOINT_POS:
-                self._data.joint(name).qpos = value
-            elif ot == ObservationType.JOINT_VEL:
-                self._data.joint(name).qvel = value
-
-        # np.set_printoptions(threshold=sys.maxsize)
-        action_files = np.load(action_path, allow_pickle=True)
-        actions = np.array([action_files[key] for key in action_files.keys()])[0]
-
-        # scale frequencies
-        if demo_dt != control_dt:
-            new_demo_sampling_factor = demo_dt / control_dt
-            x = np.arange(actions.shape[0])
-            x_new = np.linspace(0, actions.shape[0] - 1, round(actions.shape[0] * new_demo_sampling_factor),
-                                endpoint=True)
-            actions = interpolate.interp1d(x, actions, kind="cubic", axis=0)(x_new)
-            trajectory = self._interpolate_trajectory(
-                trajectory, factor=new_demo_sampling_factor,
-                map_funct=interpolate_map, re_map_funct=interpolate_remap
-            )
-
-        true_pos = []
-        set_point = []
-
-        if (dataset_path):
-            actions_dataset = []
-            states_dataset = []
-            episode_starts_dataset = [False] * (actions.shape[0] - traj_start_offset - 1)
-            episode_starts_dataset[0] = True
-            # next_states_dataset=[]
-            # absorbing_dataset=[]
-            # rewards_dataset=[]
-
-        for i in np.arange(actions.shape[0]):
-            # time.sleep(.1)
-            if i > 1023:
-                self.has_fallen(self._obs)
-            if (dataset_path and i > traj_start_offset):
-                actions_dataset.append(list(actions[i]))
-                states_dataset.append(list(self._data.qpos[:]) + list(self._data.qvel[:]))
-                # absorbing_dataset.append(self.is_absorbing(self._obs))
-                temp_obs = self._obs
-
-            action = actions[i]
-            true_pos.append(list(self._data.qpos[6:]))
-            set_point.append(trajectory[6:18, i])
-            #action = 10*(trajectory[6:18, i+1]-self._data.qpos[6:])#+1*(-self._data.qvel[6:])
-            nstate, _, absorbing, _ = self.step(action) #clipping in xml torque needeed?
-            self.render()
-
-
-            # if(dataset_path and i>traj_start_offset):
-
-            # if nextstate is used for training; wasn't compatible with action in the moment
-            # next_states_dataset.append(list(self._data.qpos[:]) + list(self._data.qvel[:]))
-
-            # rewards_dataset.append(self.reward(temp_obs, action, self._obs, self.is_absorbing(self._obs)))
-
-        if (dataset_path):
-            # extra dataset with only states for initial positions
-
-            only_states_dataset = [list() for j in range(len(states_dataset[0]))]
-
-            for j in np.arange(len(states_dataset)):
-                for i in np.arange(len(only_states_dataset)):
-                    only_states_dataset[i].append(states_dataset[j][i])
-            print("Shape only_states: ", np.array(only_states_dataset).shape)
-            np.savez(os.path.join(dataset_path, 'dataset_only_states_unitreeA1_IRL.npz'),
-                     q_trunk_tx=np.array(only_states_dataset[0]),
-                     q_trunk_ty=np.array(only_states_dataset[1]),
-                     q_trunk_tz=np.array(only_states_dataset[2]),
-                     q_trunk_tilt=np.array(only_states_dataset[3]),
-                     q_trunk_list=np.array(only_states_dataset[4]),
-                     q_trunk_rotation=np.array(only_states_dataset[5]),
-                     q_FR_hip_joint=np.array(only_states_dataset[6]),
-                     q_FR_thigh_joint=np.array(only_states_dataset[7]),
-                     q_FR_calf_joint=np.array(only_states_dataset[8]),
-                     q_FL_hip_joint=np.array(only_states_dataset[9]),
-                     q_FL_thigh_joint=np.array(only_states_dataset[10]),
-                     q_FL_calf_joint=np.array(only_states_dataset[11]),
-                     q_RR_hip_joint=np.array(only_states_dataset[12]),
-                     q_RR_thigh_joint=np.array(only_states_dataset[13]),
-                     q_RR_calf_joint=np.array(only_states_dataset[14]),
-                     q_RL_hip_joint=np.array(only_states_dataset[15]),
-                     q_RL_thigh_joint=np.array(only_states_dataset[16]),
-                     q_RL_calf_joint=np.array(only_states_dataset[17]),
-                     dq_trunk_tx=np.array(only_states_dataset[18]),
-                     dq_trunk_tz=np.array(only_states_dataset[19]),
-                     dq_trunk_ty=np.array(only_states_dataset[20]),
-                     dq_trunk_tilt=np.array(only_states_dataset[21]),
-                     dq_trunk_list=np.array(only_states_dataset[22]),
-                     dq_trunk_rotation=np.array(only_states_dataset[23]),
-                     dq_FR_hip_joint=np.array(only_states_dataset[24]),
-                     dq_FR_thigh_joint=np.array(only_states_dataset[25]),
-                     dq_FR_calf_joint=np.array(only_states_dataset[26]),
-                     dq_FL_hip_joint=np.array(only_states_dataset[27]),
-                     dq_FL_thigh_joint=np.array(only_states_dataset[28]),
-                     dq_FL_calf_joint=np.array(only_states_dataset[29]),
-                     dq_RR_hip_joint=np.array(only_states_dataset[30]),
-                     dq_RR_thigh_joint=np.array(only_states_dataset[31]),
-                     dq_RR_calf_joint=np.array(only_states_dataset[32]),
-                     dq_RL_hip_joint=np.array(only_states_dataset[33]),
-                     dq_RL_thigh_joint=np.array(only_states_dataset[34]),
-                     dq_RL_calf_joint=np.array(only_states_dataset[35]))
-
-            # safe dataset with actions, absorbing etc -> used for learning in gail
-            print("Shape actions, states: ", np.array(actions_dataset).shape, np.array(states_dataset).shape)
-            np.savez(os.path.join(dataset_path, 'dataset_unitreeA1_IRL.npz'),
-                     actions=actions_dataset, states=list(states_dataset), episode_starts=episode_starts_dataset)
-            # absorbing=absorbing_dataset, rewards=rewards_dataset)# next_states=next_states_dataset,
-
-        # plotting of error and comparison of setpoint and actual position
-        true_pos = np.array(true_pos)
-        set_point = np.array(set_point)
-        # --------------------------------------------------------------------------------------------------------------
-        data = {
-            "setpoint": set_point[:, 0],
-            "actual pos": true_pos[:, 0]
-        }
-
-        fig = plt.figure()
-        ax = fig.gca()
-        colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
-
-        for i, v in enumerate(data.items()):
-            ax.plot(v[1], color=colors[i], linestyle='-', label=v[0])
-        plt.legend(loc=4)
-        plt.xlabel("Time")
-        plt.ylabel("Position")
-        plt.savefig("hip.png")
-
-        # --------------------------------------------------------------------------------------------------------------
-        data = {
-            "setpoint": set_point[:, 1],
-            "actual pos": true_pos[:, 1]
-        }
-
-        fig = plt.figure()
-        ax = fig.gca()
-        colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
-
-        for i, v in enumerate(data.items()):
-            ax.plot(v[1], color=colors[i], linestyle='-', label=v[0])
-        plt.legend(loc=4)
-        plt.xlabel("Time")
-        plt.ylabel("Position")
-        plt.savefig("thigh.png")
-
-        # --------------------------------------------------------------------------------------------------------------
-
-        data = {
-            "setpoint": set_point[:, 2],
-            "actual pos": true_pos[:, 2]
-        }
-
-        fig = plt.figure()
-        ax = fig.gca()
-        colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
-
-        for i, v in enumerate(data.items()):
-            ax.plot(v[1], color=colors[i], linestyle='-', label=v[0])
-        plt.legend(loc=4)
-        plt.xlabel("Time")
-        plt.ylabel("Position")
-        plt.savefig("calf.png")
-
-        # --------------------------------------------------------------------------------------------------------------
-
-        data = {
-            "hip error": set_point[:, 0] - true_pos[:, 0],
-            "thigh error": set_point[:, 1] - true_pos[:, 1],
-            "calf error": set_point[:, 2] - true_pos[:, 2]
-        }
-
-        fig = plt.figure()
-        ax = fig.gca()
-        colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
-
-        for i, v in enumerate(data.items()):
-            ax.plot(v[1], color=colors[i], linestyle='-', label=v[0])
-        plt.legend(loc=4)
-        plt.xlabel("Time")
-        plt.ylabel("Position")
-        plt.savefig("error.png")
-
-# changed force inertia mass, ranges, kp, removed limp
 
 
 
@@ -348,7 +94,7 @@ class BaseQuadruped(BaseHumanoid):
 
             keys = trajectory_files.keys()
 
-            trajectory = np.array([trajectory_files[key].flatten() for key in keys], dtype=object)
+            trajectory = np.array([list(trajectory_files[key])for key in keys], dtype=object)
             if self.use_2d_ctrl:
                 # transform rot mat into angle
                 traj_list = [list() for j in range(len(trajectory))]
@@ -359,7 +105,7 @@ class BaseQuadruped(BaseHumanoid):
                     np.arctan2(
                         np.dot(mat.reshape((3, 3)), np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]])).reshape((9,))[3],
                         np.dot(mat.reshape((3, 3)), np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]])).reshape((9,))[0])
-                    for mat in trajectory[36].reshape((len(trajectory[0]), 9))]
+                    for mat in trajectory[36]]
                 # for mat in traj[36].reshape((len(traj[0]), 9)):
                 #    arrow = np.dot(mat.reshape((3, 3)), np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]])).reshape((9,))
                 #   temp.append(np.arctan2(arrow[3], arrow[0]))
@@ -538,10 +284,8 @@ class BaseQuadruped(BaseHumanoid):
 
     def _interpolate_trajectory(self, traj, factor, map_funct=None, re_map_funct=None, axis=0):
         assert (map_funct is not None and re_map_funct is not None) or (map_funct is None and re_map_funct is None)
-        if axis==0:
-            shape1=traj.shape[0] / list(self._keys_dim.values())[0]
-        else:
-            shape1=traj[0].shape[0]
+
+        shape1=traj.shape[1]
         if map_funct is not None:
             #TODO: weiß nicht wieso aber shape von traj is 37, sollte 37, 51025
             traj = map_funct(traj)
@@ -608,15 +352,16 @@ class BaseQuadruped(BaseHumanoid):
         if state_type == "optimal":
             # load optimal states from datamodel (for init_position/states dataset)
             trajectory_files = np.load(states_path, allow_pickle=True)
-            opt_states = np.array([trajectory_files[key].flatten() for key in trajectory_files.keys()], dtype=object)
+            opt_states = np.array([list(trajectory_files[key]) for key in trajectory_files.keys()], dtype=object)
 
-            states_dataset = [opt_states[i][:-1*self._keys_dim[i]] for i in range(len(opt_states))]
+            states_dataset = [opt_states[i][:-1] for i in range(len(opt_states))]
 
 
         # check if states dataset has any fallen states
         try:
             index = self._keys_dim
-            transposed = [[x for lst in [states_dataset[j][i*index[j]:i*index[j]+index[j]] for j in range(len(states_dataset))]for x in lst][2:] for i in range(len(states_dataset[0]))]
+            #transposed = [[x for lst in [states_dataset[j][i*index[j]:i*index[j]+index[j]] for j in range(len(states_dataset))]for x in lst][2:] for i in range(len(states_dataset[0]))]
+            transposed2 = np.transpose(states_dataset[2:])
             has_fallen_violation = next(x for x in transposed if self.has_fallen(x))
             np.set_printoptions(threshold=sys.maxsize)
             raise RuntimeError("has_fallen violation occured: ", has_fallen_violation)
@@ -692,43 +437,43 @@ class BaseQuadruped(BaseHumanoid):
         else:
             np.savez(os.path.join(dataset_path,
                                   'dataset_only_states_unitreeA1_IRL' + dataset_name + '_' + appendix_only_states + '.npz'),
-                     q_trunk_tx=np.array(states_dataset[0][(traj_start_offset + 1) * self._keys_dim[0]:]),
-                     q_trunk_ty=np.array(states_dataset[1][(traj_start_offset + 1) * self._keys_dim[1]:]),
-                     q_trunk_tz=np.array(states_dataset[2][(traj_start_offset + 1) * self._keys_dim[2]:]),
-                     q_trunk_tilt=np.array(states_dataset[3][(traj_start_offset + 1) * self._keys_dim[3]:]),
-                     q_trunk_list=np.array(states_dataset[4][(traj_start_offset + 1) * self._keys_dim[4]:]),
-                     q_trunk_rotation=np.array(states_dataset[5][(traj_start_offset + 1) * self._keys_dim[5]:]),
-                     q_FR_hip_joint=np.array(states_dataset[6][(traj_start_offset + 1) * self._keys_dim[6]:]),
-                     q_FR_thigh_joint=np.array(states_dataset[7][(traj_start_offset + 1) * self._keys_dim[7]:]),
-                     q_FR_calf_joint=np.array(states_dataset[8][(traj_start_offset + 1) * self._keys_dim[8]:]),
-                     q_FL_hip_joint=np.array(states_dataset[9][(traj_start_offset + 1) * self._keys_dim[9]:]),
-                     q_FL_thigh_joint=np.array(states_dataset[10][(traj_start_offset + 1) * self._keys_dim[10]:]),
-                     q_FL_calf_joint=np.array(states_dataset[11][(traj_start_offset + 1) * self._keys_dim[11]:]),
-                     q_RR_hip_joint=np.array(states_dataset[12][(traj_start_offset + 1) * self._keys_dim[12]:]),
-                     q_RR_thigh_joint=np.array(states_dataset[13][(traj_start_offset + 1) * self._keys_dim[13]:]),
-                     q_RR_calf_joint=np.array(states_dataset[14][(traj_start_offset + 1) * self._keys_dim[14]:]),
-                     q_RL_hip_joint=np.array(states_dataset[15][(traj_start_offset + 1) * self._keys_dim[15]:]),
-                     q_RL_thigh_joint=np.array(states_dataset[16][(traj_start_offset + 1) * self._keys_dim[16]:]),
-                     q_RL_calf_joint=np.array(states_dataset[17][(traj_start_offset + 1) * self._keys_dim[17]:]),
-                     dq_trunk_tx=np.array(states_dataset[18][(traj_start_offset + 1) * self._keys_dim[18]:]),
-                     dq_trunk_tz=np.array(states_dataset[19][(traj_start_offset + 1) * self._keys_dim[19]:]),
-                     dq_trunk_ty=np.array(states_dataset[20][(traj_start_offset + 1) * self._keys_dim[20]:]),
-                     dq_trunk_tilt=np.array(states_dataset[21][(traj_start_offset + 1) * self._keys_dim[21]:]),
-                     dq_trunk_list=np.array(states_dataset[22][(traj_start_offset + 1) * self._keys_dim[22]:]),
-                     dq_trunk_rotation=np.array(states_dataset[23][(traj_start_offset + 1) * self._keys_dim[23]:]),
-                     dq_FR_hip_joint=np.array(states_dataset[24][(traj_start_offset + 1) * self._keys_dim[24]:]),
-                     dq_FR_thigh_joint=np.array(states_dataset[25][(traj_start_offset + 1) * self._keys_dim[25]:]),
-                     dq_FR_calf_joint=np.array(states_dataset[26][(traj_start_offset + 1) * self._keys_dim[26]:]),
-                     dq_FL_hip_joint=np.array(states_dataset[27][(traj_start_offset + 1) * self._keys_dim[27]:]),
-                     dq_FL_thigh_joint=np.array(states_dataset[28][(traj_start_offset + 1) * self._keys_dim[28]:]),
-                     dq_FL_calf_joint=np.array(states_dataset[29][(traj_start_offset + 1) * self._keys_dim[29]:]),
-                     dq_RR_hip_joint=np.array(states_dataset[30][(traj_start_offset + 1) * self._keys_dim[30]:]),
-                     dq_RR_thigh_joint=np.array(states_dataset[31][(traj_start_offset + 1) * self._keys_dim[31]:]),
-                     dq_RR_calf_joint=np.array(states_dataset[32][(traj_start_offset + 1) * self._keys_dim[32]:]),
-                     dq_RL_hip_joint=np.array(states_dataset[33][(traj_start_offset + 1) * self._keys_dim[33]:]),
-                     dq_RL_thigh_joint=np.array(states_dataset[34][(traj_start_offset + 1) * self._keys_dim[34]:]),
-                     dq_RL_calf_joint=np.array(states_dataset[35][(traj_start_offset + 1) * self._keys_dim[35]:]),
-                     dir_arrow=np.array(states_dataset[36][(traj_start_offset + 1) * self._keys_dim[36]:]))
+                     q_trunk_tx=np.array(states_dataset[0][traj_start_offset + 1:]),
+                     q_trunk_ty=np.array(states_dataset[1][traj_start_offset + 1:]),
+                     q_trunk_tz=np.array(states_dataset[2][traj_start_offset + 1:]),
+                     q_trunk_tilt=np.array(states_dataset[3][traj_start_offset + 1:]),
+                     q_trunk_list=np.array(states_dataset[4][traj_start_offset + 1:]),
+                     q_trunk_rotation=np.array(states_dataset[5][traj_start_offset + 1:]),
+                     q_FR_hip_joint=np.array(states_dataset[6][traj_start_offset + 1:]),
+                     q_FR_thigh_joint=np.array(states_dataset[7][traj_start_offset + 1:]),
+                     q_FR_calf_joint=np.array(states_dataset[8][traj_start_offset + 1:]),
+                     q_FL_hip_joint=np.array(states_dataset[9][traj_start_offset + 1:]),
+                     q_FL_thigh_joint=np.array(states_dataset[10][traj_start_offset + 1:]),
+                     q_FL_calf_joint=np.array(states_dataset[11][traj_start_offset + 1:]),
+                     q_RR_hip_joint=np.array(states_dataset[12][traj_start_offset + 1:]),
+                     q_RR_thigh_joint=np.array(states_dataset[13][traj_start_offset + 1:]),
+                     q_RR_calf_joint=np.array(states_dataset[14][traj_start_offset + 1:]),
+                     q_RL_hip_joint=np.array(states_dataset[15][traj_start_offset + 1:]),
+                     q_RL_thigh_joint=np.array(states_dataset[16][traj_start_offset + 1:]),
+                     q_RL_calf_joint=np.array(states_dataset[17][traj_start_offset + 1:]),
+                     dq_trunk_tx=np.array(states_dataset[18][traj_start_offset + 1:]),
+                     dq_trunk_tz=np.array(states_dataset[19][traj_start_offset + 1:]),
+                     dq_trunk_ty=np.array(states_dataset[20][traj_start_offset + 1:]),
+                     dq_trunk_tilt=np.array(states_dataset[21][traj_start_offset + 1:]),
+                     dq_trunk_list=np.array(states_dataset[22][traj_start_offset + 1:]),
+                     dq_trunk_rotation=np.array(states_dataset[23][traj_start_offset + 1:]),
+                     dq_FR_hip_joint=np.array(states_dataset[24][traj_start_offset + 1:]),
+                     dq_FR_thigh_joint=np.array(states_dataset[25][traj_start_offset + 1:]),
+                     dq_FR_calf_joint=np.array(states_dataset[26][traj_start_offset + 1:]),
+                     dq_FL_hip_joint=np.array(states_dataset[27][traj_start_offset + 1:]),
+                     dq_FL_thigh_joint=np.array(states_dataset[28][traj_start_offset + 1:]),
+                     dq_FL_calf_joint=np.array(states_dataset[29][traj_start_offset + 1:]),
+                     dq_RR_hip_joint=np.array(states_dataset[30][traj_start_offset + 1:]),
+                     dq_RR_thigh_joint=np.array(states_dataset[31][traj_start_offset + 1:]),
+                     dq_RR_calf_joint=np.array(states_dataset[32][traj_start_offset + 1:]),
+                     dq_RL_hip_joint=np.array(states_dataset[33][traj_start_offset + 1:]),
+                     dq_RL_thigh_joint=np.array(states_dataset[34][traj_start_offset + 1:]),
+                     dq_RL_calf_joint=np.array(states_dataset[35][traj_start_offset + 1:]),
+                     dir_arrow=np.array(states_dataset[36][traj_start_offset + 1:]))
 
 
 
@@ -742,7 +487,7 @@ class BaseQuadruped(BaseHumanoid):
             episode_starts_dataset = [False] * actions_dataset[traj_start_offset+1:].shape[0]
             episode_starts_dataset[0]=True
             np.savez(os.path.join(dataset_path, 'dataset_unitreeA1_IRL'+dataset_name+'_'+appendix_states_actions+'.npz'),
-                     actions=actions_dataset[traj_start_offset+1:], states=[action_states_dataset[i][(traj_start_offset+1)*self._keys_dim[i]:] for i in range(len(action_states_dataset))] , episode_starts=episode_starts_dataset) #action_states_dataset[traj_start_offset+1:]
+                     actions=actions_dataset[traj_start_offset+1:], states=[action_states_dataset[i][traj_start_offset+1:] for i in range(len(action_states_dataset))] , episode_starts=episode_starts_dataset) #action_states_dataset[traj_start_offset+1:]
         else:
             print("Only states dataset/without actions")
 
@@ -779,7 +524,7 @@ class BaseQuadruped(BaseHumanoid):
         assert demo_dt == control_dt, "needs changes for that"
         # to get the same init position
         trajectory_files = np.load(states_path, allow_pickle=True)
-        trajectory = np.array([trajectory_files[key].flatten() for key in trajectory_files.keys()], dtype=object)
+        trajectory = np.array([list(trajectory_files[key]) for key in trajectory_files.keys()], dtype=object)
 
         print("Trajectory shape: ", trajectory.shape)
         # set x and y to 0: be carefull need to be at index 0,1
@@ -799,7 +544,7 @@ class BaseQuadruped(BaseHumanoid):
 
         # load actions
         action_files = np.load(actions_path, allow_pickle=True)
-        actions = np.array([action_files[key].flatten() for key in action_files.keys()], dtype=object)[0]
+        actions = np.array([list(action_files[key]) for key in action_files.keys()], dtype=object)[0]
 
         # TODO: needs changes? -----------------------------------------------------------------------------------------
         # scale frequencies
