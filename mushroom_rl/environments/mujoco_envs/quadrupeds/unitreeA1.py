@@ -360,13 +360,15 @@ def interpolate_map(traj):
     # traj_list[36] = temp
     return np.array(traj_list)
 
-
 def interpolate_remap(traj):
     traj_list = [list() for j in range(len(traj))]
     for i in range(len(traj_list)):
-        traj_list[i] = list(traj[i])
-    traj_list[36] = [
-        np.dot(np.array([[np.cos(angle), -np.sin(angle), 0], [np.sin(angle), np.cos(angle), 0], [0, 0, 1]]),
+        if i in [3, 4, 5]:
+            traj_list[i] = [(angle+np.pi) % (2*np.pi)-np.pi for angle in traj[i]]
+        else:
+            traj_list[i] = list(traj[i])
+    traj_list[36] = [ # angle = (angle+np.pi) % (2*np.pi)-np.pi -> inverse np.unwrap
+        np.dot(np.array([[np.cos((angle+np.pi) % (2*np.pi)-np.pi), -np.sin((angle+np.pi) % (2*np.pi)-np.pi), 0], [np.sin((angle+np.pi) % (2*np.pi)-np.pi), np.cos((angle+np.pi) % (2*np.pi)-np.pi), 0], [0, 0, 1]]),
                np.array([0, 0, 1, 1, 0, 0, 0, 1, 0]).reshape((3, 3))).reshape((9,)) for angle in traj[36]]
     # for angle in traj[36]:
     #   R = np.array([[np.cos(angle), -np.sin(angle), 0], [np.sin(angle), np.cos(angle), 0], [0, 0, 1]])
@@ -386,7 +388,7 @@ if __name__ == '__main__':
     desired_contr_freq = 100  # hz
     n_substeps = env_freq // desired_contr_freq
 
-    traj_path =  '/home/tim/Documents/IRL_unitreeA1/data/2D_Walking/dataset_only_states_unitreeA1_IRL_50k_backward_noise1_optimal.npz' #'/home/tim/Documents/locomotion_simulation/locomotion/examples/log/2023_01_23_19_46_26/states.npz' #
+    traj_path =  '/home/tim/Documents/locomotion_simulation/locomotion/examples/log/2023_01_23_19_46_26/states.npz' #'/home/tim/Documents/IRL_unitreeA1/data/2D_Walking/dataset_only_states_unitreeA1_IRL_50k_backward_noise1_optimal.npz' #
 
     #found solution: adjust npc model
     # weird that opposite directions need different rotations
@@ -395,12 +397,16 @@ if __name__ == '__main__':
     # Should for same seed etc get the same result? stricter has_fallen seems a little bit better
 
     #traj_path = test_rotate_data(traj_path, store_path='./new_unitree_a1_with_dir_vec_model')
+            # Did: automatic has_fallen violationtest, automatic dataset generation and discord;
+            # npc model with states instead of velocities - demo
+            # found mistakes with launched datasets - demo
 
-
-            #TODO: reset trajectory 0.45 ändern -> welcher wert macht mehr sinn?
+            #TODO: reset trajectory 0.45 ändern -> welcher wert macht mehr sinn? inherit
             #TODO: noise erhöhen/testen
             #TODO: Interpolation von allen Datensätzen einzeln -> als extra attribut oder anstelle ein trajectory attribut oder nur bei init?
             #TODO: warum nicht mehr episode starts in create dataset
+
+
             #TODO: Interpolation auch scheiße bei npc beipiel run wenn runter skaliert
             #TODO: dir pfeil flattert bei rückwärts wenn auf 100hz interpoliert -> problem -pi und pi gleicher winkel -> interpolation scheiße
             #TODO: np.unwrap() be interpolation_map ok? -> probleme bei xml range?
