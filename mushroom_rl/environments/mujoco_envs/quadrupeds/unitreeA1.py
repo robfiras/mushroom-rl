@@ -32,19 +32,6 @@ except ModuleNotFoundError:
     mujoco_viewer_available = False
 
 
-# TODO needs changes:
-
-
-# TODO --------------------------------------------------------------------------------------------------------------------------------------------------------------
-DIM_OF_OBS_TYPE = {
-    ObservationType.BODY_POS: 3,
-    ObservationType.BODY_ROT: 4,
-    ObservationType.BODY_VEL: 6,
-    ObservationType.JOINT_POS: 1,  # can be 7
-    ObservationType.JOINT_VEL: 1,  # can be 6
-    ObservationType.SITE_POS: 3,
-    ObservationType.SITE_ROT: 9
-}
 
 class UnitreeA1(BaseQuadruped):
     """
@@ -133,15 +120,10 @@ class UnitreeA1(BaseQuadruped):
             xml_handle = self.add_dir_vector_to_xml_handle(mjcf.from_path(xml_path))
             xml_path = self.save_xml_handle(xml_handle, tmp_dir_name)
             print("Using 2D Control with direction arrow")
-            self.use_2d_ctrl = True
-        else:
-            self.use_2d_ctrl = False
+        self.use_2d_ctrl = use_2d_ctrl
 
-        i = 0
-        self._keys_dim = {}
-        for key, name, ot in observation_spec:
-            self._keys_dim[i] = DIM_OF_OBS_TYPE[ot]
-            i+=1
+
+
 
         super().__init__(xml_path, action_spec, observation_spec, gamma=gamma, horizon=horizon, n_substeps=n_substeps,
                          timestep=timestep, collision_groups=collision_groups, traj_params=traj_params, init_step_no=init_step_no,
@@ -194,6 +176,9 @@ class UnitreeA1(BaseQuadruped):
         return new_xml_path.as_posix()
 
     def setup(self, substep_no=None):
+        # concept of direction arrow: in self._direction_xmat is the matrix we need to point with the arrow in the direction we want from the view of the robot. BUT we need to multiply the actual robot tilt to have the corresponding arrow
+        # in self._direction_angle is the goal direction form the view of the robot -> rotated (remove arrow default rotation) self._direction_xmat and turned into angle
+
         self.goal_reward.reset_state()
         if self.trajectory is not None:
             if self._random_start:
@@ -350,10 +335,10 @@ def interpolate_map(traj):
         else:
             traj_list[i] = list(traj[i])
     temp = []
-    traj_list[36] = list(np.unwrap([
+    traj_list[36] = np.unwrap([
         np.arctan2(np.dot(mat.reshape((3, 3)), np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]])).reshape((9,))[3],
                    np.dot(mat.reshape((3, 3)), np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]])).reshape((9,))[0])
-        for mat in traj[36]]))
+        for mat in traj[36]])
     # for mat in traj[36].reshape((len(traj[0]), 9)):
     #    arrow = np.dot(mat.reshape((3, 3)), np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]])).reshape((9,))
     #   temp.append(np.arctan2(arrow[3], arrow[0]))
@@ -367,7 +352,7 @@ def interpolate_remap(traj):
             traj_list[i] = [(angle+np.pi) % (2*np.pi)-np.pi for angle in traj[i]]
         else:
             traj_list[i] = list(traj[i])
-    traj_list[36] = [ # angle = (angle+np.pi) % (2*np.pi)-np.pi -> inverse np.unwrap
+    traj_list[36] = [ # angle = (angle+np.pi) % (2*np.pi)-np.pi -> inverse np.unwrap TODO causes -3,3,-3,3,...
         np.dot(np.array([[np.cos((angle+np.pi) % (2*np.pi)-np.pi), -np.sin((angle+np.pi) % (2*np.pi)-np.pi), 0], [np.sin((angle+np.pi) % (2*np.pi)-np.pi), np.cos((angle+np.pi) % (2*np.pi)-np.pi), 0], [0, 0, 1]]),
                np.array([0, 0, 1, 1, 0, 0, 0, 1, 0]).reshape((3, 3))).reshape((9,)) for angle in traj[36]]
     # for angle in traj[36]:
@@ -379,7 +364,7 @@ def interpolate_remap(traj):
 
 
 if __name__ == '__main__':
-    """
+
     #trajectory demo:
     np.random.seed(1)
     # define env and data frequencies
@@ -388,7 +373,8 @@ if __name__ == '__main__':
     desired_contr_freq = 100  # hz
     n_substeps = env_freq // desired_contr_freq
 
-    traj_path =  '/home/tim/Documents/locomotion_simulation/locomotion/examples/log/2023_01_23_19_46_26/states.npz' #'/home/tim/Documents/IRL_unitreeA1/data/2D_Walking/dataset_only_states_unitreeA1_IRL_50k_backward_noise1_optimal.npz' #
+
+    traj_path =  '/home/tim/Documents/locomotion_simulation/locomotion/examples/log/2023_01_31_02_05_53/states.npz' #'/home/tim/Documents/locomotion_simulation/locomotion/examples/log/2023_01_23_19_46_26/states.npz' #'/home/tim/Documents/IRL_unitreeA1/data/2D_Walking/dataset_only_states_unitreeA1_IRL_50k_backward_noise1_optimal.npz' #
 
     #found solution: adjust npc model
     # weird that opposite directions need different rotations
@@ -439,7 +425,7 @@ if __name__ == '__main__':
     #0.004-0.005 1000000 kp=1000
     # favorite 0.005 1000000 | solref="-0.000001 -400"
     # final: solref="-0.0000000001 -250"
-    """
+
 
 
 
