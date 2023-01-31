@@ -122,11 +122,11 @@ class BaseHumanoid(MuJoCo):
             obs = np.concatenate([obs[2:],
                                   self.mean_grf.mean / 1000.,
                                   self.goal_reward.get_observation(),
-                                  ]).flatten()
+                                  ]) # add dtype=object for numpy 1.20
         else:
             obs = np.concatenate([obs[2:],
                                   self.goal_reward.get_observation(),
-                                  ]).flatten()
+                                  ])
         return obs
 
     def reward(self, state, action, next_state, absorbing):
@@ -215,11 +215,11 @@ class BaseHumanoid(MuJoCo):
 
 
 
-            xmat, xpos = self.traj_pre_step()
+            self._simulation_pre_step()
 
             mujoco.mj_forward(self._model, self._data)
 
-            self.traj_post_step(xmat, xpos)
+            self._simulation_post_step()
 
 
             obs = self._create_observation(sample)
@@ -228,25 +228,10 @@ class BaseHumanoid(MuJoCo):
 
             self.render()
 
-    def traj_pre_step(self):
-        # TODO: needs changes
-        if self.use_2d_ctrl:
-            xmat = self._data.site("dir_arrow").xmat.copy()
-            temp = np.dot(xmat.reshape((3, 3)), np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]])).reshape((9,))
-            angle = np.arctan2(temp[3], temp[0])
-            print(angle)
-            xpos = self._data.body("dir_arrow").xpos + [
-                -0.1 * np.cos(angle), -0.1 * np.sin(angle), 0]
 
-            self._direction_xmat = xmat
-            self._direction_angle = angle
-            return xmat, xpos
-        return None, None
 
-    def traj_post_step(self, xmat, xpos):
-        if self.use_2d_ctrl:
-            self._data.site("dir_arrow").xmat = xmat
-            self._data.site("dir_arrow_ball").xpos = xpos
+
+
 
     def play_trajectory_demo_from_velocity(self, freq=200, view_from_other_side=False):
         """
@@ -277,11 +262,11 @@ class BaseHumanoid(MuJoCo):
 
 
 
-            xmat, xpos = self.traj_pre_step()
+            self._simulation_pre_step()
 
             mujoco.mj_forward(self._model, self._data)
 
-            self.traj_post_step(xmat, xpos)
+            self._simulation_post_step()
 
 
 
@@ -306,6 +291,10 @@ class BaseHumanoid(MuJoCo):
                 self._data.joint(name).qvel = value
             elif ot == ObservationType.SITE_ROT:
                 self._data.site(name).xmat = value
+                if name == "dir_arrow":
+                    self._direction_xmat = value
+                    no_arrrow_trans = np.dot(value.reshape((3, 3)), np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]])).reshape((9,))
+                    self._direction_angle = np.arctan2(no_arrrow_trans[3], no_arrrow_trans[0])
 
     def get_joint_pos(self):
         return self.obs_helper.get_joint_pos_from_obs(self.obs_helper.build_obs(self._data))
