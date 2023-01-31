@@ -57,6 +57,7 @@ class BaseQuadruped(BaseHumanoid):
     #    return action
 
 
+
     def _simulation_post_step(self):
         grf = np.concatenate([self._get_collision_force("floor", "foot_FL")[:3],
                               self._get_collision_force("floor", "foot_FR")[:3],
@@ -65,15 +66,31 @@ class BaseQuadruped(BaseHumanoid):
 
         self.mean_grf.update_stats(grf)
         if self.use_2d_ctrl:
-            self._data.site("dir_arrow").xmat = self._direction_xmat
-            self._data.site("dir_arrow_ball").xpos = self._data.body("dir_arrow").xpos + [-0.1 * np.cos(self._direction_angle), -0.1 * np.sin(self._direction_angle), 0]
+            #TODO: from view of robot angle correct like this for traj. replay?; where else adapt this: sim_post_step; sim_post_step and setup only for one constant angle; modify obs also for trunk tilt change?; noise be e-1 laufbar aber driftet ab; numpy 1.20 possible?
+            #TODO correct?
+            trunk_tilt = self._data.joint("trunk_tilt").qpos[0]
+
+            R = np.array(
+                [[np.cos(trunk_tilt), -np.sin(trunk_tilt), 0], [np.sin(trunk_tilt), np.cos(trunk_tilt), 0], [0, 0, 1]])
+
+
+            self._data.site("dir_arrow").xmat = np.dot(R, self._direction_xmat.reshape((3,3))).reshape((9,))
+            self._data.site("dir_arrow_ball").xpos = self._data.body("dir_arrow").xpos + [-0.1 * np.cos(self._direction_angle+trunk_tilt), -0.1 * np.sin(self._direction_angle+trunk_tilt), 0]
         # self._data.qfrc_applied[self._action_indices] = self._data.qfrc_bias[self._action_indices] + self._data.qfrc_applied[self._action_indices]
 
         # print(self._data.qfrc_bias[:12])
 
 
 
+    def traj_post_step(self): # for play_trajectory_demo
+        if self.use_2d_ctrl:
+            trunk_tilt = self._data.joint("trunk_tilt").qpos[0]
+            R = np.array(
+                [[np.cos(trunk_tilt), -np.sin(trunk_tilt), 0], [np.sin(trunk_tilt), np.cos(trunk_tilt), 0], [0, 0, 1]])
 
+            self._data.site("dir_arrow").xmat = np.dot(R, self._direction_xmat.reshape((3,3))).reshape((9,))
+            self._data.site("dir_arrow_ball").xpos = self._direction_xpos + [
+                -0.1 * np.cos(self._direction_angle+trunk_tilt), -0.1 * np.sin(self._direction_angle+trunk_tilt), 0]
 
 
 
@@ -359,7 +376,7 @@ class BaseQuadruped(BaseHumanoid):
 
         # check if states dataset has any fallen states
         try:
-            index = self._keys_dim
+            #index = self._keys_dim
             #transposed = [[x for lst in [states_dataset[j][i*index[j]:i*index[j]+index[j]] for j in range(len(states_dataset))]for x in lst][2:] for i in range(len(states_dataset[0]))]
             transposed2 = np.transpose(states_dataset[2:])
             has_fallen_violation = next(x for x in transposed if self.has_fallen(x))
@@ -532,13 +549,7 @@ class BaseQuadruped(BaseHumanoid):
         trajectory[1, :] -= trajectory[1, 0]
 
         # set initial position
-        obs_spec = self.obs_helper.observation_spec
-        for key_name_ot, value in zip(obs_spec, trajectory[:, 0]):
-            key, name, ot = key_name_ot
-            if ot == ObservationType.JOINT_POS:
-                self._data.joint(name).qpos = value
-            elif ot == ObservationType.JOINT_VEL:
-                self._data.joint(name).qvel = value
+        self.set_qpos_qvel(trajectory[:, 0])
 
         # np.set_printoptions(threshold=sys.maxsize)
 
