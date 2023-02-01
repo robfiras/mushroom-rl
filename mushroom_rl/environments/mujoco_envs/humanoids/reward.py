@@ -126,6 +126,16 @@ class TargetVelocityReward(GoalRewardInterface):
         return np.exp(- np.square(x_vel - self._target_vel))
 
 
+class PosReward(GoalRewardInterface):
+
+    def __init__(self, pos_idx):
+        self._pos_idx = pos_idx
+
+    def __call__(self, state, action, next_state):
+        pos = state[self._pos_idx]
+        return pos
+
+
 class ChangingVelocityTargetReward(BaseHumanoidTrajectory, GoalRewardInterface):
 
     def __init__(self, sim, traj_path, goal_data_path, iterate_through_plateaus=False, silent=True, traj_dt=0.005,
