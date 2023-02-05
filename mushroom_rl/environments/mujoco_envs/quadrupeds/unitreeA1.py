@@ -142,11 +142,15 @@ class UnitreeA1(BaseQuadruped):
             The environment observation.
 
         """
+        #TODO all changes here must also be applied to create dataset for learning
         if self.use_2d_ctrl:
             new_obs = obs[:34]
             # transform rotation matrix into rotation angle
             temp = np.dot(obs[34:43].reshape((3, 3)), np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]])).reshape((9,))
-            new_obs = np.append(new_obs, np.arctan2(temp[3], temp[0]))
+            angle = np.arctan2(temp[3], temp[0])
+            # and turn angle to sin, cos (for a closed angle range)
+            new_obs = np.append(new_obs, [np.cos(angle), np.sin(angle)])
+            #new_obs = np.append(new_obs, obs)
             new_obs = np.append(new_obs, obs[43:])
             return new_obs
         return obs
@@ -184,11 +188,12 @@ class UnitreeA1(BaseQuadruped):
             if self._random_start:
                 sample = self.trajectory.reset_trajectory()
             else:
-                sample = self.trajectory.reset_trajectory(self._init_step_no)
+                sample = self.trajectory.reset_trajectory(self._init_step_no, self._init_traj_no)
             if self.use_2d_ctrl:
                 self._direction_xmat = sample[36] #self._trajectory_files["dir_arrow"][1500]
                 temp = np.dot(self._direction_xmat.reshape((3,3)), np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]])).reshape((9,))
                 self._direction_angle = np.arctan2(temp[3], temp[0])
+                self._goals = np.array([sample[37]], dtype=float)
             self.set_qpos_qvel(sample)
         else: # TODO: add this fuctionality in base_humanoid for all env
             self._data.qpos = [0, 0, -0.16, 0, 0, 0, 0, 0.9, -1.8, 0, 0.9, -1.8, 0, 0.9, -1.8, 0, 0.9, -1.8]
@@ -199,6 +204,7 @@ class UnitreeA1(BaseQuadruped):
                 #matrixmult with inverse of default rotation to rewind offset
                 temp = np.dot(self._direction_xmat.reshape((3,3)), np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]])).reshape((9,))
                 self._direction_angle = np.arctan2(temp[3], temp[0])
+                self._goals = np.array([0], dtype=float)
 
     @staticmethod
     def has_fallen(state):
@@ -250,6 +256,8 @@ class UnitreeA1(BaseQuadruped):
         #    print(state)
         return trunk_condition
 
+
+#TODO adapt to multiple traj/new workflow
 def test_rotate_data(traj_path, store_path='./new_unitree_a1_with_dir_vec_model'):
 
     trajectory_files = np.load(traj_path, allow_pickle=True)
@@ -374,7 +382,7 @@ if __name__ == '__main__':
     n_substeps = env_freq // desired_contr_freq
 
 
-    traj_path =  '/home/tim/Documents/locomotion_simulation/locomotion/examples/log/2023_01_31_02_05_53/states.npz' #'/home/tim/Documents/locomotion_simulation/locomotion/examples/log/2023_01_23_19_46_26/states.npz' #'/home/tim/Documents/IRL_unitreeA1/data/2D_Walking/dataset_only_states_unitreeA1_IRL_50k_backward_noise1_optimal.npz' #
+    traj_path =  '/home/tim/Documents/locomotion_simulation/locomotion/examples/log/2023_02_05_20_30_52/states.npz' #'/home/tim/Documents/locomotion_simulation/locomotion/examples/log/2023_02_03_20_31_38/states.npz' #'/home/tim/Documents/locomotion_simulation/locomotion/examples/log/2023_01_23_19_46_26/states.npz' #'/home/tim/Documents/IRL_unitreeA1/data/2D_Walking/dataset_only_states_unitreeA1_IRL_50k_backward_noise1_optimal.npz' #
 
     #found solution: adjust npc model
     # weird that opposite directions need different rotations
@@ -387,15 +395,8 @@ if __name__ == '__main__':
             # npc model with states instead of velocities - demo
             # found mistakes with launched datasets - demo
 
-            #TODO: reset trajectory 0.45 ändern -> welcher wert macht mehr sinn? inherit
-            #TODO: noise erhöhen/testen
-            #TODO: Interpolation von allen Datensätzen einzeln -> als extra attribut oder anstelle ein trajectory attribut oder nur bei init?
-            #TODO: warum nicht mehr episode starts in create dataset
-
-
-            #TODO: Interpolation auch scheiße bei npc beipiel run wenn runter skaliert
-            #TODO: dir pfeil flattert bei rückwärts wenn auf 100hz interpoliert -> problem -pi und pi gleicher winkel -> interpolation scheiße
-            #TODO: np.unwrap() be interpolation_map ok? -> probleme bei xml range?
+    # TODO traj_no, traj_length, call of reset traj, subtraj, trajectory in class Trajectory
+    # TODO what is with reward.py -> uses reset_traj without traj_no - not sure; same for traj_length
 
     # prepare trajectory params
     traj_params = dict(traj_path=traj_path,
@@ -490,13 +491,13 @@ if __name__ == '__main__':
                     '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_right.npz',
                     '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_right_noise1.npz',
                     '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_right_noise2.npz']
-    actions_path = '/home/tim/Documents/locomotion_simulation/log/actions_torque.npz'
-    states_path = '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_right_noise1.npz' #'/home/tim/Documents/locomotion_simulation/log/states.npz'
+    actions_path = '/home/tim/Documents/locomotion_simulation/locomotion/examples/log/2023_02_05_18_59_37/actions_torque.npz'
+    states_path = '/home/tim/Documents/locomotion_simulation/locomotion/examples/log/2023_02_05_18_59_37/states.npz'
     dataset_path = '/home/tim/Documents/test_datasets/' #'/home/tim/Documents/IRL_unitreeA1/data/2D_Walking' #'/home/tim/Documents/test_datasets/'#None # '/home/tim/Documents/IRL_unitreeA1/data'
     use_rendering = False # both only for mujoco generated states
     use_plotting = False
     state_type = "optimal"
-    action_type = None#"optimal"
+    action_type = "p-controller"
 
     use_2d_ctrl = True
     use_torque_ctrl = True
@@ -522,24 +523,34 @@ if __name__ == '__main__':
 
     env.reset()
 
-
     """
     env.play_action_demo(states_path=states_path,
                          #dataset_path=dataset_path,
-
-                         action_path=actions_path,
-
+                         actions_path=actions_path,
                          control_dt=control_dt, demo_dt=demo_dt
                         )
-    exit()
-
+    exit()"""
    
-    
-    env.play_action_demo2(actions_path=actions_path, states_path=states_path, control_dt=control_dt, demo_dt=demo_dt,
-                          use_rendering=True, use_plotting=False, use_pd_controller=True)
-    exit()
-    """
 
+    #env.play_action_demo(actions_path=actions_path, states_path=states_path, control_dt=control_dt, demo_dt=demo_dt, traj_no=1,
+    #                      use_rendering=True, use_plotting=False, use_pd_controller=True, interpolate_map=interpolate_map, interpolate_remap=interpolate_remap)
+    #exit()
+
+
+    # TODO play_action_demo2 and preprocess_expert_data
+
+    env.preprocess_expert_data(dataset_path=dataset_path,
+                               state_type=state_type,
+                               action_type=action_type,
+                               states_path=states_path,
+                               actions_path=actions_path,
+                               use_rendering=use_rendering,
+                               use_plotting=use_plotting,
+                               demo_dt=demo_dt,
+                               control_dt=control_dt
+                               )
+
+    exit()
     if type(actions_path) == list and type(states_path) == list:
         assert len(actions_path) == len(states_path)
         for i in range(len(actions_path)):
