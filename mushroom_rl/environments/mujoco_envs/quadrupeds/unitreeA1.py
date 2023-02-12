@@ -375,6 +375,20 @@ def interpolate_remap(traj):
     # traj_list[36] = temp
     return np.array(traj_list, dtype=object)
 
+def reward_callback(state, action, next_state):
+    act_vel = np.array([state[16], state[17]])
+    mat = np.dot(state[34:43].reshape((3, 3)), np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]])).reshape(((9,)))
+    angle = np.arctan2(mat[3], mat[0])
+    # without state[1] the wanted_vel is from the robots perspectiv and the act_vel from the general coord sys -> state[1] is robots perspective
+    norm_x = np.cos(angle+state[1])
+    norm_y = np.sin(angle+state[1])
+
+    wanted_vel = state[43] * np.array([norm_x, norm_y])
+    length = np.linalg.norm(wanted_vel)
+    angle = np.arctan2(wanted_vel[1], wanted_vel[0])
+    result = act_vel - wanted_vel
+    return np.exp(-np.square(np.linalg.norm(result)))
+
 
 if __name__ == '__main__':
 
@@ -387,21 +401,12 @@ if __name__ == '__main__':
     n_substeps = env_freq // desired_contr_freq
 
 
-    traj_path =  '/home/tim/Documents/locomotion_simulation/locomotion/examples/log/2023_02_12_01_34_14/states.npz' #'/home/tim/Documents/IRL_unitreeA1/data/states_2023_02_10_00_08_17.npz' #'/home/tim/Documents/locomotion_simulation/locomotion/examples/log/2023_02_10_18_33_11/states.npz' #
+    traj_path =  '/home/tim/Documents/IRL_unitreeA1/data/states_2023_02_12_14_53_12.npz' #'/home/tim/Documents/locomotion_simulation/locomotion/examples/log/2023_02_12_13_35_32/states.npz' #'/home/tim/Documents/locomotion_simulation/locomotion/examples/log/2023_02_12_01_34_14/states.npz'
 
-    #found solution: adjust npc model
-    # weird that opposite directions need different rotations
-    # should I adjust the backwalking?
-    # remaining question: should the arrow in the dataset be corresponding/relative to the robot
-    # Should for same seed etc get the same result? stricter has_fallen seems a little bit better
+
 
     #traj_path = test_rotate_data(traj_path, store_path='./new_unitree_a1_with_dir_vec_model')
-            # Did: automatic has_fallen violationtest, automatic dataset generation and discord;
-            # npc model with states instead of velocities - demo
-            # found mistakes with launched datasets - demo
 
-    # TODO traj_no, traj_length, call of reset traj, subtraj, trajectory in class Trajectory
-    # TODO what is with reward.py -> uses reset_traj without traj_no - not sure; same for traj_length
 
     # prepare trajectory params
     traj_params = dict(traj_path=traj_path,
@@ -413,29 +418,7 @@ if __name__ == '__main__':
     gamma = 0.99
     horizon = 1000
 
-    reward_callback = lambda state, action, next_state: np.exp(- np.square(
-        np.dot(np.array([state[16], state[17]]),
-               np.dot(np.dot(state[34].reshape((3, 3)), np.array([[0, 0, 1], [0, 1, 0], [1, 0, 0]])),
-                      np.array([1000, 0, 0]))[:2])
-        / np.linalg.norm(np.dot(np.dot(state[34].reshape((3, 3)), np.array([[0, 0, 1], [0, 1, 0], [1, 0, 0]])),
-                                np.array([1000, 0, 0]))[:2]) - 0.4))
 
-    def reward_callback(state, action, next_state):
-        act_vel = np.array([state[16], state[17]])
-        mat = np.dot(state[34].reshape((3, 3)), np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]])).reshape(((9,)))
-        angle = np.arctan2(mat[3], mat[0])
-        # without state[1] the wanted_vel is from the robots perspectiv and the act_vel from the general coord sys -> state[1] is robots perspective
-        norm_x = np.cos(angle+state[1])
-        norm_y = np.sin(angle+state[1])
-
-        wanted_vel = state[35] * np.array([norm_x, norm_y])
-        length = np.linalg.norm(wanted_vel)
-        angle = np.arctan2(wanted_vel[1], wanted_vel[0])
-        result = act_vel - wanted_vel
-        return np.exp(-np.square(np.linalg.norm(result)))
-
-
-    #reward_callback = lambda state, action, next_state: np.exp(- np.square(state[16] - 0.6))  # x-velocity as reward
 
     env = UnitreeA1(timestep=1/env_freq, gamma=gamma, horizon=horizon, n_substeps=n_substeps,use_torque_ctrl=True,
                     traj_params=traj_params, random_start=True,

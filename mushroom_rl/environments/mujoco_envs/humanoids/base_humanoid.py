@@ -124,12 +124,26 @@ class BaseHumanoid(MuJoCo):
         """
 
         if self._use_foot_forces:
-            obs = np.concatenate([obs[2:], self._goals,
+            #flatten for multi dim obs spec
+            temp = []
+            for state in obs[2:]:
+                if type(state) == np.ndarray:
+                    temp = temp + list(state)
+                else:
+                    temp.append(state)
+            obs = np.concatenate([temp, self._goals,
                                   self.mean_grf.mean / 1000.,
-                                  self.goal_reward.get_observation(),
-                                  ]) # add dtype=object for numpy 1.20
+                                  self.goal_reward.get_observation(), # TODO remove the goals of the reward
+                                  ]).flatten() # add dtype=object for numpy 1.20
         else:
-            obs = np.concatenate([obs[2:],
+            # flatten for multi dim obs spec
+            temp = []
+            for state in obs[2:]:
+                if type(state) == np.ndarray:
+                    temp = temp + list(state)
+                else:
+                    temp.append(state)
+            obs = np.concatenate([temp, self._goals,
                                   self.goal_reward.get_observation(),
                                   ])
         return obs
@@ -212,6 +226,7 @@ class BaseHumanoid(MuJoCo):
         #     cam.azimuth = 270
         sample = self.trajectory.reset_trajectory(substep_no=1, traj_no=0)
         self.set_qpos_qvel(sample)
+        rewards = []
         while True:
             sample = self.trajectory.get_next_sample()
             print(self._goals)
@@ -227,12 +242,20 @@ class BaseHumanoid(MuJoCo):
             self._simulation_post_step()
 
 
+
             obs = self._create_observation(sample)
             if self.has_fallen(obs):
                 print("Has Fallen!")
+            print(len(rewards))
+            rewards.append(self.reward(obs, None, None, False))
+            #if len(rewards) == 200:
+             #   time.sleep(1)
+            if len(rewards) == 500:
+                break
+
 
             self.render()
-
+        return rewards
 
 
 
@@ -255,7 +278,7 @@ class BaseHumanoid(MuJoCo):
 
         while True:
 
-            sample = self.trajectory.get_next_sample()
+            sample = np.array(self.trajectory.get_next_sample())
             #if self.
             qvel = sample[len_qpos:len_qpos + len_qvel]
             #qvel = np.append(qvel, 0)
