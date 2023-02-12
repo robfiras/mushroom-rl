@@ -21,6 +21,8 @@ from mushroom_rl.utils.running_stats import *
 from mushroom_rl.utils.mujoco import *
 from mushroom_rl.environments.mujoco_envs.humanoids.trajectory import Trajectory
 from mushroom_rl.environments.mujoco_envs.quadrupeds.base_quadruped import BaseQuadruped
+import matplotlib.pyplot as plt
+
 
 from mushroom_rl.environments.mujoco_envs.humanoids.reward import NoGoalReward, CustomReward
 
@@ -87,8 +89,8 @@ class UnitreeA1(BaseQuadruped):
             # ------------------- JOINT VEL -------------------
             # --- Trunk ---
             ("dq_trunk_tx", "trunk_tx", ObservationType.JOINT_VEL),
-            ("dq_trunk_tz", "trunk_tz", ObservationType.JOINT_VEL),
             ("dq_trunk_ty", "trunk_ty", ObservationType.JOINT_VEL),
+            ("dq_trunk_tz", "trunk_tz", ObservationType.JOINT_VEL),  # todo why here z before y?
             ("dq_trunk_tilt", "trunk_tilt", ObservationType.JOINT_VEL),
             ("dq_trunk_list", "trunk_list", ObservationType.JOINT_VEL),
             ("dq_trunk_rotation", "trunk_rotation", ObservationType.JOINT_VEL),
@@ -243,10 +245,13 @@ class UnitreeA1(BaseQuadruped):
         # max x-rot: 0.21976069929211345 -> 12.5914 degree
         # max y-rot: -0.1311784030716909 -> -7.516 degree
 
-        trunk_condition = ((trunk_euler[1] < -0.2793) or (trunk_euler[1] > 0.2793) # x-rotation 16 degree
-                           or (trunk_euler[2] < -0.192) or (trunk_euler[2] > 0.192) # y-rotation 11 degree
+        trunk_condition = ((trunk_euler[1] < -0.2793) or (trunk_euler[1] > 0.2793) # x-rotation 11 degree -> accepts 16 degree; propose 0.36652 (21 deg)
+                           or (trunk_euler[2] < -0.192) or (trunk_euler[2] > 0.192) # y-rotation 7.6 deg -> accepts 11 degree; propose 0.2618 (15 deg)
                            or state[0] < -.24
                            )
+
+        #TODO cleasn up and test npc; reward for logging; writing
+
 
         #if trunk_condition:
         #    print("con1: ", (trunk_euler[0] < -0.5) or (trunk_euler[0] > 0.02), trunk_euler[0])
@@ -306,8 +311,8 @@ def test_rotate_data(traj_path, store_path='./new_unitree_a1_with_dir_vec_model'
                  q_RL_thigh_joint=np.array(trajectory[16]),
                  q_RL_calf_joint=np.array(trajectory[17]),
                  dq_trunk_tx=np.cos(x) * np.array(trajectory[18]) - np.sin(x) * np.array(trajectory[19]),
-                 dq_trunk_tz=np.sin(x) * np.array(trajectory[18]) + np.cos(x) * np.array(trajectory[19]),
-                 dq_trunk_ty=np.array(trajectory[20]),
+                 dq_trunk_ty=np.sin(x) * np.array(trajectory[18]) + np.cos(x) * np.array(trajectory[19]),
+                 dq_trunk_tz=np.array(trajectory[20]),
                  dq_trunk_tilt=trajectory[21],
                  dq_trunk_list=trajectory[22],
                  dq_trunk_rotation=trajectory[23],
@@ -382,7 +387,7 @@ if __name__ == '__main__':
     n_substeps = env_freq // desired_contr_freq
 
 
-    traj_path =  '/home/tim/Documents/locomotion_simulation/locomotion/examples/log/2023_02_05_20_30_52/states.npz' #'/home/tim/Documents/locomotion_simulation/locomotion/examples/log/2023_02_03_20_31_38/states.npz' #'/home/tim/Documents/locomotion_simulation/locomotion/examples/log/2023_01_23_19_46_26/states.npz' #'/home/tim/Documents/IRL_unitreeA1/data/2D_Walking/dataset_only_states_unitreeA1_IRL_50k_backward_noise1_optimal.npz' #
+    traj_path =  '/home/tim/Documents/locomotion_simulation/locomotion/examples/log/2023_02_12_01_34_14/states.npz' #'/home/tim/Documents/IRL_unitreeA1/data/states_2023_02_10_00_08_17.npz' #'/home/tim/Documents/locomotion_simulation/locomotion/examples/log/2023_02_10_18_33_11/states.npz' #
 
     #found solution: adjust npc model
     # weird that opposite directions need different rotations
@@ -408,16 +413,75 @@ if __name__ == '__main__':
     gamma = 0.99
     horizon = 1000
 
+    reward_callback = lambda state, action, next_state: np.exp(- np.square(
+        np.dot(np.array([state[16], state[17]]),
+               np.dot(np.dot(state[34].reshape((3, 3)), np.array([[0, 0, 1], [0, 1, 0], [1, 0, 0]])),
+                      np.array([1000, 0, 0]))[:2])
+        / np.linalg.norm(np.dot(np.dot(state[34].reshape((3, 3)), np.array([[0, 0, 1], [0, 1, 0], [1, 0, 0]])),
+                                np.array([1000, 0, 0]))[:2]) - 0.4))
+
+    def reward_callback(state, action, next_state):
+        act_vel = np.array([state[16], state[17]])
+        mat = np.dot(state[34].reshape((3, 3)), np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]])).reshape(((9,)))
+        angle = np.arctan2(mat[3], mat[0])
+        # without state[1] the wanted_vel is from the robots perspectiv and the act_vel from the general coord sys -> state[1] is robots perspective
+        norm_x = np.cos(angle+state[1])
+        norm_y = np.sin(angle+state[1])
+
+        wanted_vel = state[35] * np.array([norm_x, norm_y])
+        length = np.linalg.norm(wanted_vel)
+        angle = np.arctan2(wanted_vel[1], wanted_vel[0])
+        result = act_vel - wanted_vel
+        return np.exp(-np.square(np.linalg.norm(result)))
+
+
+    #reward_callback = lambda state, action, next_state: np.exp(- np.square(state[16] - 0.6))  # x-velocity as reward
+
     env = UnitreeA1(timestep=1/env_freq, gamma=gamma, horizon=horizon, n_substeps=n_substeps,use_torque_ctrl=True,
                     traj_params=traj_params, random_start=True,
-                    use_2d_ctrl=True, tmp_dir_name=".")
+                    use_2d_ctrl=True, tmp_dir_name=".", goal_reward="custom", goal_reward_params=dict(reward_callback=reward_callback))
 
 
     with catchtime() as t:
-        env.play_trajectory_demo(desired_contr_freq)
+        rewards = env.play_trajectory_demo(desired_contr_freq)
         print("Time: %fs" % t())
 
+    gamma = 1
+    js = list()
+    j = 0.
+    episode_steps = 0
+    for i in range(len(rewards)):
+        j += gamma ** episode_steps * rewards[i]
+        episode_steps += 1
+        if i == len(rewards) - 1:
+            js.append(j)
+            j = 0.
+            episode_steps = 0
+
+    print("R: ", js)
+
+
+    # Plotting
+
+    data = {
+        "rew": [rewards[i] for i in range(len(rewards))]
+    }
+
+    fig = plt.figure()
+    ax = fig.gca()
+    colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+
+    for i, v in enumerate(data.items()):
+        ax.plot(v[1], color=colors[i], linestyle='-', label=v[0])
+    plt.legend(loc=4)
+    plt.xlabel("Time")
+    plt.ylabel("Reward")
+    plt.savefig("re.png")
+
+
+
     print("Finished")
+    exit()
     # still problem with different behaviour (if robot rolls to the side - between freejoint and muljoints) action[1] and [7] = -1 (with action clipping)
 
 
