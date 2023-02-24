@@ -262,75 +262,160 @@ class UnitreeA1(BaseQuadruped):
         return trunk_condition
 
 
+def rotate_modified_obs(state, angle): #(angle+np.pi) % (2*np.pi)-np.pi
+    rotated_state = np.array(state).copy()
+    #rotate tilt
+    rotated_state[:,1] = (np.array(state[:,1]) + angle + np.pi) % (2*np.pi)-np.pi
+    #rotate velo x,y
+    rotated_state[:,16] = (np.cos(angle) * np.array(state[:,16]) - np.sin(angle) * np.array(state[:,17]) + np.pi) % (2*np.pi)-np.pi
+    rotated_state[:,17] = (np.sin(angle) * np.array(state[:,16]) + np.cos(angle) * np.array(state[:,17]) + np.pi) % (2*np.pi)-np.pi
+    return rotated_state
+    
+
 #TODO adapt to multiple traj/new workflow
 def test_rotate_data(traj_path, store_path='./new_unitree_a1_with_dir_vec_model'):
 
     trajectory_files = np.load(traj_path, allow_pickle=True)
     trajectory_files = {k: d for k, d in trajectory_files.items()}
-    trajectory = np.array([trajectory_files[key].flatten() for key in trajectory_files.keys()],
-                               dtype=object)
-    rot_diff=[0,np.pi*0.5, np.pi]
+
+
+    keys = list(trajectory_files.keys())
+    if "split_points" in trajectory_files.keys():
+        split_points = trajectory_files["split_points"]
+        keys.remove("split_points")
+    else:
+        split_points = np.array([0, len(list(trajectory_files.values())[0])])
+
+    trajectory = np.array([list(trajectory_files[key])[split_points[0]:split_points[1]] for key in keys], dtype=object)
+
+    # preprocess to get same data as function fit()
+    preprocessed_traj = [list() for i in range(49)]
+    xy = trajectory[:2]
+    for state in trajectory.transpose():
+        temp = []
+        for entry in state[2:]:
+            if type(entry) == np.ndarray:
+                temp = temp + list(entry)
+            else:
+                temp.append(entry)
+        obs = np.concatenate([temp, #todo:? self._goals,
+                          np.zeros(12),
+                          ]).flatten()
+        new_state = obs[:34]
+        # transform rotation matrix into rotation angle
+        temp = np.dot(obs[34:43].reshape((3, 3)), np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]])).reshape((9,))
+        angle = np.arctan2(temp[3], temp[0])
+        # and turn angle to sin, cos (for a closed angle range)
+        new_state = np.append(new_state, [np.cos(angle), np.sin(angle)])
+        # new_obs = np.append(new_obs, obs)
+        new_state = np.append(new_state, obs[43:])
+
+        for i in range(len(new_state)):
+            preprocessed_traj[i].append(new_state[i])
+
+    preprocessed_traj = np.array(preprocessed_traj)
+
+
+
+    rot_diff=[np.pi/3]
 
 
 
 
     for x in rot_diff:
-        R1 = np.array([[1, 0, 0], [0, np.cos(x), -np.sin(x)], [0, np.sin(x), np.cos(x)]])
-        R2 = np.array([[np.cos(x), 0, np.sin(x)], [0, 1, 0], [-np.sin(x), 0, np.cos(x)]])
-        R3 = np.array([[np.cos(x), -np.sin(x), 0], [np.sin(x), np.cos(x), 0], [0, 0, 1]])
-        temp = np.dot(np.dot(np.dot(R1, R2), R3), np.array([trajectory[23], trajectory[22], trajectory[21]]))
+        #R1 = np.array([[1, 0, 0], [0, np.cos(x), -np.sin(x)], [0, np.sin(x), np.cos(x)]])
+        #R2 = np.array([[np.cos(x), 0, np.sin(x)], [0, 1, 0], [-np.sin(x), 0, np.cos(x)]])
+        #R3 = np.array([[np.cos(x), -np.sin(x), 0], [np.sin(x), np.cos(x), 0], [0, 0, 1]])
+        #temp = np.dot(np.dot(np.dot(R1, R2), R3), np.array([trajectory[23], trajectory[22], trajectory[21]]))
 
-        R = np.array([[np.cos(x), -np.sin(x), 0], [np.sin(x), np.cos(x), 0], [0, 0, 1]])
-        arrow = np.array([0, 0, 1, 1, 0, 0, 0, 1, 0]).reshape((3, 3))
-        rotation_matrix_dir = np.dot(arrow, R)
 
-        dir_arrow=[]
-        for i in range(int(len(np.array(trajectory[36]))/9)):
-            a = trajectory[36][i*9:i*9+9].reshape((3,3))
-            b = np.dot(a, rotation_matrix_dir)
-            dir_arrow.append(b.reshape((9,)))
+        #R = np.array([[np.cos(x), -np.sin(x), 0], [np.sin(x), np.cos(x), 0], [0, 0, 1]])
+        #arrow = np.array([0, 0, 1, 1, 0, 0, 0, 1, 0]).reshape((3, 3))
+        #rotation_matrix_dir = np.dot(arrow, R)
+
+        #dir_arrow=[]
+        #for i in range(int(len(np.array(trajectory[36]))/9)):
+         #   a = trajectory[36][i*9:i*9+9].reshape((3,3))
+          #  b = np.dot(a, rotation_matrix_dir)
+           # dir_arrow.append(b.reshape((9,)))
+
+
+        #rotate_data:
+        rotated_traj = rotate_modified_obs(preprocessed_traj.transpose(), x).transpose()
+        rotated_xy = [[],[]]
+        rotated_xy[0] = np.cos(x) * np.array(xy[0]) - np.sin(x) * np.array(xy[1]) #don't needed in fit
+        rotated_xy[1] = np.sin(x) * np.array(xy[0]) + np.cos(x) * np.array(xy[1]) #don't needed in fit
+
+
+
+
+        #post process data to be simulatable:
+
+        postprocessed_traj = list(rotated_traj[:34])
+        temp = []
+        for j in range(len(rotated_traj[34])):
+            temp.append(np.arccos(rotated_traj[34][j]) * (1 if np.arcsin(rotated_traj[35][j]) > 0 else -1))
+
+        # turn angles into matrix
+        postprocessed_traj.append([  # angle = (angle+np.pi) % (2*np.pi)-np.pi -> inverse np.unwrap TODO causes -3,3,-3,3,...
+            np.dot(np.array(
+                [[np.cos((angle + np.pi) % (2 * np.pi) - np.pi), -np.sin((angle + np.pi) % (2 * np.pi) - np.pi), 0],
+                 [np.sin((angle + np.pi) % (2 * np.pi) - np.pi), np.cos((angle + np.pi) % (2 * np.pi) - np.pi), 0],
+                 [0, 0, 1]]),
+                   np.array([0, 0, 1, 1, 0, 0, 0, 1, 0]).reshape((3, 3))).reshape((9,)) for angle in temp])
+        #for j in range(len(rotated_traj) - 36):
+        postprocessed_traj.append(rotated_traj[36])
+        #postprocessed_traj += rotated_traj[36:]
+
+
+
+
+
+
 
         print("jg")
         np.savez(os.path.join(store_path, 'test_rotate_dataset_'+str(x)+'.npz'),
-                 q_trunk_tx=np.cos(x) * np.array(trajectory[0]) - np.sin(x) * np.array(trajectory[1]),
-                 q_trunk_ty=np.sin(x) * np.array(trajectory[0]) + np.cos(x) * np.array(trajectory[1]),
-                 q_trunk_tz=np.array(trajectory[2]),
-                 q_trunk_tilt=np.array(trajectory[3])+x,
-                 q_trunk_list=np.array(trajectory[4]),
-                 q_trunk_rotation=np.array(trajectory[5]),
-                 q_FR_hip_joint=np.array(trajectory[6]),
-                 q_FR_thigh_joint=np.array(trajectory[7]),
-                 q_FR_calf_joint=np.array(trajectory[8]),
-                 q_FL_hip_joint=np.array(trajectory[9]),
-                 q_FL_thigh_joint=np.array(trajectory[10]),
-                 q_FL_calf_joint=np.array(trajectory[11]),
-                 q_RR_hip_joint=np.array(trajectory[12]),
-                 q_RR_thigh_joint=np.array(trajectory[13]),
-                 q_RR_calf_joint=np.array(trajectory[14]),
-                 q_RL_hip_joint=np.array(trajectory[15]),
-                 q_RL_thigh_joint=np.array(trajectory[16]),
-                 q_RL_calf_joint=np.array(trajectory[17]),
-                 dq_trunk_tx=np.cos(x) * np.array(trajectory[18]) - np.sin(x) * np.array(trajectory[19]),
-                 dq_trunk_ty=np.sin(x) * np.array(trajectory[18]) + np.cos(x) * np.array(trajectory[19]),
-                 dq_trunk_tz=np.array(trajectory[20]),
-                 dq_trunk_tilt=trajectory[21],
-                 dq_trunk_list=trajectory[22],
-                 dq_trunk_rotation=trajectory[23],
-                 dq_FR_hip_joint=np.array(trajectory[24]),
-                 dq_FR_thigh_joint=np.array(trajectory[25]),
-                 dq_FR_calf_joint=np.array(trajectory[26]),
-                 dq_FL_hip_joint=np.array(trajectory[27]),
-                 dq_FL_thigh_joint=np.array(trajectory[28]),
-                 dq_FL_calf_joint=np.array(trajectory[29]),
-                 dq_RR_hip_joint=np.array(trajectory[30]),
-                 dq_RR_thigh_joint=np.array(trajectory[31]),
-                 dq_RR_calf_joint=np.array(trajectory[32]),
-                 dq_RL_hip_joint=np.array(trajectory[33]),
-                 dq_RL_thigh_joint=np.array(trajectory[34]),
-                 dq_RL_calf_joint=np.array(trajectory[35]),
-                 dir_arrow=np.array(dir_arrow) )
+                 q_trunk_tx=rotated_xy[0],
+                 q_trunk_ty=rotated_xy[1],
+                 q_trunk_tz=postprocessed_traj[0],
+                 q_trunk_tilt=postprocessed_traj[1],
+                 q_trunk_list=postprocessed_traj[2],
+                 q_trunk_rotation=postprocessed_traj[3],
+                 q_FR_hip_joint=postprocessed_traj[4],
+                 q_FR_thigh_joint=postprocessed_traj[5],
+                 q_FR_calf_joint=postprocessed_traj[6],
+                 q_FL_hip_joint=postprocessed_traj[7],
+                 q_FL_thigh_joint=postprocessed_traj[8],
+                 q_FL_calf_joint=postprocessed_traj[9],
+                 q_RR_hip_joint=postprocessed_traj[10],
+                 q_RR_thigh_joint=postprocessed_traj[11],
+                 q_RR_calf_joint=postprocessed_traj[12],
+                 q_RL_hip_joint=postprocessed_traj[13],
+                 q_RL_thigh_joint=postprocessed_traj[14],
+                 q_RL_calf_joint=postprocessed_traj[15],
+                 dq_trunk_tx=postprocessed_traj[16],
+                 dq_trunk_ty=postprocessed_traj[17],
+                 dq_trunk_tz=postprocessed_traj[18],
+                 dq_trunk_tilt=postprocessed_traj[19],
+                 dq_trunk_list=postprocessed_traj[20],
+                 dq_trunk_rotation=postprocessed_traj[21],
+                 dq_FR_hip_joint=postprocessed_traj[22],
+                 dq_FR_thigh_joint=postprocessed_traj[23],
+                 dq_FR_calf_joint=postprocessed_traj[24],
+                 dq_FL_hip_joint=postprocessed_traj[25],
+                 dq_FL_thigh_joint=postprocessed_traj[26],
+                 dq_FL_calf_joint=postprocessed_traj[27],
+                 dq_RR_hip_joint=postprocessed_traj[28],
+                 dq_RR_thigh_joint=postprocessed_traj[29],
+                 dq_RR_calf_joint=postprocessed_traj[30],
+                 dq_RL_hip_joint=postprocessed_traj[31],
+                 dq_RL_thigh_joint=postprocessed_traj[32],
+                 dq_RL_calf_joint=postprocessed_traj[33],
+                 dir_arrow=postprocessed_traj[34],
+                 goal_speed=postprocessed_traj[35],
+                 split_points=[0, len(postprocessed_traj[0])])
 
-    return os.path.join(store_path, 'test_rotate_dataset_'+str(np.pi*0.5)+'.npz')
+    return os.path.join(store_path, 'test_rotate_dataset_'+str(np.pi/3)+'.npz')
 
 
 
@@ -387,6 +472,7 @@ def reward_callback(state, action, next_state):
     length = np.linalg.norm(wanted_vel)
     angle = np.arctan2(wanted_vel[1], wanted_vel[0])
     result = act_vel - wanted_vel
+    #return np.exp(-np.square(state[16]-0.595))
     return np.exp(-np.square(np.linalg.norm(result)))
 
 
@@ -401,11 +487,10 @@ if __name__ == '__main__':
     n_substeps = env_freq // desired_contr_freq
 
 
-    traj_path =  '/home/tim/Documents/IRL_unitreeA1/data/states_2023_02_12_14_53_12.npz' #'/home/tim/Documents/locomotion_simulation/locomotion/examples/log/2023_02_12_13_35_32/states.npz' #'/home/tim/Documents/locomotion_simulation/locomotion/examples/log/2023_02_12_01_34_14/states.npz'
+    traj_path =  '/home/tim/Documents/locomotion_simulation/locomotion/examples/log/2023_02_23_19_22_49/states.npz' #'/home/tim/Documents/locomotion_simulation/locomotion/examples/log/2023_02_12_13_35_32/states.npz' #'/home/tim/Documents/locomotion_simulation/locomotion/examples/log/2023_02_12_01_34_14/states.npz'
 
 
-
-    #traj_path = test_rotate_data(traj_path, store_path='./new_unitree_a1_with_dir_vec_model')
+    traj_path = test_rotate_data(traj_path, store_path='./new_unitree_a1_with_dir_vec_model')
 
 
     # prepare trajectory params
