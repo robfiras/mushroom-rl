@@ -4,7 +4,8 @@ from gym.envs.mujoco.hopper_v3 import HopperEnv
 
 class HopperEnvPOMPD(HopperEnv):
 
-    def __init__(self, obs_to_hide=("velocities",), random_force_com=False, max_force_strength=5.0, **kwargs):
+    def __init__(self, obs_to_hide=("velocities",), random_force_com=False, max_force_strength=5.0,
+                 include_body_vel=False, **kwargs):
 
         self._hidable_obs = ("positions", "velocities")
         if type(obs_to_hide) == str:
@@ -17,6 +18,7 @@ class HopperEnvPOMPD(HopperEnv):
         self._random_force_com = random_force_com
         self._max_force_strength = max_force_strength
         self._force_strength = 0.0
+        self._include_body_vel = include_body_vel
         super().__init__(**kwargs)
 
     def reset_model(self):
@@ -42,6 +44,10 @@ class HopperEnvPOMPD(HopperEnv):
         if "velocities" not in self._obs_to_hide:
             velocity = np.clip(self.sim.data.qvel.flat.copy(), -10, 10)
             observations += [velocity]
+
+        if "velocities" in self._obs_to_hide and self._include_body_vel:
+            velocity = np.clip(self.sim.data.qvel.flat.copy(), -10, 10)
+            observations += [velocity[:3]]
 
         return np.concatenate(observations).ravel()
 

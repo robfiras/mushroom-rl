@@ -5,7 +5,7 @@ from gym.envs.mujoco.ant_v3 import AntEnv
 class AntEnvPOMPD(AntEnv):
 
     def __init__(self, obs_to_hide=("velocities",), random_force_com=False, max_force_strength=0.5,
-                 forward_reward_weight=1.0, **kwargs):
+                 forward_reward_weight=1.0, include_body_vel=False, **kwargs):
 
         self._hidable_obs = ("positions", "velocities", "contact_forces")
         if type(obs_to_hide) == str:
@@ -19,6 +19,7 @@ class AntEnvPOMPD(AntEnv):
         self._max_force_strength = max_force_strength
         self._force_strength = 0.0
         self._forward_reward_weight = forward_reward_weight
+        self._include_body_vel = include_body_vel
         super().__init__(**kwargs)
 
     def reset_model(self):
@@ -39,6 +40,10 @@ class AntEnvPOMPD(AntEnv):
         if "velocities" not in self._obs_to_hide:
             velocity = self.sim.data.qvel.flat.copy()
             observations += [velocity]
+
+        if "velocities" in self._obs_to_hide and self._include_body_vel:
+            velocity = self.sim.data.qvel.flat.copy()
+            observations += [velocity[:6]]
 
         if "contact_forces" not in self._obs_to_hide:
             contact_force = self.contact_forces.flat.copy()
