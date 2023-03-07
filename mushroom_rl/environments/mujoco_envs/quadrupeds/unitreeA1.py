@@ -133,12 +133,13 @@ class UnitreeA1(BaseQuadruped):
 
 
 
-    def _modify_observation(self, obs):
+    def _modify_observation(self, obs, dir_arrow_from_robot_pov=False):
         """
         transform direction arrow matrix into one rotation angle
 
         Args:
             obs (np.ndarray): the generated observation
+            dir_arrow_from_robot_pov (Bool): if the rotation angle is from the robot pov or in absolute coordinates
 
         Returns:
             The environment observation.
@@ -149,7 +150,11 @@ class UnitreeA1(BaseQuadruped):
             new_obs = obs[:34]
             # transform rotation matrix into rotation angle
             temp = np.dot(obs[34:43].reshape((3, 3)), np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]])).reshape((9,))
-            angle = np.arctan2(temp[3], temp[0])
+            if dir_arrow_from_robot_pov:
+                angle = (np.arctan2(temp[3], temp[0]) + np.pi) % (2 * np.pi) - np.pi
+            else:
+                angle = (np.arctan2(temp[3], temp[0]) - obs[1] + np.pi) % (2 * np.pi) - np.pi
+            #print('a', angle) # todo seems like wrong angle for simulation; rotate dataset for replay agent
             # and turn angle to sin, cos (for a closed angle range)
             new_obs = np.append(new_obs, [np.cos(angle), np.sin(angle)])
             #new_obs = np.append(new_obs, obs)
@@ -191,11 +196,25 @@ class UnitreeA1(BaseQuadruped):
                 sample = self.trajectory.reset_trajectory()
             else:
                 sample = self.trajectory.reset_trajectory(self._init_step_no, self._init_traj_no)
+
             if self.use_2d_ctrl:
-                self._direction_xmat = sample[36] #self._trajectory_files["dir_arrow"][1500]
-                temp = np.dot(self._direction_xmat.reshape((3,3)), np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]])).reshape((9,))
+                # add trunk rotation on dir arr to make sure the direction arrow is from the pov of the robot
+
+                self._direction_xmat = sample[36]
+                temp = np.dot(self._direction_xmat.reshape((3, 3)),
+                              np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]])).reshape((9,))
                 self._direction_angle = np.arctan2(temp[3], temp[0])
                 self._goals = np.array([sample[37]], dtype=float)
+
+                trunk_tilt = sample[3]
+                # calc rotation matrix with rotation of trunk
+                R = np.array(
+                    [[np.cos(trunk_tilt), -np.sin(trunk_tilt), 0], [np.sin(trunk_tilt), np.cos(trunk_tilt), 0],
+                     [0, 0, 1]])
+                sample[36] = np.dot(R, sample[36].reshape((3,3))).reshape((9,))
+
+
+
             self.set_qpos_qvel(sample)
         else: # TODO: add this fuctionality in base_humanoid for all env
             self._data.qpos = [0, 0, -0.16, 0, 0, 0, 0, 0.9, -1.8, 0, 0.9, -1.8, 0, 0.9, -1.8, 0, 0.9, -1.8]
@@ -262,7 +281,7 @@ class UnitreeA1(BaseQuadruped):
         return trunk_condition
 
 
-def rotate_modified_obs(state, angle): #(angle+np.pi) % (2*np.pi)-np.pi
+def rotate_modified_obs(state, angle): #(angle+np.pi) % (2*np.pi)-np.pi #TODO something still wrong with angle !!!!!!!!!!!!!!!!!!!!
     rotated_state = np.array(state).copy()
     #rotate tilt
     rotated_state[:,1] = (np.array(state[:,1]) + angle + np.pi) % (2*np.pi)-np.pi
@@ -623,8 +642,8 @@ if __name__ == '__main__':
                     '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_right.npz',
                     '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_right_noise1.npz',
                     '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_right_noise2.npz']
-    actions_path = '/home/tim/Documents/locomotion_simulation/locomotion/examples/log/2023_02_05_18_59_37/actions_torque.npz'
-    states_path = '/home/tim/Documents/locomotion_simulation/locomotion/examples/log/2023_02_05_18_59_37/states.npz'
+    actions_path = '/home/tim/Documents/locomotion_simulation/locomotion/examples/log/2023_02_23_19_22_49/actions_torque.npz'
+    states_path = '/home/tim/Documents/locomotion_simulation/locomotion/examples/log/2023_02_23_19_22_49/states.npz'
     dataset_path = '/home/tim/Documents/test_datasets/' #'/home/tim/Documents/IRL_unitreeA1/data/2D_Walking' #'/home/tim/Documents/test_datasets/'#None # '/home/tim/Documents/IRL_unitreeA1/data'
     use_rendering = False # both only for mujoco generated states
     use_plotting = False
@@ -664,8 +683,8 @@ if __name__ == '__main__':
     exit()"""
    
 
-    #env.play_action_demo(actions_path=actions_path, states_path=states_path, control_dt=control_dt, demo_dt=demo_dt, traj_no=1,
-    #                      use_rendering=True, use_plotting=False, use_pd_controller=True, interpolate_map=interpolate_map, interpolate_remap=interpolate_remap)
+    env.play_action_demo(actions_path=actions_path, states_path=states_path, control_dt=control_dt, demo_dt=demo_dt, traj_no=1,
+                          use_rendering=True, use_plotting=False, use_pd_controller=False, interpolate_map=interpolate_map, interpolate_remap=interpolate_remap)
     #exit()
 
 

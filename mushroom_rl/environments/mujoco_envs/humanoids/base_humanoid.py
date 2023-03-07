@@ -95,7 +95,6 @@ class BaseHumanoid(MuJoCo):
             raise ValueError("You have specified a trajectory, you have to use either a random start or "
                              "set an initial step")
 
-        #TODO can be nicer but not without adapting usage of constructor
         if init_step_no is not None and init_traj_no is None: #for cases before the new implementation: set traj_no to 0
             init_traj_no = 0
 
@@ -229,7 +228,6 @@ class BaseHumanoid(MuJoCo):
         rewards = []
         while True:
             sample = self.trajectory.get_next_sample()
-            print(self._goals)
             #sample[-1] = 1
             self.set_qpos_qvel(sample)
 
@@ -246,12 +244,13 @@ class BaseHumanoid(MuJoCo):
             obs = self._create_observation(sample)
             if self.has_fallen(obs):
                 print("Has Fallen!")
-            print(len(rewards))
+            #print(len(rewards))
             rewards.append(self.reward(obs, None, None, False))
+            #print(self._goals)
             #if len(rewards) == 200:
              #   time.sleep(1)
-            if len(rewards) == 500:
-                break
+            #if len(rewards) == 500:
+             #   break
 
 
             self.render()
@@ -325,11 +324,13 @@ class BaseHumanoid(MuJoCo):
                 self._data.joint(name).qvel = value
             elif ot == ObservationType.SITE_ROT:
                 self._data.site(name).xmat = value
-                #TODO shouldn't be here
-                if name == "dir_arrow":
+                #TODO tim shouldn't be here works with play_demo still?
+                if name == "dir_arrow" and not hasattr(self, '_direction_xmat'):
                     self._direction_xmat = value
-                    no_arrrow_transformation = np.dot(value.reshape((3, 3)), np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]])).reshape((9,))
+                    no_arrrow_transformation = np.dot(value.reshape((3, 3)),
+                                                      np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]])).reshape((9,))
                     self._direction_angle = np.arctan2(no_arrrow_transformation[3], no_arrrow_transformation[0])
+
 
     def get_joint_pos(self):
         return self.obs_helper.get_joint_pos_from_obs(self.obs_helper.build_obs(self._data))

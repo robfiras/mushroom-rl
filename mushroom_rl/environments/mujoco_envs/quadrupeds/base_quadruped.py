@@ -36,28 +36,6 @@ class BaseQuadruped(BaseHumanoid):
     Mujoco simulation of unitree A1 model
     """
 
-
-    # def _simulation_pre_step(self):
-        # self._data.qfrc_applied[self._action_indices] = self._data.qfrc_bias[:12]
-        # print(self._data.qfrc_bias[:12])
-        # self._data.ctrl[self._action_indices] = self._data.qfrc_bias[:12] + self._data.ctrl[self._action_indices]
-        # print(self._data.qfrc_bias[:12])
-        # self._data.qfrc_applied[self._action_indices] = self._data.qfrc_bias[:12] + self._data.qfrc_applied[self._action_indices]
-        # self._data.qfrc_actuator[self._action_indices] += self._data.qfrc_bias[:12]
-        # self._data.ctrl[self._action_indices] += self._data.qfrc_bias[:12]
-
-        #    pass
-
-
-
-
-    #def _compute_action(self, obs, action):
-    #    gravity = self._data.qfrc_bias[self._action_indices]
-    #    action = action+gravity
-    #    return action
-
-
-
     def _simulation_post_step(self):
         grf = np.concatenate([self._get_collision_force("floor", "foot_FL")[:3],
                               self._get_collision_force("floor", "foot_FR")[:3],
@@ -66,24 +44,25 @@ class BaseQuadruped(BaseHumanoid):
 
         self.mean_grf.update_stats(grf)
         if self.use_2d_ctrl:
-            #TODO: from view of robot angle correct like this for traj. replay?; where else adapt this: sim_post_step; sim_post_step and setup only for one constant angle; modify obs also for trunk tilt change?; noise be e-1 laufbar aber driftet ab; numpy 1.20 possible?
-            #TODO correct?
+            # read rotation of trunk
+            #todo trunk tilt
             trunk_tilt = self._data.joint("trunk_tilt").qpos[0]
-
+            # calc rotation matrix with rotation of trunk
             R = np.array(
                 [[np.cos(trunk_tilt), -np.sin(trunk_tilt), 0], [np.sin(trunk_tilt), np.cos(trunk_tilt), 0], [0, 0, 1]])
 
-
+            # rotate the direction arrow with the trunk rotation -> dir arrow set from the point of view of the robot
             self._data.site("dir_arrow").xmat = np.dot(R, self._direction_xmat.reshape((3,3))).reshape((9,))
+            # calc position of the ball corresponding to the arrow
             self._data.site("dir_arrow_ball").xpos = self._data.body("dir_arrow").xpos + [-0.1 * np.cos(self._direction_angle+trunk_tilt), -0.1 * np.sin(self._direction_angle+trunk_tilt), 0]
-        # self._data.qfrc_applied[self._action_indices] = self._data.qfrc_bias[self._action_indices] + self._data.qfrc_applied[self._action_indices]
 
-        # print(self._data.qfrc_bias[:12])
 
 
 
     def traj_post_step(self): # for play_trajectory_demo
         if self.use_2d_ctrl:
+            # todo trunk tilt
+            # same as above
             trunk_tilt = self._data.joint("trunk_tilt").qpos[0]
             R = np.array(
                 [[np.cos(trunk_tilt), -np.sin(trunk_tilt), 0], [np.sin(trunk_tilt), np.cos(trunk_tilt), 0], [0, 0, 1]])
@@ -165,14 +144,14 @@ class BaseQuadruped(BaseHumanoid):
             #turns rotation matrix into angle
             if self.use_2d_ctrl:  # TODO will need changes if changing modify_obs
 
-                dim1 = len(self._modify_observation(np.hstack(trajectories[:,0,0]))) #dim1 of trajectories after applied modify_obs
+                dim1 = len(self._modify_observation(np.hstack(trajectories[:,0,0]),  dir_arrow_from_robot_pov=True)) #dim1 of trajectories after applied modify_obs
                 #apply modify obs on each state to be sure to have the same observation as the robot for learning
                 new_trajectories = np.empty((dim1, trajectories.shape[1], trajectories.shape[2]))
                 for i in range(len(trajectories[0])):
                     transposed_traj = np.transpose(trajectories[:,i])
                     for j in range(len(transposed_traj)):
                         flat_sample = np.hstack(transposed_traj[j])
-                        new_trajectories[:, i, j] = self._modify_observation(flat_sample)
+                        new_trajectories[:, i, j] = self._modify_observation(flat_sample, dir_arrow_from_robot_pov=True)
                 trajectories = new_trajectories
 
 
