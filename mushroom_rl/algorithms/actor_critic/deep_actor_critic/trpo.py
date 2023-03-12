@@ -138,8 +138,8 @@ class TRPO(Agent):
         kl_v = torch.sum(flat_grad_kl * p)
         grads_v = torch.autograd.grad(kl_v, self.policy.parameters(), create_graph=False)
         flat_grad_grad_kl = torch.cat([grad.contiguous().view(-1) for grad in grads_v]).data
-
-        if np.any(np.isnan(flat_grad_grad_kl + p * self._cg_damping())):
+        a = (flat_grad_grad_kl + p * self._cg_damping()).numpy()
+        if np.any(np.isnan(a)):
             print("fisher vecotr prod is nan:")
             print("kl", kl)
             print("grads", grads) #jo
@@ -171,6 +171,13 @@ class TRPO(Agent):
             r2 = r2_new
             if r2 < self._cg_residual_tol():
                 break
+            if np.any(np.isnan(x)):
+                print("z", z)
+                print("v", v)
+                print("x", x)
+                print("r", r)
+                print("mu", mu)
+                print("p", p)
         return x
 
     def _line_search(self, obs, act, adv, old_log_prob, old_pol_dist, prev_loss, stepdir):
