@@ -139,6 +139,18 @@ class TRPO(Agent):
         grads_v = torch.autograd.grad(kl_v, self.policy.parameters(), create_graph=False)
         flat_grad_grad_kl = torch.cat([grad.contiguous().view(-1) for grad in grads_v]).data
 
+        if np.any(np.isnan(flat_grad_grad_kl + p * self._cg_damping())):
+            print("fisher vecotr prod is nan:")
+            print("kl", kl)
+            print("grads", grads) #jo
+            print("flat_grad_kl", flat_grad_kl) #jo
+            print("kl_v", kl_v) #jo
+            print("grads_v", grads_v) #jo
+            print("flat_grad_grad_kl", flat_grad_grad_kl) #jo
+            print("policy_param", self.policy.parameters()) #todo
+            print("p",p)
+            print("damping", self._cg_damping())
+
         return flat_grad_grad_kl + p * self._cg_damping()
 
     def _conjugate_gradient(self, b, obs, old_pol_dist):
