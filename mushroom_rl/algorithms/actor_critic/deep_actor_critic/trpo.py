@@ -158,10 +158,20 @@ class TRPO(Agent):
         r = b.detach().cpu().numpy()
         x = np.zeros_like(p)
         r2 = r.dot(r)
-
+        p_copy=p.copy()
+        r_copy =r.copy()
+        x_copy=x.copy()
+        r2_copy=r2.copy()
         for i in range(self._n_epochs_cg()):
             z = self._fisher_vector_product(p, obs, old_pol_dist).detach().cpu().numpy()
             v = r2 / p.dot(z)
+            if np.any(np.isnan(v)):
+                print("v is nan because:")
+                print("r2", r2)
+                print("p", p)
+                print("z", z)
+                print("r", r)
+                print("gradieent", b)
             x += v * p
             r -= v * z
             r2_new = r.dot(r)
@@ -172,12 +182,20 @@ class TRPO(Agent):
             if r2 < self._cg_residual_tol():
                 break
             if np.any(np.isnan(x)):
+                print("conjugate gradient is nan in it", i)
                 print("z", z)
                 print("v", v)
                 print("x", x)
                 print("r", r)
                 print("mu", mu)
                 print("p", p)
+                print("r2", r2)
+        if np.any(np.isnan(x)):
+            print("p_copy", p_copy)
+            print("r_copy", r_copy)
+            print("x_copy", x_copy)
+            print("r2_copy", r2_copy)
+            print("nans:", np.any(np.isnan(p)), np.any(np.isnan(r)), np.any(np.isnan(x)), np.any(np.isnan(r2)))
         return x
 
     def _line_search(self, obs, act, adv, old_log_prob, old_pol_dist, prev_loss, stepdir):
