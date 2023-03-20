@@ -199,7 +199,7 @@ class UnitreeA1(BaseQuadruped):
                 sample = self.trajectory.reset_trajectory()
             else:
                 sample = self.trajectory.reset_trajectory(self._init_step_no, self._init_traj_no)
-            angle = random.choices([0,np.pi/2], k=1)
+            angle = np.random.uniform(0, 2 * np.pi, demo_obs.shape[0])
             sample = rotate_modified_obs(sample, angle, False)
 
             if self.use_2d_ctrl:
@@ -548,7 +548,7 @@ if __name__ == '__main__':
     n_substeps = env_freq // desired_contr_freq
 
 
-    traj_path =  '/home/tim/Documents/locomotion_simulation/locomotion/examples/log/2023_02_23_19_22_49/states.npz' #'/home/tim/Documents/locomotion_simulation/locomotion/examples/log/2023_02_12_13_35_32/states.npz' #'/home/tim/Documents/locomotion_simulation/locomotion/examples/log/2023_02_12_01_34_14/states.npz'
+    traj_path =  '/home/tim/Documents/IRL_unitreeA1/data/states_2023_02_23_19_48_33.npz'#'/home/tim/Documents/locomotion_simulation/locomotion/examples/log/2023_02_23_19_22_49/states.npz' #'/home/tim/Documents/locomotion_simulation/locomotion/examples/log/2023_02_12_13_35_32/states.npz' #'/home/tim/Documents/locomotion_simulation/locomotion/examples/log/2023_02_12_01_34_14/states.npz'
 
 
     traj_path = test_rotate_data(traj_path, store_path='./new_unitree_a1_with_dir_vec_model')
