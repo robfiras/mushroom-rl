@@ -199,7 +199,7 @@ class UnitreeA1(BaseQuadruped):
                 sample = self.trajectory.reset_trajectory()
             else:
                 sample = self.trajectory.reset_trajectory(self._init_step_no, self._init_traj_no)
-            angle = np.random.uniform(0, 2 * np.pi, demo_obs.shape[0])
+            angle = np.random.uniform(0, 2 * np.pi)
             sample = rotate_modified_obs(sample, angle, False)
 
             if self.use_2d_ctrl:
