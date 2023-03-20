@@ -22,6 +22,9 @@ from mushroom_rl.utils.mujoco import *
 from mushroom_rl.environments.mujoco_envs.humanoids.trajectory import Trajectory
 from mushroom_rl.environments.mujoco_envs.quadrupeds.base_quadruped import BaseQuadruped
 import matplotlib.pyplot as plt
+import random
+
+
 
 
 from mushroom_rl.environments.mujoco_envs.humanoids.reward import NoGoalReward, CustomReward
@@ -196,6 +199,8 @@ class UnitreeA1(BaseQuadruped):
                 sample = self.trajectory.reset_trajectory()
             else:
                 sample = self.trajectory.reset_trajectory(self._init_step_no, self._init_traj_no)
+            angle = random.choices([0,np.pi/2], k=1)
+            sample = rotate_modified_obs(sample, angle, False)
 
             if self.use_2d_ctrl:
                 # add trunk rotation on dir arr to make sure the direction arrow is from the pov of the robot
@@ -281,13 +286,30 @@ class UnitreeA1(BaseQuadruped):
         return trunk_condition
 
 
-def rotate_modified_obs(state, angle): #(angle+np.pi) % (2*np.pi)-np.pi #TODO something still wrong with angle !!!!!!!!!!!!!!!!!!!!
+def rotate_modified_obs(state, angle, modified=True): #(angle+np.pi) % (2*np.pi)-np.pi #TODO something still wrong with angle !!!!!!!!!!!!!!!!!!!!
     rotated_state = np.array(state).copy()
     #rotate tilt
-    rotated_state[:,1] = (np.array(state[:,1]) + angle + np.pi) % (2*np.pi)-np.pi
-    #rotate velo x,y
-    rotated_state[:,16] = (np.cos(angle) * np.array(state[:,16]) - np.sin(angle) * np.array(state[:,17]) + np.pi) % (2*np.pi)-np.pi
-    rotated_state[:,17] = (np.sin(angle) * np.array(state[:,16]) + np.cos(angle) * np.array(state[:,17]) + np.pi) % (2*np.pi)-np.pi
+    if modified:
+        trunk_rot = 1
+        x_vel = 16
+        y_vel = 17
+        rotated_state[:, trunk_rot] = (np.array(np.array(state)[:, trunk_rot]) + angle + np.pi) % (2 * np.pi) - np.pi
+        # rotate velo x,y
+        rotated_state[:, x_vel] = np.cos(angle) * np.array(np.array(state)[:, x_vel]) - np.sin(angle) * np.array(
+            np.array(state)[:, y_vel])  # + np.pi #% (2*np.pi)-np.pi
+        rotated_state[:, y_vel] = np.sin(angle) * np.array(np.array(state)[:, x_vel]) + np.cos(angle) * np.array(
+            np.array(state)[:, y_vel])  # + np.pi #% (2*np.pi)-np.pi
+    else:
+        trunk_rot = 3
+        x_vel = 18
+        y_vel = 19
+        rotated_state[trunk_rot] = (np.array(np.array(state)[trunk_rot]) + angle + np.pi) % (2 * np.pi) - np.pi
+        # rotate velo x,y
+        rotated_state[x_vel] = np.cos(angle) * np.array(np.array(state)[x_vel]) - np.sin(angle) * np.array(
+            np.array(state)[y_vel])  # + np.pi #% (2*np.pi)-np.pi
+        rotated_state[y_vel] = np.sin(angle) * np.array(np.array(state)[x_vel]) + np.cos(angle) * np.array(
+            np.array(state)[y_vel])  # + np.pi #% (2*np.pi)-np.pi
+
     return rotated_state
     
 
@@ -304,8 +326,28 @@ def test_rotate_data(traj_path, store_path='./new_unitree_a1_with_dir_vec_model'
         keys.remove("split_points")
     else:
         split_points = np.array([0, len(list(trajectory_files.values())[0])])
+    #trajectory = np.array([list(trajectory_files[key])[split_points[0]:split_points[1]] for key in keys], dtype=object)
 
-    trajectory = np.array([list(trajectory_files[key])[split_points[0]:split_points[1]] for key in keys], dtype=object)
+    #begin interpolation
+    trajectory = np.array([[list(trajectory_files[key])[split_points[i]:split_points[i + 1]] for i
+                                 in range(len(split_points) - 1)] for key in keys], dtype=object)
+
+    traj_dt = 1/500
+    control_dt = 1/100
+    if traj_dt != control_dt:
+        new_traj_sampling_factor = traj_dt / control_dt
+
+        trajectory = Trajectory._interpolate_trajectory(
+            trajectory, factor=new_traj_sampling_factor,
+            map_funct=interpolate_map, re_map_funct=interpolate_remap
+        )
+        split_points = [0]
+        for k in range(len(trajectory[0])):
+            split_points.append(split_points[-1] + len(trajectory[0][k]))
+        # self.split_points = [len(traj) for traj in self.trajectory[0]]
+    trajectory = trajectory[:,0]
+    #end interpolation
+
 
     # preprocess to get same data as function fit()
     preprocessed_traj = [list() for i in range(49)]
@@ -336,7 +378,7 @@ def test_rotate_data(traj_path, store_path='./new_unitree_a1_with_dir_vec_model'
 
 
 
-    rot_diff=[np.pi/3]
+    rot_diff=[2]#np.full(preprocessed_traj.shape[1], 2)] # [np.random.uniform(0, 2*np.pi, preprocessed_traj.shape[1])] #[np.full(preprocessed_traj.shape[1], 2)] #              np.random.uniform(0, 2*np.pi, preprocessed_traj.shape[1])]
 
 
 
@@ -434,7 +476,7 @@ def test_rotate_data(traj_path, store_path='./new_unitree_a1_with_dir_vec_model'
                  goal_speed=postprocessed_traj[35],
                  split_points=[0, len(postprocessed_traj[0])])
 
-    return os.path.join(store_path, 'test_rotate_dataset_'+str(np.pi/3)+'.npz')
+    return os.path.join(store_path, 'test_rotate_dataset_'+str(rot_diff[0])+'.npz')
 
 
 
@@ -501,7 +543,7 @@ if __name__ == '__main__':
     np.random.seed(1)
     # define env and data frequencies
     env_freq = 1000  # hz, added here as a reminder
-    traj_data_freq = 500  # hz, added here as a reminder
+    traj_data_freq = 100 #500 change interpolation in test_rotate too!!! # hz, added here as a reminder
     desired_contr_freq = 100  # hz
     n_substeps = env_freq // desired_contr_freq
 
@@ -530,7 +572,7 @@ if __name__ == '__main__':
 
 
     with catchtime() as t:
-        rewards = env.play_trajectory_demo(desired_contr_freq)
+        rewards = env.play_trajectory_demo_from_velocity(desired_contr_freq)
         print("Time: %fs" % t())
 
     gamma = 1
@@ -681,7 +723,7 @@ if __name__ == '__main__':
                          control_dt=control_dt, demo_dt=demo_dt
                         )
     exit()"""
-   
+
 
     env.play_action_demo(actions_path=actions_path, states_path=states_path, control_dt=control_dt, demo_dt=demo_dt, traj_no=1,
                           use_rendering=True, use_plotting=False, use_pd_controller=False, interpolate_map=interpolate_map, interpolate_remap=interpolate_remap)
