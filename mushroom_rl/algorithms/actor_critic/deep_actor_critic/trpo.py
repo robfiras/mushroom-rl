@@ -138,18 +138,6 @@ class TRPO(Agent):
         kl_v = torch.sum(flat_grad_kl * p)
         grads_v = torch.autograd.grad(kl_v, self.policy.parameters(), create_graph=False)
         flat_grad_grad_kl = torch.cat([grad.contiguous().view(-1) for grad in grads_v]).data
-        a = (flat_grad_grad_kl + p * self._cg_damping()).numpy()
-        if np.any(np.isnan(a)):
-            print("fisher vecotr prod is nan:")
-            print("kl", kl)
-            print("grads", grads) #jo
-            print("flat_grad_kl", flat_grad_kl) #jo
-            print("kl_v", kl_v) #jo
-            print("grads_v", grads_v) #jo
-            print("flat_grad_grad_kl", flat_grad_grad_kl) #jo
-            print("policy_param", self.policy.parameters()) #todo
-            print("p",p)
-            print("damping", self._cg_damping())
 
         return flat_grad_grad_kl + p * self._cg_damping()
 
@@ -158,20 +146,10 @@ class TRPO(Agent):
         r = b.detach().cpu().numpy()
         x = np.zeros_like(p)
         r2 = r.dot(r)
-        p_copy=p.copy()
-        r_copy =r.copy()
-        x_copy=x.copy()
-        r2_copy=r2.copy()
+
         for i in range(self._n_epochs_cg()):
             z = self._fisher_vector_product(p, obs, old_pol_dist).detach().cpu().numpy()
-            v = r2 / p.dot(z)
-            if np.any(np.isnan(v)):
-                print("v is nan because:")
-                print("r2", r2)
-                print("p", p)
-                print("z", z)
-                print("r", r)
-                print("gradieent", b)
+            v = r2 / p.dot(z) # error here
             x += v * p
             r -= v * z
             r2_new = r.dot(r)
@@ -181,21 +159,6 @@ class TRPO(Agent):
             r2 = r2_new
             if r2 < self._cg_residual_tol():
                 break
-            if np.any(np.isnan(x)):
-                print("conjugate gradient is nan in it", i)
-                print("z", z)
-                print("v", v)
-                print("x", x)
-                print("r", r)
-                print("mu", mu)
-                print("p", p)
-                print("r2", r2)
-        if np.any(np.isnan(x)):
-            print("p_copy", p_copy)
-            print("r_copy", r_copy)
-            print("x_copy", x_copy)
-            print("r2_copy", r2_copy)
-            print("nans:", np.any(np.isnan(p)), np.any(np.isnan(r)), np.any(np.isnan(x)), np.any(np.isnan(r2)))
         return x
 
     def _line_search(self, obs, act, adv, old_log_prob, old_pol_dist, prev_loss, stepdir):

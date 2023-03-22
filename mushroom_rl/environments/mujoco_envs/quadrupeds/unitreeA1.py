@@ -1,12 +1,14 @@
 
 import os
 import time
+import sys
 from abc import abstractmethod
 import mujoco
 from dm_control import mjcf
-
+from copy import deepcopy
 
 from pathlib import Path
+from scipy import interpolate
 
 import numpy as np
 from time import perf_counter
@@ -20,12 +22,9 @@ from mushroom_rl.utils.angles import quat_to_euler
 from mushroom_rl.utils.running_stats import *
 from mushroom_rl.utils.mujoco import *
 from mushroom_rl.environments.mujoco_envs.humanoids.trajectory import Trajectory
-from mushroom_rl.environments.mujoco_envs.quadrupeds.base_quadruped import BaseQuadruped
+from mushroom_rl.environments.mujoco_envs.humanoids.base_humanoid import BaseHumanoid
 import matplotlib.pyplot as plt
 import random
-
-
-
 
 from mushroom_rl.environments.mujoco_envs.humanoids.reward import NoGoalReward, CustomReward
 
@@ -38,29 +37,49 @@ except ModuleNotFoundError:
 
 
 
-class UnitreeA1(BaseQuadruped):
+class UnitreeA1(BaseHumanoid):
     """
     Mujoco simulation of unitree A1 model
-    to switch between torque and position control: adjust xml file (and if needed action_position.npz/action_position.npz)
-    to switch between freejoint and mul_joint: adapt obs space and xml path
     """
-    def __init__(self, gamma=0.99, horizon=1000, n_substeps=10, random_start=False, init_step_no=None,
-                 traj_params=None, timestep=0.001, goal_reward=None, goal_reward_params=None, use_torque_ctrl=False,
-                 use_2d_ctrl=False, tmp_dir_name=None):
+    def __init__(self, gamma=0.99, horizon=1000, n_substeps=10, timestep=0.001, random_start=False,
+                 init_step_no=None, init_traj_no=None, traj_params=None, goal_reward=None, goal_reward_params=None,
+                 use_torque_ctrl=False, use_2d_ctrl=False, tmp_dir_name=None, setup_random_rot=False):
         """
         Constructor.
-        for clipping in torques need to adjust xml gear 34 and ctrllimited
+        Args:
+            gamma (float): The discounting factor of the environment;
+            horizon (int): The maximum horizon for the environment;
+            n_substeps (int, 1): The number of substeps to use by the MuJoCo
+                simulator. An action given by the agent will be applied for
+                n_substeps before the agent receives the next observation and
+                can act accordingly;
+            timestep (float): The timestep used by the MuJoCo
+                simulator. If None, the default timestep specified in the XML will be used;
+            random_start (bool): if the robot should start in a random state from self.trajectory
+            init_step_no (int): if not random start in which step no the robot should start
+            init_traj_no (int): no of trajectory if multiple trajectories are in self.trajectory
+            traj_params (list): list of parameters for the trajectory class
+            goal_reward (str): how the reward should be calculated; options: "custom", "target_velocity", None
+            goal_reward_params (list): parameters for a custom goal reward
+            use_torque_ctrl (bool): if the unitree should use torque or position control
+            use_2d_ctrl (bool): if the goal is to walk in two dimensions: will add a direction arrow to distinguish
+                between different directions
+            tmp_dir_name (str): path to a temporary directory to store the temporary new xml file with the
+                direction arrow
+            setup_random_rot (bool): if the robot should be set up with a random rotation
         """
+        # different xml files for torque and position control
         if use_torque_ctrl:
             xml_path = (Path(__file__).resolve().parent.parent / "data" / "quadrupeds" /
-                    "unitree_a1_torque_mul_joint.xml").as_posix()
-            print("Using torque control for unitreeA1")
+                    "unitree_a1_torque.xml").as_posix()
+            print("Using torque-control for unitreeA1")
         else:
             xml_path = (Path(__file__).resolve().parent.parent / "data" / "quadrupeds" /
-                        "unitree_a1_position_mul_joint.xml").as_posix()
-            print("Using position control for unitreeA1")
+                        "unitree_a1_position.xml").as_posix()
+            print("Using position-control for unitreeA1")
 
-        action_spec = [# motors
+        # motors
+        action_spec = [
             "FR_hip", "FR_thigh", "FR_calf",
             "FL_hip", "FL_thigh", "FL_calf",
             "RR_hip", "RR_thigh", "RR_calf",
@@ -68,13 +87,12 @@ class UnitreeA1(BaseQuadruped):
         observation_spec = [
             # ------------------- JOINT POS -------------------
             # --- Trunk ---
-            #("body_freejoint", "body", ObservationType.JOINT_POS),
             ("q_trunk_tx", "trunk_tx", ObservationType.JOINT_POS),
             ("q_trunk_ty", "trunk_ty", ObservationType.JOINT_POS),
             ("q_trunk_tz", "trunk_tz", ObservationType.JOINT_POS),
-            ("q_trunk_tilt", "trunk_tilt", ObservationType.JOINT_POS),
-            ("q_trunk_list", "trunk_list", ObservationType.JOINT_POS),
             ("q_trunk_rotation", "trunk_rotation", ObservationType.JOINT_POS),
+            ("q_trunk_list", "trunk_list", ObservationType.JOINT_POS),
+            ("q_trunk_tilt", "trunk_tilt", ObservationType.JOINT_POS),
             # --- Front ---
             ("q_FR_hip_joint", "FR_hip_joint", ObservationType.JOINT_POS),
             ("q_FR_thigh_joint", "FR_thigh_joint", ObservationType.JOINT_POS),
@@ -93,10 +111,10 @@ class UnitreeA1(BaseQuadruped):
             # --- Trunk ---
             ("dq_trunk_tx", "trunk_tx", ObservationType.JOINT_VEL),
             ("dq_trunk_ty", "trunk_ty", ObservationType.JOINT_VEL),
-            ("dq_trunk_tz", "trunk_tz", ObservationType.JOINT_VEL),  # todo why here z before y?
-            ("dq_trunk_tilt", "trunk_tilt", ObservationType.JOINT_VEL),
-            ("dq_trunk_list", "trunk_list", ObservationType.JOINT_VEL),
+            ("dq_trunk_tz", "trunk_tz", ObservationType.JOINT_VEL),
             ("dq_trunk_rotation", "trunk_rotation", ObservationType.JOINT_VEL),
+            ("dq_trunk_list", "trunk_list", ObservationType.JOINT_VEL),
+            ("dq_trunk_tilt", "trunk_tilt", ObservationType.JOINT_VEL),
             # --- Front ---
             ("dq_FR_hip_joint", "FR_hip_joint", ObservationType.JOINT_VEL),
             ("dq_FR_thigh_joint", "FR_thigh_joint", ObservationType.JOINT_VEL),
@@ -112,6 +130,7 @@ class UnitreeA1(BaseQuadruped):
             ("dq_RL_thigh_joint", "RL_thigh_joint", ObservationType.JOINT_VEL),
             ("dq_RL_calf_joint", "RL_calf_joint", ObservationType.JOINT_VEL)]
 
+        # important contact forces
         collision_groups = [("floor", ["floor"]),
                             ("foot_FR", ["FR_foot"]),
                             ("foot_FL", ["FL_foot"]),
@@ -119,6 +138,7 @@ class UnitreeA1(BaseQuadruped):
                             ("foot_RL", ["RL_foot"])]
 
         if use_2d_ctrl:
+            # append observation_spec with the direction arrow & add it to a temporary xml file
             observation_spec.append(("dir_arrow", "dir_arrow", ObservationType.SITE_ROT))
             assert tmp_dir_name is not None, "If you want to use 2d_ctrl, you have to specify a" \
                                              "directory name for the xml-files to be saved."
@@ -126,19 +146,19 @@ class UnitreeA1(BaseQuadruped):
             xml_path = self.save_xml_handle(xml_handle, tmp_dir_name)
             print("Using 2D Control with direction arrow")
         self.use_2d_ctrl = use_2d_ctrl
-
-
-
+        self.setup_random_rot = setup_random_rot
 
         super().__init__(xml_path, action_spec, observation_spec, gamma=gamma, horizon=horizon, n_substeps=n_substeps,
-                         timestep=timestep, collision_groups=collision_groups, traj_params=traj_params, init_step_no=init_step_no,
-                         goal_reward=goal_reward, goal_reward_params=goal_reward_params, random_start=random_start)
+                         timestep=timestep, collision_groups=collision_groups, traj_params=traj_params,
+                         init_step_no=init_step_no, init_traj_no=init_traj_no, goal_reward=goal_reward,
+                         goal_reward_params=goal_reward_params, random_start=random_start)
 
 
 
     def _modify_observation(self, obs, dir_arrow_from_robot_pov=False):
         """
-        transform direction arrow matrix into one rotation angle
+        transform the rotation from the simulation to the observation we need for training:
+        transform rotation matrix of the direction arrow into sind and cos of the corresponding angle
 
         Args:
             obs (np.ndarray): the generated observation
@@ -148,25 +168,25 @@ class UnitreeA1(BaseQuadruped):
             The environment observation.
 
         """
-        #TODO all changes here must also be applied to create dataset for learning
         if self.use_2d_ctrl:
             new_obs = obs[:34]
             # transform rotation matrix into rotation angle
             temp = np.dot(obs[34:43].reshape((3, 3)), np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]])).reshape((9,))
+            # depending on the point of view substract the trunk rotation
             if dir_arrow_from_robot_pov:
                 angle = (np.arctan2(temp[3], temp[0]) + np.pi) % (2 * np.pi) - np.pi
             else:
                 angle = (np.arctan2(temp[3], temp[0]) - obs[1] + np.pi) % (2 * np.pi) - np.pi
-            #print('a', angle) # todo seems like wrong angle for simulation; rotate dataset for replay agent
             # and turn angle to sin, cos (for a closed angle range)
             new_obs = np.append(new_obs, [np.cos(angle), np.sin(angle)])
-            #new_obs = np.append(new_obs, obs)
             new_obs = np.append(new_obs, obs[43:])
             return new_obs
         return obs
 
     def add_dir_vector_to_xml_handle(self, xml_handle):
-
+        """
+        add the xml elements for the direction arrow
+        """
         # find trunk and attach direction arrow
         trunk = xml_handle.find("body", "trunk")
         trunk.add("body", name="dir_arrow", pos="0 0 0.15")
@@ -176,9 +196,10 @@ class UnitreeA1(BaseQuadruped):
 
         return xml_handle
 
-    # TODO: copied/modified from reudced_humanoid -> inherit?
     def save_xml_handle(self, xml_handle, tmp_dir_name):
-
+        """
+        same new xml file with the direction arrow in tmp_dir_name
+        """
         # save new model and return new xml path
         new_model_dir_name = 'new_unitree_a1_with_dir_vec_model/' + tmp_dir_name + "/"
         cwd = Path.cwd()
@@ -190,163 +211,348 @@ class UnitreeA1(BaseQuadruped):
         return new_xml_path.as_posix()
 
     def setup(self, substep_no=None):
-        # concept of direction arrow: in self._direction_xmat is the matrix we need to point with the arrow in the direction we want from the view of the robot. BUT we need to multiply the actual robot tilt to have the corresponding arrow
-        # in self._direction_angle is the goal direction form the view of the robot -> rotated (remove arrow default rotation) self._direction_xmat and turned into angle
+        """
+        sets up the inital state of the robot
+        """
 
         self.goal_reward.reset_state()
         if self.trajectory is not None:
             if self._random_start:
+                # choose random state from trajectory
                 sample = self.trajectory.reset_trajectory()
             else:
+                # choose specified state
                 sample = self.trajectory.reset_trajectory(self._init_step_no, self._init_traj_no)
-            angle = np.random.uniform(0, 2 * np.pi)
-            sample = rotate_modified_obs(sample, angle, False)
+            # if we want to set up the robot with a random rotation
+            if self.setup_random_rot:
+                angle = np.random.uniform(0, 2 * np.pi)
+                sample = rotate_obs(sample, angle, False)
 
+            # if we use the direction arrow
             if self.use_2d_ctrl:
-                # add trunk rotation on dir arr to make sure the direction arrow is from the pov of the robot
-
                 self._direction_xmat = sample[36]
-                temp = np.dot(self._direction_xmat.reshape((3, 3)),
-                              np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]])).reshape((9,))
-                self._direction_angle = np.arctan2(temp[3], temp[0])
+                # todo beides in goal
                 self._goals = np.array([sample[37]], dtype=float)
 
-                trunk_tilt = sample[3]
+                # add the trunk rotation to the direction to make sure the direction arrow matrix is interpreted from
+                # the robot's point of view
+                trunk_rotation = sample[3]
                 # calc rotation matrix with rotation of trunk
                 R = np.array(
-                    [[np.cos(trunk_tilt), -np.sin(trunk_tilt), 0], [np.sin(trunk_tilt), np.cos(trunk_tilt), 0],
+                    [[np.cos(trunk_rotation), -np.sin(trunk_rotation), 0],
+                     [np.sin(trunk_rotation), np.cos(trunk_rotation), 0],
                      [0, 0, 1]])
                 sample[36] = np.dot(R, sample[36].reshape((3,3))).reshape((9,))
-
-
-
+            # set state
             self.set_qpos_qvel(sample)
-        else: # TODO: add this fuctionality in base_humanoid for all env
-            self._data.qpos = [0, 0, -0.16, 0, 0, 0, 0, 0.9, -1.8, 0, 0.9, -1.8, 0, 0.9, -1.8, 0, 0.9, -1.8]
-            self._data.qvel = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        else: # TODO: because init position from xml is bad
+            # defines default position
+            sample = [0, 0, -0.16, 0, 0, 0, 0, 0.9, -1.8, 0, 0.9, -1.8, 0, 0.9, -1.8, 0, 0.9, -1.8,
+                      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+            if self.setup_random_rot:
+                angle = np.random.uniform(0, 2 * np.pi)
+                sample = rotate_obs(sample, angle, False)
+            len_qpos, len_qvel = self.len_qpos_qvel()
+            self._data.qpos = sample[0:len_qpos]
+            self._data.qvel = sample[len_qpos:len_qpos + len_qvel]
             if self.use_2d_ctrl:
-
                 self._direction_xmat = np.array([0, 0, 1, 1, 0, 0, 0, 1, 0])
-                #matrixmult with inverse of default rotation to rewind offset
-                temp = np.dot(self._direction_xmat.reshape((3,3)), np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]])).reshape((9,))
-                self._direction_angle = np.arctan2(temp[3], temp[0])
                 self._goals = np.array([0], dtype=float)
 
     @staticmethod
     def has_fallen(state):
         """
-        # with freejoint
-        trunk_euler = quat_to_euler(state[3:7])
-        trunk_condition = ((trunk_euler[0] < -np.pi * 40 / 180) or (trunk_euler[0] > np.pi * 40 / 180)
-                           or (trunk_euler[1] < (-np.pi * 40 / 180)) or (trunk_euler[1] > (np.pi * 40 / 180))
-                           )
+        return if the robot has fallen in state
         """
-
-        # without freejoint
-
-
         trunk_euler = state[1:4]
-        """
-        # old/first strict has_fallen; only for forward walking
-        trunk_condition = ((trunk_euler[0] < -0.5) or (trunk_euler[0] > 0.02)
-                            or (trunk_euler[1] < -0.095) or (trunk_euler[1] > 0.095)
-                            or (trunk_euler[2] < -0.075) or (trunk_euler[2] > 0.075)
-                            or state[0] < -.22 #.25
-                            ca 30 degree
-                            remove z rot
-                            )"""
-        """
-        #less strict has_fallen (old)
-        for cluster datasets
-        trunk_condition = ((trunk_euler[1] < -0.6981) or (trunk_euler[1] > 0.6981)
-                           or (trunk_euler[2] < -0.6981) or (trunk_euler[2] > 0.6981)
-                           or state[0] < -.25
-                           )
-        """
-
-        #new stricter has_fallen, adapted to 8 walking dir
-        # minimal height : -0.19103749641009019
-        # max x-rot: 0.21976069929211345 -> 12.5914 degree
-        # max y-rot: -0.1311784030716909 -> -7.516 degree
-
-        trunk_condition = ((trunk_euler[1] < -0.2793) or (trunk_euler[1] > 0.2793) # x-rotation 11 degree -> accepts 16 degree; propose 0.36652 (21 deg)
-                           or (trunk_euler[2] < -0.192) or (trunk_euler[2] > 0.192) # y-rotation 7.6 deg -> accepts 11 degree; propose 0.2618 (15 deg)
+        trunk_condition = ((trunk_euler[1] < -0.2793) or (trunk_euler[1] > 0.2793)
+                           # max x-rotation 11 degree -> accepts 16 degree
+                           or (trunk_euler[2] < -0.192) or (trunk_euler[2] > 0.192)
+                           # max y-rotation 7.6 deg -> accepts 11 degree
                            or state[0] < -.24
+                           # min height -0.197 -> accepts 0.24
                            )
-
-        #TODO cleasn up and test npc; reward for logging; writing
-
-
-        #if trunk_condition:
-        #    print("con1: ", (trunk_euler[0] < -0.5) or (trunk_euler[0] > 0.02), trunk_euler[0])
-        #    print("con2: ", (trunk_euler[1] < -0.095) or (trunk_euler[1] > 0.095), trunk_euler[1])
-        #    print("con3: ", (trunk_euler[2] < -0.075) or (trunk_euler[2] > 0.075), trunk_euler[2])
-        #    print("con4: ", state[0] < -.22, state[0])
-        #    print(state)
         return trunk_condition
+    def _simulation_post_step(self):
+        """
+        what to do before the simulation step:
+            update ground forces
+            and set the position of the direction arrow corresponding to the rotation matrix in self._direction_xmat
+        """
+        grf = np.concatenate([self._get_collision_force("floor", "foot_FL")[:3],
+                              self._get_collision_force("floor", "foot_FR")[:3],
+                              self._get_collision_force("floor", "foot_RL")[:3],
+                              self._get_collision_force("floor", "foot_RR")[:3]])
+
+        self.mean_grf.update_stats(grf)
+        if self.use_2d_ctrl:
+            # read rotation of trunk
+            trunk_rotation = self._data.joint("trunk_rotation").qpos[0]
+            # calc rotation matrix with rotation of trunk
+            R = np.array(
+                [[np.cos(trunk_rotation), -np.sin(trunk_rotation), 0], [np.sin(trunk_rotation), np.cos(trunk_rotation), 0], [0, 0, 1]])
+
+            # rotate the direction arrow with the trunk rotation -> dir arrow set from the point of view of the robot
+            rot_matrix = np.dot(R, self._direction_xmat.reshape((3,3))).reshape((9,))
+            # and set the rotation of the cylinder
+            self._data.site("dir_arrow").xmat = rot_matrix
+            # calc position of the ball corresponding to the arrow
+            temp = np.dot(rot_matrix.reshape((3, 3)), np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]])).reshape((9,))
+            angle = np.arctan2(temp[3], temp[0])
+            # and set its position
+            self._data.site("dir_arrow_ball").xpos = self._data.body("dir_arrow").xpos + \
+                                                     [-0.1 * np.cos(angle), -0.1 * np.sin(angle), 0]
+
+    def create_dataset(self, actions_path=None, ignore_keys=[], normalizer=None, only_state=True, use_next_states=True):
+        """
+        creates dataset for learning with the states stored in self.trajectory
+        Args:
+            actions_path: path to actions, if not None only_states must be false
+            ignore_keys: which keys to ignore
+            normalizer: to normalize the states
+            only_state: if the training is with only states
+            use_next_states: if the dataset should consider next states
+        Returns:
+            dictionary with the desired datasets
+        """
+        assert only_state == (actions_path is None)
+
+        trajectories = deepcopy(self.trajectory.trajectory)
+
+        # check for has_fallen violations
+        try:
+            for i in range(len(trajectories[0])):
+                transposed = np.transpose(trajectories[2:, i])
+                has_fallen_violation = next(x for x in transposed if self.has_fallen(x))
+                np.set_printoptions(threshold=sys.maxsize)
+                raise RuntimeError("has_fallen violation occured: ", has_fallen_violation)
+        except StopIteration:
+            print("No has_fallen violation found")
+        # could be helpfull for a new dataset if the ranges in has fallen are still good
+        # print("   Traj minimal height:", min([min(trajectories[2][i]) for i in range(len(trajectories[0]))]))
+        # print("   Traj max x-rotation:",
+        #      max([max(trajectories[4][i], key=abs) for i in range(len(trajectories[0]))], key=abs))
+        # print("   Traj max y-rotation:",
+        #      max([max(trajectories[5][i], key=abs) for i in range(len(trajectories[0]))], key=abs))
+
+        # remove ignore_keys unimportant for training
+        for ikey in ignore_keys:
+            trajectories = np.delete(trajectories, self.trajectory.keys.index(ikey), 0)
+
+        # apply modify obs to every sample to make sure to store the same obs as in training
+        obs_dim = len(self._modify_observation(np.hstack(trajectories[:, 0, 0]), dir_arrow_from_robot_pov=True))
+        new_trajectories = np.empty((obs_dim, trajectories.shape[1], trajectories.shape[2]))
+        for i in range(len(trajectories[0])):
+            transposed_traj = np.transpose(trajectories[:, i])
+            for j in range(len(transposed_traj)):
+                flat_sample = np.hstack(transposed_traj[j])
+                new_trajectories[:, i, j] = self._modify_observation(flat_sample, dir_arrow_from_robot_pov=True)
+        trajectories = new_trajectories
+
+        new_states = []
+        new_next_states = []
+        # for each trajectory in trajectories append to the result vars
+        for i in range(len(trajectories[0])):
+            trajectory = trajectories[:, i]
+            states = np.transpose(trajectory)
+
+            # normalize if needed
+            if normalizer:
+                normalizer.set_state(dict(mean=np.mean(states, axis=0),
+                                          var=1 * (np.std(states, axis=0) ** 2),
+                                          count=1))
+                states = np.array([normalizer(st) for st in states])
+
+            # to obtain next states: shift the dataset by one
+            new_states += list(states[:-1])
+            new_next_states += list(states[1:])
+
+        # if actions are also needed
+        if not only_state:
+            # read values
+            trajectory_files_actions = np.load(actions_path)
+            # 3 dim matrix: (no of trajectories, no of samples per trajectory, length of action space)
+            interpolate_factor = self.trajectory.traj_dt / self.trajectory.control_dt
+            # *1/interpolate_factor because if we need to interpolate, split_points is already interpolated
+            trajectories_actions = np.array([list(trajectory_files_actions["action"]
+                                                  [int(self.trajectory.split_points[i]*1/interpolate_factor):
+                                                   int(self.trajectory.split_points[i+1]*1/interpolate_factor)])
+                                             for i in range(len(self.trajectory.split_points) - 1)], dtype=object)
+            # interpolate if neccessary
+            if self.trajectory.traj_dt != self.trajectory.control_dt:
+                interpolated_trajectories=[list() for x in range(len(trajectories_actions))]
+                for i in range(len(trajectories_actions)):
+                    trajectory = trajectories_actions[i]
+                    length = len(trajectory)
+                    x = np.arange(length)
+                    x_new = np.linspace(0, length - 1, round(length * interpolate_factor), endpoint=True)
+                    interpolated_trajectories[i] = interpolate.interp1d(x, trajectory, kind="cubic", axis=0)(x_new)
+                trajectories_actions = np.array(interpolated_trajectories)
+            # leave out last action of every trajectory to be even with the states
+            new_actions = []
+            for i in range(len(trajectories_actions)):
+                new_actions += list(trajectories_actions[i,:-1])
+
+        # should be always false for expert data/checked for has_fallen
+        absorbing = np.zeros(len(new_states))
+
+        # depending on the dataset we need, return dictionary
+        if only_state and use_next_states:
+            print("Using only states and next_states for training")
+            return dict(states=np.array(new_states), next_states=np.array(new_next_states), absorbing=absorbing)
+        elif not only_state and not use_next_states:
+            print("Using states and actions for training")
+            return dict(states=np.array(new_states), actions=np.array(new_actions), absorbing=absorbing)
+        elif not only_state and use_next_states:
+            print("Using states, next_states and actions for training")
+            return dict(states=np.array(new_states), next_states=np.array(new_next_states),
+                        actions=np.array(new_actions), absorbing=absorbing)
+        else:
+            raise NotImplementedError("Wrong input or method doesn't support this type now")
 
 
-def rotate_modified_obs(state, angle, modified=True): #(angle+np.pi) % (2*np.pi)-np.pi #TODO something still wrong with angle !!!!!!!!!!!!!!!!!!!!
+        # in commit preprocess expert data: to simulate the actions and get states in mujoco to corresponding states;
+        # cut off initial few samples -> but is not up to date/needs adaptions
+
+    def play_action_demo(self, actions_path,
+                          use_rendering=True, use_pd_controller=False, interpolate_map=None, interpolate_remap=None):
+        """
+
+        Plays a demo of the loaded actions by using the actions in actions_path.
+        Args:
+            actions_path: path to the .npz file. Should be in format (number of samples/steps, action dimension)
+            use_rendering: if the mujoco simulation should be rendered
+            use_pd_controller: if the actions should be calculated by a pd controller depending on the positions
+            interpolate_map: used for interpolation of the states
+            interpolate_remap: used for interpolation of the states
+        Returns:
+            observed states and performed actions
+
+        """
+        # set init step and traj no if set; else choose it random
+        traj_no = self._init_traj_no if self._init_traj_no is not None else \
+            int(np.random.rand() * len(self.trajectory.trajectory[0]))
+        step_no = self._init_step_no if self._init_step_no is not None else \
+            int(np.random.rand() * (self.trajectory.traj_length[traj_no] * 0.45))
+
+        # used for initial states
+        trajectory = deepcopy(self.trajectory.trajectory[:,traj_no])
+
+        demo_dt = self.trajectory.traj_dt
+        control_dt = self.trajectory.control_dt
+        interpolate_factor = demo_dt / control_dt
+
+        # load actions
+        action_files = np.load(actions_path, allow_pickle=True)
+        # *1/interpolate_factor because if interpolation is needed, split_points is already interpolated
+        actions = np.array([list(action_files[key])[int(self.trajectory.split_points[traj_no]*1/interpolate_factor):
+                                                    int(self.trajectory.split_points[traj_no+1]*1/interpolate_factor)]
+                            for key in action_files.keys()], dtype=object)[0]
+
+
+        # interpolate actions
+        if demo_dt != control_dt:
+            x = np.arange(actions.shape[0])
+            x_new = np.linspace(0, actions.shape[0] - 1, round(actions.shape[0] * interpolate_factor),
+                                endpoint=True)
+            actions = interpolate.interp1d(x, actions, kind="cubic", axis=0)(x_new)
+
+        # set x and y to 0: be carefull need to be at index 0,1
+        trajectory[0, :] -= trajectory[0, step_no]
+        trajectory[1, :] -= trajectory[1, step_no]
+
+        # set initial position
+        self.set_qpos_qvel(trajectory[:,step_no])
+
+        # to return the states & actions
+        actions_dataset = []
+        states_dataset = [list() for j in range(len(self.obs_helper.observation_spec))]
+        assert len(states_dataset) == len(self.obs_helper.observation_spec)
+
+        # for kp controller if needed
+        e_old = 0
+        # perform actions
+        for i in np.arange(actions.shape[0]-1):
+            #choose actions of dataset or pd-controller
+            if not use_pd_controller:
+                action = actions[i]
+            else:
+                e = trajectory[6:18, i+1]-self._data.qpos[6:]
+                de = e-e_old
+                """
+                kp = np.array([100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100])
+                kd = np.array([1, 2, 2, 1, 2, 2, 1, 2, 2, 1, 2, 2])
+                """
+                kp = 10
+                # kd defined the damping of the joints in the xml file
+                hip = 1
+                rest = 2
+                kd = np.array([hip, rest, rest, hip, rest, rest, hip, rest, rest, hip, rest, rest])
+                action = kp*e+(kd/control_dt)*de
+                e_old = e
+
+            # store actions and states for datasets
+            actions_dataset.append(list(action))
+            q_pos_vel = list(self._data.qpos[:]) + list(self._data.qvel[:])
+            if self.use_2d_ctrl:
+                q_pos_vel.append(list(trajectory[36,i]))#
+            for i in range(len(states_dataset)):
+                states_dataset[i].append(q_pos_vel[i])
+
+            # preform action
+            nstate, _, absorbing, _ = self.step(action)
+            if use_rendering:
+                self.render()
+
+        return np.array(states_dataset, dtype=object), np.array(actions_dataset)
+
+def rotate_obs(state, angle, modified=True):
+    """
+    rotates a set of states with angle
+    """
     rotated_state = np.array(state).copy()
-    #rotate tilt
+    #different indizes for a modified obs or a normal obs
     if modified:
-        trunk_rot = 1
-        x_vel = 16
-        y_vel = 17
-        rotated_state[:, trunk_rot] = (np.array(np.array(state)[:, trunk_rot]) + angle + np.pi) % (2 * np.pi) - np.pi
-        # rotate velo x,y
-        rotated_state[:, x_vel] = np.cos(angle) * np.array(np.array(state)[:, x_vel]) - np.sin(angle) * np.array(
-            np.array(state)[:, y_vel])  # + np.pi #% (2*np.pi)-np.pi
-        rotated_state[:, y_vel] = np.sin(angle) * np.array(np.array(state)[:, x_vel]) + np.cos(angle) * np.array(
-            np.array(state)[:, y_vel])  # + np.pi #% (2*np.pi)-np.pi
+        idx_rot = 1
+        idx_xvel = 16
+        idx_yvel = 17
     else:
-        trunk_rot = 3
-        x_vel = 18
-        y_vel = 19
-        rotated_state[trunk_rot] = (np.array(np.array(state)[trunk_rot]) + angle + np.pi) % (2 * np.pi) - np.pi
-        # rotate velo x,y
-        rotated_state[x_vel] = np.cos(angle) * np.array(np.array(state)[x_vel]) - np.sin(angle) * np.array(
-            np.array(state)[y_vel])  # + np.pi #% (2*np.pi)-np.pi
-        rotated_state[y_vel] = np.sin(angle) * np.array(np.array(state)[x_vel]) + np.cos(angle) * np.array(
-            np.array(state)[y_vel])  # + np.pi #% (2*np.pi)-np.pi
-
+        idx_rot = 3
+        idx_xvel = 18
+        idx_yvel = 19
+    # add rotation to trunk rotation and transform to range -np.pi,np.pi
+    rotated_state[idx_rot] = (np.array(np.array(state)[idx_rot]) + angle + np.pi) % (2 * np.pi) - np.pi
+    # rotate velo x,y
+    rotated_state[idx_xvel] = np.cos(angle) * np.array(np.array(state)[idx_xvel]) - np.sin(angle) * np.array(
+        np.array(state)[idx_yvel])
+    rotated_state[idx_yvel] = np.sin(angle) * np.array(np.array(state)[idx_xvel]) + np.cos(angle) * np.array(
+        np.array(state)[idx_yvel])
     return rotated_state
     
 
-#TODO adapt to multiple traj/new workflow
-def test_rotate_data(traj_path, store_path='./new_unitree_a1_with_dir_vec_model'):
-
+def test_rotate_data(traj_path, rotation_angle, store_path='./new_unitree_a1_with_dir_vec_model'):
+    """
+    tests the rotation of a dataset:
+        adapts the first dataset in traj_path so it looks like the data from training (modified_observation),
+        applies rotation and transforms the rotated data back to the normal obs space
+        so we can simulate it with play_trajectory_demo
+    Returns:
+        path to the dataset rotated with the angle
+    """
+    #load data
     trajectory_files = np.load(traj_path, allow_pickle=True)
     trajectory_files = {k: d for k, d in trajectory_files.items()}
-
-
     keys = list(trajectory_files.keys())
     if "split_points" in trajectory_files.keys():
         split_points = trajectory_files["split_points"]
         keys.remove("split_points")
     else:
         split_points = np.array([0, len(list(trajectory_files.values())[0])])
-    #trajectory = np.array([list(trajectory_files[key])[split_points[0]:split_points[1]] for key in keys], dtype=object)
 
-    #begin interpolation
     trajectory = np.array([[list(trajectory_files[key])[split_points[i]:split_points[i + 1]] for i
                                  in range(len(split_points) - 1)] for key in keys], dtype=object)
-
-    traj_dt = 1/500
-    control_dt = 1/100
-    if traj_dt != control_dt:
-        new_traj_sampling_factor = traj_dt / control_dt
-
-        trajectory = Trajectory._interpolate_trajectory(
-            trajectory, factor=new_traj_sampling_factor,
-            map_funct=interpolate_map, re_map_funct=interpolate_remap
-        )
-        split_points = [0]
-        for k in range(len(trajectory[0])):
-            split_points.append(split_points[-1] + len(trajectory[0][k]))
-        # self.split_points = [len(traj) for traj in self.trajectory[0]]
-    trajectory = trajectory[:,0]
-    #end interpolation
+    # select the first dataset of that path
+    trajectory = trajectory[:, 0]
 
 
     # preprocess to get same data as function fit()
@@ -355,11 +561,12 @@ def test_rotate_data(traj_path, store_path='./new_unitree_a1_with_dir_vec_model'
     for state in trajectory.transpose():
         temp = []
         for entry in state[2:]:
+            # to flatten the states (not possible with flatten() because we have as dtype=object
             if type(entry) == np.ndarray:
-                temp = temp + list(entry)
+                temp += list(entry)
             else:
                 temp.append(entry)
-        obs = np.concatenate([temp, #todo:? self._goals,
+        obs = np.concatenate([temp,
                           np.zeros(12),
                           ]).flatten()
         new_state = obs[:34]
@@ -368,7 +575,6 @@ def test_rotate_data(traj_path, store_path='./new_unitree_a1_with_dir_vec_model'
         angle = np.arctan2(temp[3], temp[0])
         # and turn angle to sin, cos (for a closed angle range)
         new_state = np.append(new_state, [np.cos(angle), np.sin(angle)])
-        # new_obs = np.append(new_obs, obs)
         new_state = np.append(new_state, obs[43:])
 
         for i in range(len(new_state)):
@@ -376,107 +582,74 @@ def test_rotate_data(traj_path, store_path='./new_unitree_a1_with_dir_vec_model'
 
     preprocessed_traj = np.array(preprocessed_traj)
 
+    # rotate_data:
+    rotated_traj = rotate_obs(preprocessed_traj, rotation_angle)
+    rotated_xy = [list() for x in range(2)]
+    # don't needed in fit
+    rotated_xy[0] = np.cos(rotation_angle) * np.array(xy[0]) - np.sin(rotation_angle) * np.array(xy[1])
+    rotated_xy[1] = np.sin(rotation_angle) * np.array(xy[0]) + np.cos(rotation_angle) * np.array(xy[1])
+
+    # post process data to be simulatable with play_trajectory_demo:
+    postprocessed_traj = list(rotated_traj[:34])
+    # turn sin and cos into angles again
+    temp = []
+    for j in range(len(rotated_traj[34])):
+        temp.append(np.arccos(rotated_traj[34][j]) * (1 if np.arcsin(rotated_traj[35][j]) > 0 else -1))
+
+    # turn angles into matrix
+    postprocessed_traj.append([
+        np.dot(np.array(
+            [[np.cos((angle + np.pi) % (2 * np.pi) - np.pi), -np.sin((angle + np.pi) % (2 * np.pi) - np.pi), 0],
+             [np.sin((angle + np.pi) % (2 * np.pi) - np.pi), np.cos((angle + np.pi) % (2 * np.pi) - np.pi), 0],
+             [0, 0, 1]]),
+            np.array([0, 0, 1, 1, 0, 0, 0, 1, 0]).reshape((3, 3))).reshape((9,)) for angle in temp])
+    postprocessed_traj.append(rotated_traj[36])
+
+    # store new dataset
+    np.savez(os.path.join(store_path, 'test_rotate_dataset_' + str(rotation_angle) + '.npz'),
+             q_trunk_tx=rotated_xy[0],
+             q_trunk_ty=rotated_xy[1],
+             q_trunk_tz=postprocessed_traj[0],
+             q_trunk_rotation=postprocessed_traj[1],
+             q_trunk_list=postprocessed_traj[2],
+             q_trunk_tilt=postprocessed_traj[3],
+             q_FR_hip_joint=postprocessed_traj[4],
+             q_FR_thigh_joint=postprocessed_traj[5],
+             q_FR_calf_joint=postprocessed_traj[6],
+             q_FL_hip_joint=postprocessed_traj[7],
+             q_FL_thigh_joint=postprocessed_traj[8],
+             q_FL_calf_joint=postprocessed_traj[9],
+             q_RR_hip_joint=postprocessed_traj[10],
+             q_RR_thigh_joint=postprocessed_traj[11],
+             q_RR_calf_joint=postprocessed_traj[12],
+             q_RL_hip_joint=postprocessed_traj[13],
+             q_RL_thigh_joint=postprocessed_traj[14],
+             q_RL_calf_joint=postprocessed_traj[15],
+             dq_trunk_tx=postprocessed_traj[16],
+             dq_trunk_ty=postprocessed_traj[17],
+             dq_trunk_tz=postprocessed_traj[18],
+             dq_trunk_rotation=postprocessed_traj[19],
+             dq_trunk_list=postprocessed_traj[20],
+             dq_trunk_tilt=postprocessed_traj[21],
+             dq_FR_hip_joint=postprocessed_traj[22],
+             dq_FR_thigh_joint=postprocessed_traj[23],
+             dq_FR_calf_joint=postprocessed_traj[24],
+             dq_FL_hip_joint=postprocessed_traj[25],
+             dq_FL_thigh_joint=postprocessed_traj[26],
+             dq_FL_calf_joint=postprocessed_traj[27],
+             dq_RR_hip_joint=postprocessed_traj[28],
+             dq_RR_thigh_joint=postprocessed_traj[29],
+             dq_RR_calf_joint=postprocessed_traj[30],
+             dq_RL_hip_joint=postprocessed_traj[31],
+             dq_RL_thigh_joint=postprocessed_traj[32],
+             dq_RL_calf_joint=postprocessed_traj[33],
+             dir_arrow=postprocessed_traj[34],
+             goal_speed=postprocessed_traj[35],
+             split_points=[0, len(postprocessed_traj[0])])
 
 
-    rot_diff=[2]#np.full(preprocessed_traj.shape[1], 2)] # [np.random.uniform(0, 2*np.pi, preprocessed_traj.shape[1])] #[np.full(preprocessed_traj.shape[1], 2)] #              np.random.uniform(0, 2*np.pi, preprocessed_traj.shape[1])]
-
-
-
-
-    for x in rot_diff:
-        #R1 = np.array([[1, 0, 0], [0, np.cos(x), -np.sin(x)], [0, np.sin(x), np.cos(x)]])
-        #R2 = np.array([[np.cos(x), 0, np.sin(x)], [0, 1, 0], [-np.sin(x), 0, np.cos(x)]])
-        #R3 = np.array([[np.cos(x), -np.sin(x), 0], [np.sin(x), np.cos(x), 0], [0, 0, 1]])
-        #temp = np.dot(np.dot(np.dot(R1, R2), R3), np.array([trajectory[23], trajectory[22], trajectory[21]]))
-
-
-        #R = np.array([[np.cos(x), -np.sin(x), 0], [np.sin(x), np.cos(x), 0], [0, 0, 1]])
-        #arrow = np.array([0, 0, 1, 1, 0, 0, 0, 1, 0]).reshape((3, 3))
-        #rotation_matrix_dir = np.dot(arrow, R)
-
-        #dir_arrow=[]
-        #for i in range(int(len(np.array(trajectory[36]))/9)):
-         #   a = trajectory[36][i*9:i*9+9].reshape((3,3))
-          #  b = np.dot(a, rotation_matrix_dir)
-           # dir_arrow.append(b.reshape((9,)))
-
-
-        #rotate_data:
-        rotated_traj = rotate_modified_obs(preprocessed_traj.transpose(), x).transpose()
-        rotated_xy = [[],[]]
-        rotated_xy[0] = np.cos(x) * np.array(xy[0]) - np.sin(x) * np.array(xy[1]) #don't needed in fit
-        rotated_xy[1] = np.sin(x) * np.array(xy[0]) + np.cos(x) * np.array(xy[1]) #don't needed in fit
-
-
-
-
-        #post process data to be simulatable:
-
-        postprocessed_traj = list(rotated_traj[:34])
-        temp = []
-        for j in range(len(rotated_traj[34])):
-            temp.append(np.arccos(rotated_traj[34][j]) * (1 if np.arcsin(rotated_traj[35][j]) > 0 else -1))
-
-        # turn angles into matrix
-        postprocessed_traj.append([  # angle = (angle+np.pi) % (2*np.pi)-np.pi -> inverse np.unwrap TODO causes -3,3,-3,3,...
-            np.dot(np.array(
-                [[np.cos((angle + np.pi) % (2 * np.pi) - np.pi), -np.sin((angle + np.pi) % (2 * np.pi) - np.pi), 0],
-                 [np.sin((angle + np.pi) % (2 * np.pi) - np.pi), np.cos((angle + np.pi) % (2 * np.pi) - np.pi), 0],
-                 [0, 0, 1]]),
-                   np.array([0, 0, 1, 1, 0, 0, 0, 1, 0]).reshape((3, 3))).reshape((9,)) for angle in temp])
-        #for j in range(len(rotated_traj) - 36):
-        postprocessed_traj.append(rotated_traj[36])
-        #postprocessed_traj += rotated_traj[36:]
-
-
-
-
-
-
-
-        print("jg")
-        np.savez(os.path.join(store_path, 'test_rotate_dataset_'+str(x)+'.npz'),
-                 q_trunk_tx=rotated_xy[0],
-                 q_trunk_ty=rotated_xy[1],
-                 q_trunk_tz=postprocessed_traj[0],
-                 q_trunk_tilt=postprocessed_traj[1],
-                 q_trunk_list=postprocessed_traj[2],
-                 q_trunk_rotation=postprocessed_traj[3],
-                 q_FR_hip_joint=postprocessed_traj[4],
-                 q_FR_thigh_joint=postprocessed_traj[5],
-                 q_FR_calf_joint=postprocessed_traj[6],
-                 q_FL_hip_joint=postprocessed_traj[7],
-                 q_FL_thigh_joint=postprocessed_traj[8],
-                 q_FL_calf_joint=postprocessed_traj[9],
-                 q_RR_hip_joint=postprocessed_traj[10],
-                 q_RR_thigh_joint=postprocessed_traj[11],
-                 q_RR_calf_joint=postprocessed_traj[12],
-                 q_RL_hip_joint=postprocessed_traj[13],
-                 q_RL_thigh_joint=postprocessed_traj[14],
-                 q_RL_calf_joint=postprocessed_traj[15],
-                 dq_trunk_tx=postprocessed_traj[16],
-                 dq_trunk_ty=postprocessed_traj[17],
-                 dq_trunk_tz=postprocessed_traj[18],
-                 dq_trunk_tilt=postprocessed_traj[19],
-                 dq_trunk_list=postprocessed_traj[20],
-                 dq_trunk_rotation=postprocessed_traj[21],
-                 dq_FR_hip_joint=postprocessed_traj[22],
-                 dq_FR_thigh_joint=postprocessed_traj[23],
-                 dq_FR_calf_joint=postprocessed_traj[24],
-                 dq_FL_hip_joint=postprocessed_traj[25],
-                 dq_FL_thigh_joint=postprocessed_traj[26],
-                 dq_FL_calf_joint=postprocessed_traj[27],
-                 dq_RR_hip_joint=postprocessed_traj[28],
-                 dq_RR_thigh_joint=postprocessed_traj[29],
-                 dq_RR_calf_joint=postprocessed_traj[30],
-                 dq_RL_hip_joint=postprocessed_traj[31],
-                 dq_RL_thigh_joint=postprocessed_traj[32],
-                 dq_RL_calf_joint=postprocessed_traj[33],
-                 dir_arrow=postprocessed_traj[34],
-                 goal_speed=postprocessed_traj[35],
-                 split_points=[0, len(postprocessed_traj[0])])
-
-    return os.path.join(store_path, 'test_rotate_dataset_'+str(rot_diff[0])+'.npz')
+    # and return path to first rotation dataset
+    return os.path.join(store_path, 'test_rotate_dataset_'+str(rotation_angle)+'.npz')
 
 
 
@@ -485,74 +658,85 @@ def catchtime() -> float:
     start = perf_counter()
     yield lambda: perf_counter() - start
 
-
 def interpolate_map(traj):
+    """
+    preprocesses the trajectory data before interpolating it:
+        in this case transforming the rotation matrix into an angle
+        and making sure the rotations we be interpolated right
+    """
     traj_list = [list() for j in range(len(traj))]
     for i in range(len(traj_list)):
+        # if the state is a rotation
         if i in [3,4,5]:
+            # change it to the nearest rotation presentation to the previous state
+            # -> no huge jumps between -pi and pi for example
             traj_list[i] = list(np.unwrap(traj[i]))
         else:
             traj_list[i] = list(traj[i])
-    temp = []
+    # turn matrix into angle
     traj_list[36] = np.unwrap([
         np.arctan2(np.dot(mat.reshape((3, 3)), np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]])).reshape((9,))[3],
                    np.dot(mat.reshape((3, 3)), np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]])).reshape((9,))[0])
         for mat in traj[36]])
-    # for mat in traj[36].reshape((len(traj[0]), 9)):
-    #    arrow = np.dot(mat.reshape((3, 3)), np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]])).reshape((9,))
-    #   temp.append(np.arctan2(arrow[3], arrow[0]))
-    # traj_list[36] = temp
     return np.array(traj_list)
 
 def interpolate_remap(traj):
+    """
+    postprocesses the trajectory data after interpolating it:
+        in this case transforming an angle into the rotation matrix
+        and makes sure the rotations are in the range -pi,pi
+    """
     traj_list = [list() for j in range(len(traj))]
     for i in range(len(traj_list)):
+        # if the state is a rotation
         if i in [3, 4, 5]:
+            # make sure it is in range -pi,pi
             traj_list[i] = [(angle+np.pi) % (2*np.pi)-np.pi for angle in traj[i]]
         else:
             traj_list[i] = list(traj[i])
-    traj_list[36] = [ # angle = (angle+np.pi) % (2*np.pi)-np.pi -> inverse np.unwrap TODO causes -3,3,-3,3,...
-        np.dot(np.array([[np.cos((angle+np.pi) % (2*np.pi)-np.pi), -np.sin((angle+np.pi) % (2*np.pi)-np.pi), 0], [np.sin((angle+np.pi) % (2*np.pi)-np.pi), np.cos((angle+np.pi) % (2*np.pi)-np.pi), 0], [0, 0, 1]]),
+    # transforms angle into rotation matrix
+    traj_list[36] = [
+        np.dot(np.array([[np.cos((angle+np.pi) % (2*np.pi)-np.pi), -np.sin((angle+np.pi) % (2*np.pi)-np.pi), 0],
+                         [np.sin((angle+np.pi) % (2*np.pi)-np.pi), np.cos((angle+np.pi) % (2*np.pi)-np.pi), 0],
+                         [0, 0, 1]]),
                np.array([0, 0, 1, 1, 0, 0, 0, 1, 0]).reshape((3, 3))).reshape((9,)) for angle in traj[36]]
-    # for angle in traj[36]:
-    #   R = np.array([[np.cos(angle), -np.sin(angle), 0], [np.sin(angle), np.cos(angle), 0], [0, 0, 1]])
-    #  arrow = np.array([0, 0, 1, 1, 0, 0, 0, 1, 0]).reshape((3, 3))
-    # temp = temp + list(np.dot(R, arrow).reshape((9,)))
-    # traj_list[36] = temp
     return np.array(traj_list, dtype=object)
 
+
 def reward_callback(state, action, next_state):
+    """
+    defines the reward how we want to measure the quality of a state
+        important: only a metrik for the comparison of different agents
+        it's the difference between the desired velocity vector and the actual velocity vector of the trunk
+    """
+    # actual velocity vecotr
     act_vel = np.array([state[16], state[17]])
+    # desired velocity vector
+    # with desired angle/direction
     mat = np.dot(state[34:43].reshape((3, 3)), np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]])).reshape(((9,)))
     angle = np.arctan2(mat[3], mat[0])
-    # without state[1] the wanted_vel is from the robots perspectiv and the act_vel from the general coord sys -> state[1] is robots perspective
+    # +trunk rotation so it's from the pov of the robot
     norm_x = np.cos(angle+state[1])
     norm_y = np.sin(angle+state[1])
 
     wanted_vel = state[43] * np.array([norm_x, norm_y])
-    length = np.linalg.norm(wanted_vel)
-    angle = np.arctan2(wanted_vel[1], wanted_vel[0])
     result = act_vel - wanted_vel
-    #return np.exp(-np.square(state[16]-0.595))
     return np.exp(-np.square(np.linalg.norm(result)))
 
 
 if __name__ == '__main__':
 
-    #trajectory demo:
-    np.random.seed(1)
+    #trajectory demo ---------------------------------------------------------------------------------------------------
     # define env and data frequencies
     env_freq = 1000  # hz, added here as a reminder
-    traj_data_freq = 100 #500 change interpolation in test_rotate too!!! # hz, added here as a reminder
+    traj_data_freq = 500 #500 change interpolation in test_rotate too!!! # hz, added here as a reminder
     desired_contr_freq = 100  # hz
     n_substeps = env_freq // desired_contr_freq
 
+    traj_path =  '/home/tim/Documents/locomotion_simulation/locomotion/examples/log/2023_02_23_19_22_49/states.npz'
 
-    traj_path =  '/home/tim/Documents/IRL_unitreeA1/data/states_2023_02_23_19_48_33.npz'#'/home/tim/Documents/locomotion_simulation/locomotion/examples/log/2023_02_23_19_22_49/states.npz' #'/home/tim/Documents/locomotion_simulation/locomotion/examples/log/2023_02_12_13_35_32/states.npz' #'/home/tim/Documents/locomotion_simulation/locomotion/examples/log/2023_02_12_01_34_14/states.npz'
-
-
-    traj_path = test_rotate_data(traj_path, store_path='./new_unitree_a1_with_dir_vec_model')
-
+    rotation_angle = np.pi
+    #traj_path = test_rotate_data(traj_path, rotation_angle, store_path='./new_unitree_a1_with_dir_vec_model')
 
     # prepare trajectory params
     traj_params = dict(traj_path=traj_path,
@@ -564,150 +748,49 @@ if __name__ == '__main__':
     gamma = 0.99
     horizon = 1000
 
-
-
     env = UnitreeA1(timestep=1/env_freq, gamma=gamma, horizon=horizon, n_substeps=n_substeps,use_torque_ctrl=True,
-                    traj_params=traj_params, random_start=True,
-                    use_2d_ctrl=True, tmp_dir_name=".", goal_reward="custom", goal_reward_params=dict(reward_callback=reward_callback))
-
+                    traj_params=traj_params, random_start=True, use_2d_ctrl=True, tmp_dir_name=".",
+                    goal_reward="custom", goal_reward_params=dict(reward_callback=reward_callback))
+    action_dim = env.info.action_space.shape[0]
+    print("Dimensionality of Obs-space:", env.info.observation_space.shape[0])
+    print("Dimensionality of Act-space:", env.info.action_space.shape[0])
 
     with catchtime() as t:
-        rewards = env.play_trajectory_demo_from_velocity(desired_contr_freq)
+        env.play_trajectory_demo(desired_contr_freq)
         print("Time: %fs" % t())
-
-    gamma = 1
-    js = list()
-    j = 0.
-    episode_steps = 0
-    for i in range(len(rewards)):
-        j += gamma ** episode_steps * rewards[i]
-        episode_steps += 1
-        if i == len(rewards) - 1:
-            js.append(j)
-            j = 0.
-            episode_steps = 0
-
-    print("R: ", js)
-
-
-    # Plotting
-
-    data = {
-        "rew": [rewards[i] for i in range(len(rewards))]
-    }
-
-    fig = plt.figure()
-    ax = fig.gca()
-    colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
-
-    for i, v in enumerate(data.items()):
-        ax.plot(v[1], color=colors[i], linestyle='-', label=v[0])
-    plt.legend(loc=4)
-    plt.xlabel("Time")
-    plt.ylabel("Reward")
-    plt.savefig("re.png")
-
-
 
     print("Finished")
     exit()
-    # still problem with different behaviour (if robot rolls to the side - between freejoint and muljoints) action[1] and [7] = -1 (with action clipping)
 
 
-    #solref="0.004 1000" /damping 500, stiffness from 0,93 to 62,5
-    #0.004 1000000
-    #0.004-0.005 1000000 kp=1000
-    # favorite 0.005 1000000 | solref="-0.000001 -400"
-    # final: solref="-0.0000000001 -250"
+    # play action demo -------------------------------------------------------------------------------------------------
+    # define env and data frequencies
 
-
-
-
-    # action demo
     env_freq = 1000  # hz, added here as a reminder simulation freq
-    traj_data_freq = 500  # hz, added here as a reminder  controll_freq of data model -> sim_freq/n_substeps
-    desired_contr_freq = 500  # hz contl freq.
+    traj_data_freq = 500  # hz, added here as a reminder 
+    desired_contr_freq = 100  # hz 
     n_substeps =  env_freq // desired_contr_freq
-    # TODO: unstable so that it falls if des_contr_freq!= data_freq
-    #to interpolate
-    demo_dt = (1 / traj_data_freq)
-    control_dt = (1 / desired_contr_freq)
 
-    #dataset settings:
-    #action...50k_noise0... has correct acions for torque and one more datapoint
-
-    actions_path = ['/home/tim/Documents/locomotion_simulation/log/2D_Walking/actions_torque_50k_backward.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/actions_torque_50k_backward_noise1.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/actions_torque_50k_backward_noise2.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/actions_torque_50k_BL.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/actions_torque_50k_BL_noise1.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/actions_torque_50k_BL_noise2.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/actions_torque_50k_BR.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/actions_torque_50k_BR_noise1.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/actions_torque_50k_BR_noise2.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/actions_torque_50k_FL.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/actions_torque_50k_FL_noise1.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/actions_torque_50k_FL_noise2.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/actions_torque_50k_forward.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/actions_torque_50k_forward_noise1.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/actions_torque_50k_forward_noise2.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/actions_torque_50k_FR.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/actions_torque_50k_FR_noise1.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/actions_torque_50k_FR_noise2.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/actions_torque_50k_left.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/actions_torque_50k_left_noise1.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/actions_torque_50k_left_noise2.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/actions_torque_50k_right.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/actions_torque_50k_right_noise1.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/actions_torque_50k_right_noise2.npz'] #actions_torque.npz
-    states_path = ['/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_backward.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_backward_noise1.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_backward_noise2.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_BL.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_BL_noise1.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_BL_noise2.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_BR.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_BR_noise1.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_BR_noise2.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_FL.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_FL_noise1.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_FL_noise2.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_forward.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_forward_noise1.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_forward_noise2.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_FR.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_FR_noise1.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_FR_noise2.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_left.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_left_noise1.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_left_noise2.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_right.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_right_noise1.npz',
-                    '/home/tim/Documents/locomotion_simulation/log/2D_Walking/states_50k_right_noise2.npz']
     actions_path = '/home/tim/Documents/locomotion_simulation/locomotion/examples/log/2023_02_23_19_22_49/actions_torque.npz'
-    states_path = '/home/tim/Documents/locomotion_simulation/locomotion/examples/log/2023_02_23_19_22_49/states.npz'
-    dataset_path = '/home/tim/Documents/test_datasets/' #'/home/tim/Documents/IRL_unitreeA1/data/2D_Walking' #'/home/tim/Documents/test_datasets/'#None # '/home/tim/Documents/IRL_unitreeA1/data'
-    use_rendering = False # both only for mujoco generated states
-    use_plotting = False
-    state_type = "optimal"
-    action_type = "p-controller"
+    states_path =  '/home/tim/Documents/locomotion_simulation/locomotion/examples/log/2023_02_23_19_22_49/states.npz'
+    use_rendering = True
+    use_pd_controller = False
 
     use_2d_ctrl = True
     use_torque_ctrl = True
 
-
-
-
-
-    assert not (action_type == "p-controller" and not use_torque_ctrl)
-
-
     gamma = 0.99
     horizon = 1000
 
+    traj_params = dict(traj_path=states_path,
+                       traj_dt=1 / traj_data_freq,
+                       control_dt=1 / desired_contr_freq,
+                       interpolate_map=interpolate_map,  # transforms 9dim rot matrix into one rot angle
+                       interpolate_remap=interpolate_remap  # and back
+                       )
 
-
-    env = UnitreeA1(timestep=1/env_freq, gamma=gamma, horizon=horizon, n_substeps=n_substeps,
+    env = UnitreeA1(timestep=1/env_freq, gamma=gamma, horizon=horizon, n_substeps=n_substeps, traj_params=traj_params,
+                    random_start=False, init_step_no=0, init_traj_no=0,
                     use_torque_ctrl=use_torque_ctrl, use_2d_ctrl=use_2d_ctrl, tmp_dir_name=".")
 
     action_dim = env.info.action_space.shape[0]
@@ -716,98 +799,27 @@ if __name__ == '__main__':
 
     env.reset()
 
-    """
-    env.play_action_demo(states_path=states_path,
-                         #dataset_path=dataset_path,
-                         actions_path=actions_path,
-                         control_dt=control_dt, demo_dt=demo_dt
-                        )
-    exit()"""
-
-
-    env.play_action_demo(actions_path=actions_path, states_path=states_path, control_dt=control_dt, demo_dt=demo_dt, traj_no=1,
-                          use_rendering=True, use_plotting=False, use_pd_controller=False, interpolate_map=interpolate_map, interpolate_remap=interpolate_remap)
-    #exit()
-
-
-    # TODO play_action_demo2 and preprocess_expert_data
-
-    env.preprocess_expert_data(dataset_path=dataset_path,
-                               state_type=state_type,
-                               action_type=action_type,
-                               states_path=states_path,
-                               actions_path=actions_path,
-                               use_rendering=use_rendering,
-                               use_plotting=use_plotting,
-                               demo_dt=demo_dt,
-                               control_dt=control_dt
-                               )
-
+    env.play_action_demo(actions_path=actions_path,
+                          use_rendering=use_rendering, use_pd_controller=use_pd_controller,
+                         interpolate_map=interpolate_map, interpolate_remap=interpolate_remap)
+    print("Finished")
     exit()
-    if type(actions_path) == list and type(states_path) == list:
-        assert len(actions_path) == len(states_path)
-        for i in range(len(actions_path)):
-            env.preprocess_expert_data(dataset_path=dataset_path,
-                                       dataset_name=states_path[i][states_path[i].rfind('/')+7:-4],
-                                       state_type=state_type,
-                                       action_type=action_type,
-                                       states_path=states_path[i],
-                                       actions_path=actions_path[i],
-                                       use_rendering=use_rendering,
-                                       use_plotting=use_plotting,
-                                       demo_dt=demo_dt,
-                                       control_dt=control_dt
-                                       )
-    else:
-        env.preprocess_expert_data(dataset_path=dataset_path,
-                                state_type=state_type,
-                                action_type=action_type,
-                                states_path=states_path,
-                                actions_path=actions_path,
-                                use_rendering=use_rendering,
-                                use_plotting=use_plotting,
-                                demo_dt=demo_dt,
-                                control_dt=control_dt
-                                )
 
+    
+    # simulation demo --------------------------------------------------------------------------------------------------
 
-
-
-
-
-    #reduce noise; find problem with 250k; concatenate trajectories; stricter has_fallen; generate new datasets
-
-    """
-
-    #general experiments - easier with action clipping
-
-    # action demo - need action clipping to be off
     env_freq = 1000  # hz, added here as a reminder simulation freq
-    traj_data_freq = 500  # hz, added here as a reminder  controll_freq of data model -> sim_freq/n_substeps
-    desired_contr_freq = 500  # hz contl freq.
+    traj_data_freq = 500  # hz, added here as a reminder
+    desired_contr_freq = 500  # hz
     n_substeps =  env_freq // desired_contr_freq
-    # TODO: unstable so that it falls if des_contr_freq!= data_freq
-    #to interpolate
-    demo_dt = (1 / traj_data_freq)
-    control_dt = (1 / desired_contr_freq)
-
-    traj_path = '/home/tim/Documents/locomotion_simulation/log/states_temp.npz'
-
-    # traj_path = test_rotate_data(traj_path, store_path='./new_unitree_a1_with_dir_vec_model')
-
-    # prepare trajectory params
-    traj_params = dict(traj_path=traj_path,
-                       traj_dt=(1 / traj_data_freq),
-                       control_dt=(1 / desired_contr_freq))
-
 
     gamma = 0.99
     horizon = 1000
 
 
 
-    env = UnitreeA1(timestep=1/env_freq, gamma=gamma, horizon=horizon, n_substeps=n_substeps, use_torque_ctrl=True,
-                    use_2d_ctrl=True, tmp_dir_name='.', traj_params=traj_params, random_start=True)
+    env = UnitreeA1(timestep=1/env_freq, gamma=gamma, horizon=horizon, n_substeps=n_substeps,
+                    use_torque_ctrl=True, use_2d_ctrl=True, tmp_dir_name='.', setup_random_rot=True)
     action_dim = env.info.action_space.shape[0]
     print("Dimensionality of Obs-space:", env.info.observation_space.shape[0])
     print("Dimensionality of Act-space:", env.info.action_space.shape[0])
@@ -815,189 +827,10 @@ if __name__ == '__main__':
     env.reset()
     env.render()
 
-    absorbing = False
-    i = 0
     while True:
-        #time.sleep(.1)
-        if i == 500:
-            env._direction_xmat = np.array([-0.00000,0.00000,-1.00000,-1.00000,0.00000,0.00000,0.00000,1.00000,0.00000]) #np.array([0, 0, 1, 1, 0, 0, 0, 1, 0])
-            # matrixmult with inverse of default rotation to rewind offset
-            temp = np.dot(env._direction_xmat.reshape((3, 3)), np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]])).reshape(
-                (9,))
-            env._direction_angle = np.arctan2(temp[3], temp[0])
-            #print("------ RESET ------")
-            #env.reset()
-            i = 0
-            absorbing = False
-
         action = np.random.randn(action_dim)
         nstate, _, absorbing, _ = env.step(action)
-        print("angle:",nstate[34], len(nstate))
-        print("angle2:",env._direction_angle)
-
-        print(len(env._data.qpos))
-        print(len(nstate))
-        x = nstate[4]
-        R1 = np.array([[1, 0, 0], [0, np.cos(x), -np.sin(x)], [0, np.sin(x), np.cos(x)]])
-        x = nstate[3]
-        R2 = np.array([[np.cos(x), 0, np.sin(x)], [0, 1, 0], [-np.sin(x), 0, np.cos(x)]])
-        x = nstate[3]
-        R3 = np.array([[np.cos(x), -np.sin(x), 0], [np.sin(x), np.cos(x), 0], [0, 0, 1]])
-        a = env._data
-        vx=0
-        vy=0.4
-        x = np.arctan2(vy, vx)
-        print("x ",x)
-
-
-        R4 = np.array([[np.cos(x), -np.sin(x), 0], [np.sin(x), np.cos(x), 0], [0, 0, 1]])
-        arr = np.array([0, 0, 1, 1, 0, 0, 0, 1, 0]).reshape((3,3))
-        rot = np.dot(R4, arr).reshape((9,))
-        #env._data.site("dir_arrow").xmat = rot #env._data.body("trunk").xmat #np.dot(R3, np.array([0, 0, 1, 1, 0, 0, 0, 1, 0]).reshape((3,3))).reshape((9,))#np.dot(R1, np.dot(R2, np.array([0, 0, 1, 1, 0, 0, 0, 1, 0]).reshape((3,3)))).reshape((9,)) #R3.reshape((9,)) #np.dot(np.array([1, 0, 0, 0, 1, 0, 0, 0, 1]).reshape((3,3)), R2).reshape((9,))
-
-        #env._data.site("dir_arrow_ball").xpos = env._data.body("dir_arrow").xpos + [-0.1*np.cos(x), -0.1*np.sin(x), 0]
-
-
-        print(env._obs)
-
-
-
         env.render()
-        i += 1
-
-
-
-    """
-
-    """
-    
-    Did:
-        finetuned xml - more stable version (changed the position of the mass)
-        changed observation space -> changed has_fallen
-        leave out initial stepping
-        created bigger datasets
-        added interpolation to gail/vail -> wrote own create_dataset method
-        -> intermediate step -> 
-        added traj to gail for init position
-        
-        refactoring of base_qudrued
-        fixed problems because of merging/new constructor of base humanoid
-        removed flag action_normalization & generatet dataset
-        tried to generate 250k dataset
-        
-        
-    Questions:
-        normalization ranges sligthly different
-        init weight position ok?
-        Talks in the Oberseminar
-        
-    
-    
-    """
-"""
-[ 2.63039797e+01 -1.72159116e+00 -1.79501342e-01 -4.79486061e-02
-  9.66714284e-03  2.95516467e-03  1.11039073e-01  7.48249769e-01
- -1.94188781e+00 -1.04573289e-01  8.11246088e-01 -2.30495642e+00
- -4.40014626e-02  8.70473827e-01 -2.27038650e+00  4.75352151e-02
-  7.88706282e-01 -1.86333508e+00  5.30650250e-01 -9.58593118e-02
-  3.05199296e-02  1.91519152e-01  1.16558842e-01 -1.22728722e-01
-  2.11449957e-01  2.35350118e+00 -7.83321843e-01  5.69501340e-02
- -4.40937427e+00  3.06797058e+00 -9.05516404e-02 -5.27219641e+00
-  3.25290910e+00 -6.67275858e-03  2.02203667e+00  4.05815065e-02]
-60024"""
-
-
-
-"""
-
-    def fit(self, dataset):
-        state, action, reward, next_state, absorbing, last = parse_dataset(dataset)
-        for x in np.arange(0, 2*np.pi, np.pi/180):
-            #TODO: stimmt dass in state nicht x,y coord?? --------------------------------------------------------------
-            new_state = state.copy()
-            #rotate y rotation of trunk
-            new_state[1]+=x
-            #rotate x,y velocity of trunk
-            new_state[16] = np.cos(x) * state[16] - np.sin(x) * state[17]
-            new_state[17] = np.sin(x) * state[16] + np.cos(x) * state[17]
-
-            #rotate direction arrow
-            R = np.array([[np.cos(x), -np.sin(x), 0], [np.sin(x), np.cos(x), 0], [0, 0, 1]])
-            arrow = np.array([0, 0, 1, 1, 0, 0, 0, 1, 0]).reshape((3, 3))
-            rotation_matrix_dir = np.dot(arrow, R)
-            new_state[34] = np.dot(state[34].reshape((3, 3)), rotation_matrix_dir).reshape((9,))
-            else
-            new_state[34] += x
-
-            #TODO test if direction  arrow is matrix or angle
-            #TODO Wichtig auch in datenset erzeugen
-
-            #TODO Datensätze aus log erzeugen und launcher vorbereiten
-
-
-
-            x = state.astype(np.float32)
-            u = action.astype(np.float32)
-            r = reward.astype(np.float32)
-            xn = next_state.astype(np.float32)
-
-            obs = to_float_tensor(x, self.policy.use_cuda)
-            act = to_float_tensor(u, self.policy.use_cuda)
-
-            # update running mean and std if neccessary
-            if self._trpo_standardizer is not None:
-                self._trpo_standardizer.update_mean_std(x)
-
-            # create reward
-            if self._env_reward_frac < 1.0:
-
-                # create reward from the discriminator(can use fraction of environment reward)
-                r_disc = self.make_discrim_reward(x, u, xn)
-                r = r * self._env_reward_frac + r_disc * (1 - self._env_reward_frac)
-
-            v_target, np_adv = compute_gae(self._V, x, xn, r, absorbing, last,
-                                           self.mdp_info.gamma, self._lambda())
-            np_adv = (np_adv - np.mean(np_adv)) / (np.std(np_adv) + 1e-8)
-            adv = to_float_tensor(np_adv, self.policy.use_cuda)
-
-            # Policy update
-            self._old_policy = deepcopy(self.policy)
-            old_pol_dist = self._old_policy.distribution_t(obs)
-            old_log_prob = self._old_policy.log_prob_t(obs, act).detach()
-
-            zero_grad(self.policy.parameters())
-            loss = self._compute_loss(obs, act, adv, old_log_prob)
-
-            prev_loss = loss.item()
-
-            # Compute Gradient
-            loss.backward()
-            g = get_gradient(self.policy.parameters())
-
-            # Compute direction through conjugate gradient
-            stepdir = self._conjugate_gradient(g, obs, old_pol_dist)
-
-            # Line search
-            self._line_search(obs, act, adv, old_log_prob, old_pol_dist, prev_loss, stepdir)
-
-            # VF update
-            if self._trpo_standardizer is not None:
-                for i in range(self._critic_fit_params["n_epochs"]):
-                    self._trpo_standardizer.update_mean_std(x)  # update running mean
-            self._V.fit(x, v_target, **self._critic_fit_params)
-
-            # fit discriminator
-            self._fit_discriminator(x, u, xn)
-
-            # Print fit information
-            # create dataset with discriminator reward
-            new_dataset = arrays_as_dataset(x, u, r, xn, absorbing, last)
-            self._logging_sw(dataset, new_dataset, x, v_target, old_pol_dist)
-            #self._log_info(dataset, x, v_target, old_pol_dist)
-            self._iter += 1
-
-"""
-
 
 
 

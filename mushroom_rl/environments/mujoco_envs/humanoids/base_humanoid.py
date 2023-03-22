@@ -95,10 +95,11 @@ class BaseHumanoid(MuJoCo):
             raise ValueError("You have specified a trajectory, you have to use either a random start or "
                              "set an initial step")
 
-        if init_step_no is not None and init_traj_no is None: #for cases before the new implementation: set traj_no to 0
+        # for cases before the new implementation of multiple trajectories: set traj_no to 0
+        if init_step_no is not None and init_traj_no is None:
             init_traj_no = 0
 
-        self._random_start = random_start # TODO all occ of init_step_no > init_traj_no
+        self._random_start = random_start
         self._init_step_no = init_step_no
         self._init_traj_no = init_traj_no
 
@@ -124,25 +125,27 @@ class BaseHumanoid(MuJoCo):
 
         if self._use_foot_forces:
             #flatten for multi dim obs spec
-            temp = []
+            flat_sample = []
             for state in obs[2:]:
                 if type(state) == np.ndarray:
-                    temp = temp + list(state)
+                    flat_sample = flat_sample + list(state)
                 else:
-                    temp.append(state)
-            obs = np.concatenate([temp, self._goals,
+                    flat_sample.append(state)
+            # additionally appends the goals that are not in the observation
+            obs = np.concatenate([flat_sample, self._goals, # todo tim goals
                                   self.mean_grf.mean / 1000.,
                                   self.goal_reward.get_observation(), # TODO remove the goals of the reward
                                   ]).flatten() # add dtype=object for numpy 1.20
         else:
             # flatten for multi dim obs spec
-            temp = []
+            flat_sample = []
             for state in obs[2:]:
                 if type(state) == np.ndarray:
-                    temp = temp + list(state)
+                    flat_sample = flat_sample + list(state)
                 else:
-                    temp.append(state)
-            obs = np.concatenate([temp, self._goals,
+                    flat_sample.append(state)
+            # additionally appends the goals that are not in the observation
+            obs = np.concatenate([flat_sample, self._goals, # todo tim goals
                                   self.goal_reward.get_observation(),
                                   ])
         return obs
@@ -223,41 +226,25 @@ class BaseHumanoid(MuJoCo):
         #     cam.distance *= 0.3
         #     cam.elevation = -0  # camera rotation around the axis in the plane going through the frame origin (if 0 you just see a line)
         #     cam.azimuth = 270
-        sample = self.trajectory.reset_trajectory(substep_no=1, traj_no=0)
-        self.set_qpos_qvel(sample)
-        rewards = []
+        sample = self.trajectory.reset_trajectory(substep_no=self._init_step_no, traj_no=self._init_traj_no)
+        self.setup()
         while True:
-            sample = self.trajectory.get_next_sample()
-            #sample[-1] = 1
-            self.set_qpos_qvel(sample)
+            if self.trajectory.subtraj_step_no >= self.trajectory.traj_length[self.trajectory.traj_no]:
+                self.setup()
+            else:
+                sample = self.trajectory.get_next_sample()
 
+                self.set_qpos_qvel(sample)
 
+                self._simulation_pre_step()
+                mujoco.mj_forward(self._model, self._data)
+                self._simulation_post_step()
 
-            self._simulation_pre_step()
-
-            mujoco.mj_forward(self._model, self._data)
-
-            self._simulation_post_step()
-
-
-
-            obs = self._create_observation(sample)
-            if self.has_fallen(obs):
-                print("Has Fallen!")
-            #print(len(rewards))
-            rewards.append(self.reward(obs, None, None, False))
-            #print(self._goals)
-            #if len(rewards) == 200:
-             #   time.sleep(1)
-            #if len(rewards) == 500:
-             #   break
-
+                obs = self._create_observation(sample)
+                if self.has_fallen(obs):
+                    print("Has Fallen!")
 
             self.render()
-        return rewards
-
-
-
 
 
     def play_trajectory_demo_from_velocity(self, freq=200, view_from_other_side=False):
@@ -268,34 +255,23 @@ class BaseHumanoid(MuJoCo):
 
         assert self.trajectory is not None
 
-        sample = self.trajectory.reset_trajectory(substep_no=1, traj_no=0)
+        sample = self.trajectory.reset_trajectory(substep_no=0, traj_no=0)
         self.set_qpos_qvel(sample)
         len_qpos, len_qvel = self.len_qpos_qvel()
-        #len_qvel+=1
         curr_qpos = sample[0:len_qpos]
-        #curr_qpos = np.append(curr_qpos, 0)
 
         while True:
 
-            sample = np.array(self.trajectory.get_next_sample())
-            #if self.
+            sample = self.trajectory.get_next_sample()
             qvel = sample[len_qpos:len_qpos + len_qvel]
-            #qvel = np.append(qvel, 0)
-            print("qpos", curr_qpos.shape)
             qpos = curr_qpos + self.dt * qvel
             sample[:len(qpos)] = qpos
 
             self.set_qpos_qvel(sample)
 
-
-
             self._simulation_pre_step()
-
             mujoco.mj_forward(self._model, self._data)
-
             self._simulation_post_step()
-
-
 
             # save current qpos
             curr_qpos = self.get_joint_pos()
@@ -310,11 +286,8 @@ class BaseHumanoid(MuJoCo):
         obs_spec = self.obs_helper.observation_spec
 
         #handle goals
-        self._goals = np.array(sample[len(obs_spec):], dtype=float)
+        self._goals = np.array(sample[len(obs_spec):], dtype=float) #todo tim adapt to goals
         sample = sample[:len(obs_spec)]
-
-
-        assert len(sample) == len(obs_spec)
 
         for key_name_ot, value in zip(obs_spec, sample):
             key, name, ot = key_name_ot
@@ -324,12 +297,9 @@ class BaseHumanoid(MuJoCo):
                 self._data.joint(name).qvel = value
             elif ot == ObservationType.SITE_ROT:
                 self._data.site(name).xmat = value
-                #TODO tim shouldn't be here works with play_demo still?
-                if name == "dir_arrow" and not hasattr(self, '_direction_xmat'):
-                    self._direction_xmat = value
-                    no_arrrow_transformation = np.dot(value.reshape((3, 3)),
-                                                      np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]])).reshape((9,))
-                    self._direction_angle = np.arctan2(no_arrrow_transformation[3], no_arrrow_transformation[0])
+                #TODO from Tim too specific for base class
+                #if name == "dir_arrow": #and not hasattr(self, '_direction_xmat'): TODO NEW
+                    #self._direction_xmat = value
 
 
     def get_joint_pos(self):
