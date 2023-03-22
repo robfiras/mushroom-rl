@@ -131,8 +131,8 @@ class BaseHumanoid(MuJoCo):
                     flat_sample = flat_sample + list(state)
                 else:
                     flat_sample.append(state)
-            # additionally appends the goals that are not in the observation
-            obs = np.concatenate([flat_sample, self._goals, # todo tim goals
+            # additionally appends the goals that are not already in the observation (velocity)
+            obs = np.concatenate([flat_sample, self._goals[1],
                                   self.mean_grf.mean / 1000.,
                                   self.goal_reward.get_observation(), # TODO remove the goals of the reward
                                   ]).flatten() # add dtype=object for numpy 1.20
@@ -144,8 +144,8 @@ class BaseHumanoid(MuJoCo):
                     flat_sample = flat_sample + list(state)
                 else:
                     flat_sample.append(state)
-            # additionally appends the goals that are not in the observation
-            obs = np.concatenate([flat_sample, self._goals, # todo tim goals
+            # additionally appends the goals that are not already in the observation (velocity)
+            obs = np.concatenate([flat_sample, self._goals[1],
                                   self.goal_reward.get_observation(),
                                   ])
         return obs
@@ -285,9 +285,10 @@ class BaseHumanoid(MuJoCo):
     def set_qpos_qvel(self, sample):
         obs_spec = self.obs_helper.observation_spec
 
-        #handle goals
-        self._goals = np.array(sample[len(obs_spec):], dtype=float) #todo tim adapt to goals
-        sample = sample[:len(obs_spec)]
+        #handle goals that are not in the observation_spec
+
+        self._goals[1] = np.array(sample[len(obs_spec):], dtype=float)
+        sample = sample[:len(obs_spec)] # rest is goal
 
         for key_name_ot, value in zip(obs_spec, sample):
             key, name, ot = key_name_ot
@@ -295,11 +296,10 @@ class BaseHumanoid(MuJoCo):
                 self._data.joint(name).qpos = value
             elif ot == ObservationType.JOINT_VEL:
                 self._data.joint(name).qvel = value
-            elif ot == ObservationType.SITE_ROT:
+            elif ot == ObservationType.SITE_ROT:#TODO from Tim too specific for base class
                 self._data.site(name).xmat = value
-                #TODO from Tim too specific for base class
-                #if name == "dir_arrow": #and not hasattr(self, '_direction_xmat'): TODO NEW
-                    #self._direction_xmat = value
+
+
 
 
     def get_joint_pos(self):

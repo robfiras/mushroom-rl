@@ -230,11 +230,14 @@ class UnitreeA1(BaseHumanoid):
 
             # if we use the direction arrow
             if self.use_2d_ctrl:
-                self._direction_xmat = sample[36]
-                # todo beides in goal
-                self._goals = np.array([sample[37]], dtype=float)
+                # turn matrix into angle
+                mat = np.dot(sample[36].reshape((3, 3)), np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]])).reshape(((9,)))
+                angle = np.arctan2(mat[3], mat[0])
+                # _goals contains two lists: first the list of goal states already represented in the observation_spec \
+                #   (direction angle), and the list of goal states that are not in obs_spec (velo)
+                self._goals = np.array([[angle], [sample[37]]], dtype=float)
 
-                # add the trunk rotation to the direction to make sure the direction arrow matrix is interpreted from
+                # add the trunk rotation to the direction to make sure the direction arrow matrix is interpreted from \
                 # the robot's point of view
                 trunk_rotation = sample[3]
                 # calc rotation matrix with rotation of trunk
@@ -256,8 +259,9 @@ class UnitreeA1(BaseHumanoid):
             self._data.qpos = sample[0:len_qpos]
             self._data.qvel = sample[len_qpos:len_qpos + len_qvel]
             if self.use_2d_ctrl:
-                self._direction_xmat = np.array([0, 0, 1, 1, 0, 0, 0, 1, 0])
-                self._goals = np.array([0], dtype=float)
+                # _goals contains two lists: first the list of goal states already represented in the observation_spec \
+                #   (direction angle), and the list of goal states that are not in obs_spec (velo)
+                self._goals = np.array([[0], [0]], dtype=float)
 
     @staticmethod
     def has_fallen(state):
@@ -277,7 +281,7 @@ class UnitreeA1(BaseHumanoid):
         """
         what to do before the simulation step:
             update ground forces
-            and set the position of the direction arrow corresponding to the rotation matrix in self._direction_xmat
+            and set the position of the direction arrow corresponding to the angle in goals[0,0]
         """
         grf = np.concatenate([self._get_collision_force("floor", "foot_FL")[:3],
                               self._get_collision_force("floor", "foot_FR")[:3],
@@ -288,16 +292,18 @@ class UnitreeA1(BaseHumanoid):
         if self.use_2d_ctrl:
             # read rotation of trunk
             trunk_rotation = self._data.joint("trunk_rotation").qpos[0]
+            desired_rot = self._goals[0, 0] + trunk_rotation
             # calc rotation matrix with rotation of trunk
-            R = np.array(
-                [[np.cos(trunk_rotation), -np.sin(trunk_rotation), 0], [np.sin(trunk_rotation), np.cos(trunk_rotation), 0], [0, 0, 1]])
+            rot_matrix = np.array(
+                [[np.cos(desired_rot), -np.sin(desired_rot), 0], [np.sin(desired_rot), np.cos(desired_rot), 0], [0, 0, 1]])
+            # rotate with the default arrow rotation (else the arrow is vertical)
+            arrow = np.array([0, 0, 1, 1, 0, 0, 0, 1, 0]).reshape((3, 3))
+            dir_arrow = np.dot(rot_matrix, arrow).reshape((9,))
 
-            # rotate the direction arrow with the trunk rotation -> dir arrow set from the point of view of the robot
-            rot_matrix = np.dot(R, self._direction_xmat.reshape((3,3))).reshape((9,))
             # and set the rotation of the cylinder
-            self._data.site("dir_arrow").xmat = rot_matrix
+            self._data.site("dir_arrow").xmat = dir_arrow
             # calc position of the ball corresponding to the arrow
-            temp = np.dot(rot_matrix.reshape((3, 3)), np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]])).reshape((9,))
+            temp = np.dot(dir_arrow.reshape((3, 3)), np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]])).reshape((9,))
             angle = np.arctan2(temp[3], temp[0])
             # and set its position
             self._data.site("dir_arrow_ball").xpos = self._data.body("dir_arrow").xpos + \
