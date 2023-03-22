@@ -315,7 +315,6 @@ class UnitreeA1(BaseHumanoid):
         Returns:
             dictionary with the desired datasets
         """
-        assert only_state == (actions_path is None)
 
         trajectories = deepcopy(self.trajectory.trajectory)
 
