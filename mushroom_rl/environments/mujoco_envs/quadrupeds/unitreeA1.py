@@ -231,7 +231,7 @@ class UnitreeA1(BaseHumanoid):
             # if we use the direction arrow
             if self.use_2d_ctrl:
                 # turn matrix into angle
-                mat = np.dot(sample[36].reshape((3, 3)), np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]])).reshape(((9,)))
+                mat = np.dot(sample[36].reshape((3, 3)), np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]])).reshape((9,))
                 angle = np.arctan2(mat[3], mat[0])
                 # _goals contains two lists: first the list of goal states already represented in the observation_spec \
                 #   (direction angle), and the list of goal states that are not in obs_spec (velo)
@@ -303,11 +303,8 @@ class UnitreeA1(BaseHumanoid):
             # and set the rotation of the cylinder
             self._data.site("dir_arrow").xmat = dir_arrow
             # calc position of the ball corresponding to the arrow
-            temp = np.dot(dir_arrow.reshape((3, 3)), np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]])).reshape((9,))
-            angle = np.arctan2(temp[3], temp[0])
-            # and set its position
             self._data.site("dir_arrow_ball").xpos = self._data.body("dir_arrow").xpos + \
-                                                     [-0.1 * np.cos(angle), -0.1 * np.sin(angle), 0]
+                                                     [-0.1 * np.cos(desired_rot), -0.1 * np.sin(desired_rot), 0]
 
     def create_dataset(self, actions_path=None, ignore_keys=[], normalizer=None, only_state=True, use_next_states=True):
         """
@@ -416,8 +413,8 @@ class UnitreeA1(BaseHumanoid):
             raise NotImplementedError("Wrong input or method doesn't support this type now")
 
 
-        # in commit preprocess expert data: to simulate the actions and get states in mujoco to corresponding states;
-        # cut off initial few samples -> but is not up to date/needs adaptions
+    # in commit preprocess expert data: to simulate the actions and get states in mujoco to corresponding states;
+    # cut off initial few samples -> but is not up to date/needs adaptions
 
     def play_action_demo(self, actions_path,
                           use_rendering=True, use_pd_controller=False, interpolate_map=None, interpolate_remap=None):
@@ -711,18 +708,16 @@ def interpolate_remap(traj):
 def reward_callback(state, action, next_state):
     """
     defines the reward how we want to measure the quality of a state
-        important: only a metrik for the comparison of different agents
+        important: only a metric for the comparison of different agents
         it's the difference between the desired velocity vector and the actual velocity vector of the trunk
     """
     # actual velocity vecotr
     act_vel = np.array([state[16], state[17]])
-    # desired velocity vector
-    # with desired angle/direction
+    # desired velocity vector with desired angle/direction
     mat = np.dot(state[34:43].reshape((3, 3)), np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]])).reshape(((9,)))
     angle = np.arctan2(mat[3], mat[0])
-    # +trunk rotation so it's from the pov of the robot
-    norm_x = np.cos(angle+state[1])
-    norm_y = np.sin(angle+state[1])
+    norm_x = np.cos(angle)
+    norm_y = np.sin(angle)
 
     wanted_vel = state[43] * np.array([norm_x, norm_y])
     result = act_vel - wanted_vel
@@ -776,13 +771,13 @@ if __name__ == '__main__':
     desired_contr_freq = 100  # hz 
     n_substeps =  env_freq // desired_contr_freq
 
-    actions_path = '/home/tim/Documents/locomotion_simulation/locomotion/examples/log/2023_02_23_19_22_49/actions_torque.npz'
+    actions_path = '/home/tim/Documents/locomotion_simulation/locomotion/examples/log/2023_02_23_19_22_49/actions_position.npz'
     states_path =  '/home/tim/Documents/locomotion_simulation/locomotion/examples/log/2023_02_23_19_22_49/states.npz'
     use_rendering = True
     use_pd_controller = False
 
     use_2d_ctrl = True
-    use_torque_ctrl = True
+    use_torque_ctrl = False
 
     gamma = 0.99
     horizon = 1000
@@ -795,7 +790,7 @@ if __name__ == '__main__':
                        )
 
     env = UnitreeA1(timestep=1/env_freq, gamma=gamma, horizon=horizon, n_substeps=n_substeps, traj_params=traj_params,
-                    random_start=False, init_step_no=0, init_traj_no=0,
+                    random_start=False, init_step_no=0, init_traj_no=6,
                     use_torque_ctrl=use_torque_ctrl, use_2d_ctrl=use_2d_ctrl, tmp_dir_name=".")
 
     action_dim = env.info.action_space.shape[0]
@@ -815,7 +810,7 @@ if __name__ == '__main__':
 
     env_freq = 1000  # hz, added here as a reminder simulation freq
     traj_data_freq = 500  # hz, added here as a reminder
-    desired_contr_freq = 500  # hz
+    desired_contr_freq = 100  # hz
     n_substeps =  env_freq // desired_contr_freq
 
     gamma = 0.99
@@ -824,14 +819,13 @@ if __name__ == '__main__':
 
 
     env = UnitreeA1(timestep=1/env_freq, gamma=gamma, horizon=horizon, n_substeps=n_substeps,
-                    use_torque_ctrl=True, use_2d_ctrl=True, tmp_dir_name='.', setup_random_rot=True)
+                    use_torque_ctrl=False, use_2d_ctrl=True, tmp_dir_name='.', setup_random_rot=True)
     action_dim = env.info.action_space.shape[0]
     print("Dimensionality of Obs-space:", env.info.observation_space.shape[0])
     print("Dimensionality of Act-space:", env.info.action_space.shape[0])
 
     env.reset()
     env.render()
-
     while True:
         action = np.random.randn(action_dim)
         nstate, _, absorbing, _ = env.step(action)
