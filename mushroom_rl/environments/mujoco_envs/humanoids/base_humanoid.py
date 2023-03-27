@@ -241,16 +241,17 @@ class BaseHumanoid(MuJoCo):
                 mujoco.mj_forward(self._model, self._data)
                 self._simulation_post_step()
 
-                obs = self._create_observation(sample)
+                obs = self._create_observation(self.obs_helper.build_obs(self._data))
             if self.has_fallen(obs):
                 print("Has Fallen!")
 
             rewards.append(self.reward(obs, None, None, False))
+            a = self._modify_observation(obs)
 
             if len(rewards) == 1000:
                 break
 
-                # self.render()
+            self.render()
         return rewards
 
     def play_trajectory_demo_from_velocity(self, freq=200, view_from_other_side=False):
@@ -261,8 +262,8 @@ class BaseHumanoid(MuJoCo):
 
         assert self.trajectory is not None
 
-        sample = self.trajectory.reset_trajectory(substep_no=0, traj_no=0)
-        self.set_qpos_qvel(sample)
+        sample = self.trajectory.reset_trajectory(substep_no=self._init_step_no, traj_no=self._init_traj_no)
+        self.setup()
         len_qpos, len_qvel = self.len_qpos_qvel()
         curr_qpos = sample[0:len_qpos]
 

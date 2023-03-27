@@ -446,6 +446,8 @@ class UnitreeA1(BaseHumanoid):
 
         # load actions
         action_files = np.load(actions_path, allow_pickle=True)
+        action_files = {k: d for k, d in action_files.items()}
+
         # *1/interpolate_factor because if interpolation is needed, split_points is already interpolated
         actions = np.array([list(action_files[key])[int(self.trajectory.split_points[traj_no]*1/interpolate_factor):
                                                     int(self.trajectory.split_points[traj_no+1]*1/interpolate_factor)]
@@ -733,7 +735,7 @@ if __name__ == '__main__':
     desired_contr_freq = 100  # hz
     n_substeps = env_freq // desired_contr_freq
 
-    traj_path =  '/home/tim/Documents/locomotion_simulation/locomotion/examples/log/2023_02_23_19_22_49/states.npz'
+    traj_path =   '/home/tim/Documents/locomotion_simulation/locomotion/examples/log/2023_02_23_19_22_49/states.npz'#'/home/tim/Documents/IRL_unitreeA1/data/states_2023_02_23_19_48_33_straight.npz'#
 
     rotation_angle = np.pi
     #traj_path = test_rotate_data(traj_path, rotation_angle, store_path='./new_unitree_a1_with_dir_vec_model')
@@ -802,8 +804,8 @@ if __name__ == '__main__':
     desired_contr_freq = 100  # hz 
     n_substeps =  env_freq // desired_contr_freq
 
-    actions_path = '/home/tim/Documents/locomotion_simulation/locomotion/examples/log/2023_02_23_19_22_49/actions_position.npz'
-    states_path =  '/home/tim/Documents/locomotion_simulation/locomotion/examples/log/2023_02_23_19_22_49/states.npz'
+    actions_path = '/home/tim/Documents/locomotion_simulation/locomotion/examples/log/2023_02_23_19_22_49/actions_torque.npz'#'/home/tim/Documents/IRL_unitreeA1/data/actions_position_2023_02_23_19_48_33_straight.npz'
+    states_path =  '/home/tim/Documents/locomotion_simulation/locomotion/examples/log/2023_02_23_19_22_49/states.npz'#'/home/tim/Documents/IRL_unitreeA1/data/states_2023_02_23_19_48_33_straight.npz'#
     use_rendering = True
     use_pd_controller = False
 
@@ -821,7 +823,7 @@ if __name__ == '__main__':
                        )
 
     env = UnitreeA1(timestep=1/env_freq, gamma=gamma, horizon=horizon, n_substeps=n_substeps, traj_params=traj_params,
-                    random_start=False, init_step_no=0, init_traj_no=6,
+                    random_start=False, init_step_no=0, init_traj_no=0,
                     use_torque_ctrl=use_torque_ctrl, use_2d_ctrl=use_2d_ctrl, tmp_dir_name=".")
 
     action_dim = env.info.action_space.shape[0]

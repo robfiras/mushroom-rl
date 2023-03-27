@@ -180,7 +180,7 @@ class Core(object):
             last = sample[-1]
 
         self.agent.stop()
-        self.mdp.stop()
+        #self.mdp.stop()
 
         steps_progress_bar.close()
         episodes_progress_bar.close()

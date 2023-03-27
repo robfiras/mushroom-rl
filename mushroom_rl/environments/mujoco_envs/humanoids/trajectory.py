@@ -58,9 +58,8 @@ class Trajectory(object):
         self._trajectory_files = {k:d for k, d in self._trajectory_files.items()} # convert to dict to be mutable
         self.check_if_trajectory_is_in_range(low, high, keys, joint_pos_idx)
 
-        # add all goal states to keys (goal states have to start with 'goal') #todo tim goals
-        # #if not in keys
-        keys += [key for key in self._trajectory_files.keys() if key.startswith('goal')]
+        # add all goal states to keys (goal states have to start with 'goal') if not in keys
+        keys += [key for key in self._trajectory_files.keys() if key.startswith('goal') and key not in keys]
 
 
         # needed for deep mimic
