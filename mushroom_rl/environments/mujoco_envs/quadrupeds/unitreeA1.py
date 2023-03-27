@@ -756,8 +756,39 @@ if __name__ == '__main__':
     print("Dimensionality of Act-space:", env.info.action_space.shape[0])
 
     with catchtime() as t:
-        env.play_trajectory_demo(desired_contr_freq)
+        rewards = env.play_trajectory_demo(desired_contr_freq)
         print("Time: %fs" % t())
+
+    gamma = 1
+    js = list()
+    j = 0.
+    episode_steps = 0
+    for i in range(len(rewards)):
+        j += gamma ** episode_steps * rewards[i]
+        episode_steps += 1
+        if i == len(rewards) - 1:
+            js.append(j)
+            j = 0.
+            episode_steps = 0
+
+    print("R: ", js)
+
+    # Plotting
+
+    data = {
+        "rew": [rewards[i] for i in range(len(rewards))]
+    }
+
+    fig = plt.figure()
+    ax = fig.gca()
+    colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+
+    for i, v in enumerate(data.items()):
+        ax.plot(v[1], color=colors[i], linestyle='-', label=v[0])
+    plt.legend(loc=4)
+    plt.xlabel("Time")
+    plt.ylabel("Reward")
+    plt.savefig("re.png")
 
     print("Finished")
     exit()

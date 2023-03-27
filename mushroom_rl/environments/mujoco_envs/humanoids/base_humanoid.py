@@ -228,6 +228,7 @@ class BaseHumanoid(MuJoCo):
         #     cam.azimuth = 270
         sample = self.trajectory.reset_trajectory(substep_no=self._init_step_no, traj_no=self._init_traj_no)
         self.setup()
+        rewards = []
         while True:
             if self.trajectory.subtraj_step_no >= self.trajectory.traj_length[self.trajectory.traj_no]:
                 self.setup()
@@ -241,11 +242,16 @@ class BaseHumanoid(MuJoCo):
                 self._simulation_post_step()
 
                 obs = self._create_observation(sample)
-                if self.has_fallen(obs):
-                    print("Has Fallen!")
+            if self.has_fallen(obs):
+                print("Has Fallen!")
 
-            self.render()
+            rewards.append(self.reward(obs, None, None, False))
 
+            if len(rewards) == 1000:
+                break
+
+                # self.render()
+        return rewards
 
     def play_trajectory_demo_from_velocity(self, freq=200, view_from_other_side=False):
         """
