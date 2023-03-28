@@ -323,7 +323,7 @@ class UnitreeA1(BaseHumanoid):
 
         # check for has_fallen violations
 
-        for i in range(len(trajectories[0])): #TODO
+        for i in range(len(trajectories[0])):
             try:
                 transposed = np.transpose(trajectories[2:, i])
                 has_fallen_violation = next(x for x in transposed if self.has_fallen(x))
@@ -340,8 +340,9 @@ class UnitreeA1(BaseHumanoid):
         #      max([max(trajectories[5][i], key=abs) for i in range(len(trajectories[0]))], key=abs))
 
         # remove ignore_keys unimportant for training
-        for ikey in ignore_keys:
-            trajectories = np.delete(trajectories, self.trajectory.keys.index(ikey), 0)
+        ignore_index = [self.trajectory.keys.index(ikey) for ikey in ignore_keys]
+        for idx in sorted(ignore_index, reverse=True):
+            trajectories = np.delete(trajectories, idx, 0)
 
         # apply modify obs to every sample to make sure to store the same obs as in training
         obs_dim = len(self._modify_observation(np.hstack(trajectories[:, 0, 0]), dir_arrow_from_robot_pov=True))
@@ -739,7 +740,7 @@ if __name__ == '__main__':
     desired_contr_freq = 100  # hz
     n_substeps = env_freq // desired_contr_freq
 
-    traj_path =   '/home/tim/Documents/locomotion_simulation/locomotion/examples/log/2023_02_23_19_22_49/states.npz'#'/home/tim/Documents/IRL_unitreeA1/data/states_2023_02_23_19_48_33_straight.npz'#
+    traj_path =  '/home/tim/Documents/IRL_unitreeA1/data/states_2023_02_23_19_48_33_straight_new.npz' #'/home/tim/Documents/locomotion_simulation/locomotion/examples/log/2023_02_23_19_22_49/states.npz'
 
     rotation_angle = np.pi
     #traj_path = test_rotate_data(traj_path, rotation_angle, store_path='./new_unitree_a1_with_dir_vec_model')
