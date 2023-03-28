@@ -323,7 +323,7 @@ class UnitreeA1(BaseHumanoid):
 
         # check for has_fallen violations
         try:
-            for i in range(len(trajectories[0])):
+            for i in range(len(trajectories[0])): #TODO 
                 transposed = np.transpose(trajectories[2:, i])
                 has_fallen_violation = next(x for x in transposed if self.has_fallen(x))
                 np.set_printoptions(threshold=sys.maxsize)
@@ -373,12 +373,14 @@ class UnitreeA1(BaseHumanoid):
         if not only_state:
             # read values
             trajectory_files_actions = np.load(actions_path)
+            trajectory_files_actions = {k: d for k, d in trajectory_files_actions.items()}
             # 3 dim matrix: (no of trajectories, no of samples per trajectory, length of action space)
             interpolate_factor = self.trajectory.traj_dt / self.trajectory.control_dt
             # *1/interpolate_factor because if we need to interpolate, split_points is already interpolated
+
             trajectories_actions = np.array([list(trajectory_files_actions["action"]
-                                                  [int(self.trajectory.split_points[i]*1/interpolate_factor):
-                                                   int(self.trajectory.split_points[i+1]*1/interpolate_factor)])
+                                                  [int(self.trajectory.split_points[i]*1/interpolate_factor+i):
+                                                   int(self.trajectory.split_points[i+1]*1/interpolate_factor+i+1)])
                                              for i in range(len(self.trajectory.split_points) - 1)], dtype=object)
             # interpolate if neccessary
             if self.trajectory.traj_dt != self.trajectory.control_dt:
@@ -798,14 +800,13 @@ if __name__ == '__main__':
 
     # play action demo -------------------------------------------------------------------------------------------------
     # define env and data frequencies
-
     env_freq = 1000  # hz, added here as a reminder simulation freq
     traj_data_freq = 500  # hz, added here as a reminder 
     desired_contr_freq = 100  # hz 
     n_substeps =  env_freq // desired_contr_freq
 
-    actions_path = '/home/tim/Documents/locomotion_simulation/locomotion/examples/log/2023_02_23_19_22_49/actions_torque.npz'#'/home/tim/Documents/IRL_unitreeA1/data/actions_position_2023_02_23_19_48_33_straight.npz'
-    states_path =  '/home/tim/Documents/locomotion_simulation/locomotion/examples/log/2023_02_23_19_22_49/states.npz'#'/home/tim/Documents/IRL_unitreeA1/data/states_2023_02_23_19_48_33_straight.npz'#
+    actions_path = '/home/tim/Documents/IRL_unitreeA1/data/actions_position_2023_02_23_19_48_33_straight.npz'#'/home/tim/Documents/IRL_unitreeA1/data/actions_position_2023_02_23_19_48_33_straight.npz'
+    states_path =  '/home/tim/Documents/IRL_unitreeA1/data/states_2023_02_23_19_48_33_straight.npz'#'/home/tim/Documents/IRL_unitreeA1/data/states_2023_02_23_19_48_33_straight.npz'#
     use_rendering = True
     use_pd_controller = False
 
