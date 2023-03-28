@@ -322,14 +322,16 @@ class UnitreeA1(BaseHumanoid):
         trajectories = deepcopy(self.trajectory.trajectory)
 
         # check for has_fallen violations
-        try:
-            for i in range(len(trajectories[0])): #TODO 
+
+        for i in range(len(trajectories[0])): #TODO
+            try:
                 transposed = np.transpose(trajectories[2:, i])
                 has_fallen_violation = next(x for x in transposed if self.has_fallen(x))
                 np.set_printoptions(threshold=sys.maxsize)
                 raise RuntimeError("has_fallen violation occured: ", has_fallen_violation)
-        except StopIteration:
-            print("No has_fallen violation found")
+            except StopIteration:
+                pass
+        print("No has_fallen violation found")
         # could be helpfull for a new dataset if the ranges in has fallen are still good
         # print("   Traj minimal height:", min([min(trajectories[2][i]) for i in range(len(trajectories[0]))]))
         # print("   Traj max x-rotation:",
@@ -372,7 +374,7 @@ class UnitreeA1(BaseHumanoid):
         # if actions are also needed
         if not only_state:
             # read values
-            trajectory_files_actions = np.load(actions_path)
+            trajectory_files_actions = np.load(actions_path, allow_pickle=True)
             trajectory_files_actions = {k: d for k, d in trajectory_files_actions.items()}
             # 3 dim matrix: (no of trajectories, no of samples per trajectory, length of action space)
             interpolate_factor = self.trajectory.traj_dt / self.trajectory.control_dt
