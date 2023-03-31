@@ -51,6 +51,40 @@ class AntEnvPOMPD(AntEnv):
 
         return np.concatenate(observations).ravel()
 
+    def get_mask(self, obs_to_hide):
+        """ This function returns a boolean mask to hide observations from a fully observable state. """
+
+        if type(obs_to_hide) == str:
+            obs_to_hide = (obs_to_hide,)
+        assert all(x in self._hidable_obs for x in obs_to_hide), "Some of the observations you want to hide are not" \
+                                                                 "supported. Valid observations to hide are %s."
+        mask = []
+        position = self.sim.data.qpos.flat.copy()
+        if self._exclude_current_positions_from_observation:
+            position = position[2:]
+        velocity = self.sim.data.qvel.flat.copy()
+        contact_force = self.contact_forces.flat.copy()
+
+        if "positions" not in obs_to_hide:
+            mask += [np.ones_like(position, dtype=np.bool)]
+        else:
+            mask += [np.zeros_like(position, dtype=np.bool)]
+
+        if "velocities" not in obs_to_hide:
+            mask += [np.ones_like(velocity, dtype=np.bool)]
+        else:
+            velocity_mask = [np.zeros_like(velocity, dtype=np.bool)]
+            if self._include_body_vel:
+                velocity_mask[0][:6] = 1
+            mask += velocity_mask
+
+        if "contact_forces" not in obs_to_hide:
+            mask += [np.ones_like(contact_force)]
+        else:
+            mask += [np.zeros_like(contact_force)]
+
+        return np.concatenate(mask).ravel()
+
     def step(self, action):
 
         torso_index = self.model.body_names.index('torso')
