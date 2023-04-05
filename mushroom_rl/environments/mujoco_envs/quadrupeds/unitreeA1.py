@@ -740,7 +740,7 @@ if __name__ == '__main__':
     desired_contr_freq = 100  # hz
     n_substeps = env_freq // desired_contr_freq
 
-    traj_path =  '/home/tim/Documents/IRL_unitreeA1/data/states_2023_02_23_19_48_33_straight_new.npz' #'/home/tim/Documents/locomotion_simulation/locomotion/examples/log/2023_02_23_19_22_49/states.npz'
+    traj_path =  '/home/tim/Documents/IRL_unitreeA1/data/states_2023_02_23_19_48_33_straight.npz' #'/home/tim/Documents/locomotion_simulation/locomotion/examples/log/2023_02_23_19_22_49/states.npz'#
 
     rotation_angle = np.pi
     #traj_path = test_rotate_data(traj_path, rotation_angle, store_path='./new_unitree_a1_with_dir_vec_model')
@@ -756,14 +756,15 @@ if __name__ == '__main__':
     horizon = 1000
 
     env = UnitreeA1(timestep=1/env_freq, gamma=gamma, horizon=horizon, n_substeps=n_substeps,use_torque_ctrl=True,
-                    traj_params=traj_params, random_start=True, use_2d_ctrl=True, tmp_dir_name=".",
+                    traj_params=traj_params, random_start=False, init_step_no=0, init_traj_no=0,
+                    use_2d_ctrl=True, tmp_dir_name=".",
                     goal_reward="custom", goal_reward_params=dict(reward_callback=reward_callback))
     action_dim = env.info.action_space.shape[0]
     print("Dimensionality of Obs-space:", env.info.observation_space.shape[0])
     print("Dimensionality of Act-space:", env.info.action_space.shape[0])
 
     with catchtime() as t:
-        rewards = env.play_trajectory_demo(desired_contr_freq)
+        rewards, foot_pos = env.play_trajectory_demo(desired_contr_freq)
         print("Time: %fs" % t())
 
     gamma = 1
@@ -780,16 +781,14 @@ if __name__ == '__main__':
 
     print("R: ", js)
 
-    # Plotting
+    # Plotting rewards
 
     data = {
         "rew": [rewards[i] for i in range(len(rewards))]
     }
-
     fig = plt.figure()
     ax = fig.gca()
     colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
-
     for i, v in enumerate(data.items()):
         ax.plot(v[1], color=colors[i], linestyle='-', label=v[0])
     plt.legend(loc=4)
@@ -797,6 +796,36 @@ if __name__ == '__main__':
     plt.ylabel("Reward")
     plt.savefig("re.png")
 
+    # Plotting foot position
+    data = [[], []]
+    for i in range(len(foot_pos[0][0]) - 1):
+        #diff_x = (foot_pos[0][1][i + 1] - foot_pos[0][1][i])
+        #height = foot_pos[0][0][i]
+        #ratio = height / diff_x
+        #data[0].append(ratio)
+        #data[1].append(foot_pos[1][0][i] / (foot_pos[1][1][i + 1] - foot_pos[1][1][i]))
+        data[0].append((foot_pos[0][0][i+1]-foot_pos[0][0][i])*desired_contr_freq*desired_contr_freq)
+        data[1].append((foot_pos[1][0][i+1]-foot_pos[1][0][i])*desired_contr_freq*desired_contr_freq)
+
+
+    data = {
+        'FR': foot_pos[0][0],
+        'RR': foot_pos[1][0]  ,      #"foot_FR": data[0], #np.square(desired_contr_freq) * np.array(foot_pos[0][0]),
+        'FL': foot_pos[2][0],
+        'RL': foot_pos[3][0],
+    }
+    fig = plt.figure()
+    ax = fig.gca()
+    plt.rcParams['font.size']=15
+    colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+    for i, v in enumerate(data.items()):
+        ax.plot(v[1], color=colors[i], linestyle='-', label=v[0])
+    plt.legend(loc=4)
+    plt.hlines(0.01, 0, len(foot_pos[0][0]), linestyle='dashed', color='r')
+    ax.set_ylim([-0.01,0.17])
+    plt.xlabel("Steps", weight='bold', fontsize=15)
+    plt.ylabel("Height", weight='bold', fontsize=15)
+    plt.savefig("foot_expert.pdf", bbox_inches='tight')
     print("Finished")
     exit()
 
