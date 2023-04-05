@@ -125,11 +125,11 @@ class Core(object):
                                          dynamic_ncols=True, disable=quiet,
                                          leave=False)
 
-        dataset, dataset_info, foot_pos = self._run_impl(move_condition, fit_condition, steps_progress_bar, # todo
+        dataset, dataset_info = self._run_impl(move_condition, fit_condition, steps_progress_bar,
                                                 episodes_progress_bar, render, initial_states)
 
         if get_env_info:
-            return dataset, dataset_info, foot_pos # todo
+            return dataset, dataset_info
         else:
             return dataset
 
@@ -144,7 +144,6 @@ class Core(object):
         dataset_info = defaultdict(list)
 
         last = True
-        foot_pos = [[list() for j in range(2)] for i in range(5)] #todo
         while move_condition():
             if last:
                 self.reset(initial_states)
@@ -163,18 +162,6 @@ class Core(object):
                 episodes_progress_bar.update(1)
 
             dataset.append(sample)
-            foot_pos[0][0].append(self.mdp._data.geom('FR_foot').xpos[2]) # todo
-            foot_pos[0][1].append(self.mdp._data.geom('FR_foot').xpos[0]) # todo
-            foot_pos[1][0].append(self.mdp._data.geom('RR_foot').xpos[2])
-            foot_pos[1][1].append(self.mdp._data.geom('RR_foot').xpos[0])
-
-            foot_pos[2][0].append(self.mdp._data.geom('FL_foot').xpos[2])
-            foot_pos[2][1].append(self.mdp._data.geom('FL_foot').xpos[0])
-
-            foot_pos[3][0].append(self.mdp._data.geom('RL_foot').xpos[2])
-            foot_pos[3][1].append(self.mdp._data.geom('RL_foot').xpos[0])
-            foot_pos[4][0].append(sample[0][0])
-
 
             for key, value in step_info.items():
                 dataset_info[key].append(value)
@@ -198,7 +185,7 @@ class Core(object):
         steps_progress_bar.close()
         episodes_progress_bar.close()
 
-        return dataset, dataset_info, foot_pos #todo
+        return dataset, dataset_info
 
     def _step(self, render):
         """

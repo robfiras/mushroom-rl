@@ -228,8 +228,6 @@ class BaseHumanoid(MuJoCo):
         #     cam.azimuth = 270
         sample = self.trajectory.reset_trajectory(substep_no=self._init_step_no, traj_no=self._init_traj_no)
         self.setup()
-        rewards = []
-        foot_pos = [[list() for j in range(2)] for i in range(5)] #todo
         while True:
             # to set the goals for a new trajectory
             if self.trajectory.subtraj_step_no >= self.trajectory.traj_length[self.trajectory.traj_no]:
@@ -243,29 +241,12 @@ class BaseHumanoid(MuJoCo):
                 mujoco.mj_forward(self._model, self._data)
                 self._simulation_post_step()
 
-                foot_pos[0][0].append(self._data.geom('FR_foot').xpos[2])  # todo
-                foot_pos[0][1].append(self._data.geom('FR_foot').xpos[0])  # todo
-                foot_pos[1][0].append(self._data.geom('RR_foot').xpos[2])
-                foot_pos[1][1].append(self._data.geom('RR_foot').xpos[0])
-
-                foot_pos[2][0].append(self._data.geom('FL_foot').xpos[2])
-                foot_pos[2][1].append(self._data.geom('FL_foot').xpos[0])
-
-                foot_pos[3][0].append(self._data.geom('RL_foot').xpos[2])
-                foot_pos[3][1].append(self._data.geom('RL_foot').xpos[0])
-                foot_pos[4][0].append(sample[2])
-
                 obs = self._create_observation(self.obs_helper.build_obs(self._data))
                 if self.has_fallen(obs):
                     print("Has Fallen!")
 
-                rewards.append(self.reward(obs, None, None, False))
 
-            if len(rewards) == 200: # TODO
-                break
-
-            #self.render()
-        return rewards, foot_pos
+            self.render()
 
     def play_trajectory_demo_from_velocity(self, freq=200, view_from_other_side=False):
         """
