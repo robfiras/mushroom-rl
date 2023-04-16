@@ -2,15 +2,6 @@ import re
 import pickle
 import numpy as np
 
-try:
-    tb_available = False
-    from torch.utils.tensorboard import SummaryWriter
-    tb_available = True
-except ImportError:
-    pass
-
-from pathlib import Path
-
 
 class DataLogger(object):
     """
@@ -34,26 +25,9 @@ class DataLogger(object):
         self._results_dir = results_dir
         self._suffix = suffix
         self._data_dict = dict()
-        tb_writer_path = str(results_dir) + suffix
-        self._tb_writer = SummaryWriter(log_dir=tb_writer_path) if tb_available else None
-
-        self._best_J = -np.inf
 
         if append:
             self._load_numpy()
-
-    def get_tb_writer(self):
-        """
-        Returns a Tensorboard's SummaryWriter if Tensorboard is installed.
-
-        Returns:
-              SummaryWriter: SummaryWriter
-
-        """
-        if self._tb_writer:
-            return self._tb_writer
-        else:
-            raise ModuleNotFoundError("Tensorboard is not installed.")
 
     def log_numpy(self, **kwargs):
         """
@@ -93,27 +67,6 @@ class DataLogger(object):
         filename = 'agent' + self._suffix + epoch_suffix + '.msh'
         path = self._results_dir / filename
         agent.save(path, full_save=full_save)
-
-    def log_best_agent(self, agent, J, full_save=False):
-        """
-        Log the best agent so far into the log folder. The agent
-        is logged only if the current performance is better
-        than the performance of the previously stored agent.
-
-        Args:
-            agent (Agent): The agent to be saved;
-            J (float): The performance metric of the current agent;
-            full_save (bool, False): whether to save the full
-                data from the agent or not.
-
-        """
-
-        if J >= self._best_J:
-            self._best_J = J
-
-            filename = 'agent' + self._suffix + '-best.msh'
-            path = self._results_dir / filename
-            agent.save(path, full_save=full_save)
 
     def log_dataset(self, dataset):
         filename = 'dataset' + self._suffix + '.pkl'
