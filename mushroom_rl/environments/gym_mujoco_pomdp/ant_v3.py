@@ -57,7 +57,8 @@ class AntEnvPOMPD(AntEnv):
         if type(obs_to_hide) == str:
             obs_to_hide = (obs_to_hide,)
         assert all(x in self._hidable_obs for x in obs_to_hide), "Some of the observations you want to hide are not" \
-                                                                 "supported. Valid observations to hide are %s."
+                                                                 "supported. Valid observations to hide are %s." \
+                                                                 % (self._hidable_obs,)
         mask = []
         position = self.sim.data.qpos.flat.copy()
         if self._exclude_current_positions_from_observation:
