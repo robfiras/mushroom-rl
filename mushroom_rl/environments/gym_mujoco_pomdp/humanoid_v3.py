@@ -4,7 +4,7 @@ from gym.envs.mujoco.humanoid_v3 import HumanoidEnv
 
 class HumanoidEnvPOMPD(HumanoidEnv):
 
-    def __init__(self, obs_to_hide=("velocities",), random_force_com=False, max_force_strength=10.0, **kwargs):
+    def __init__(self, obs_to_hide=("velocities",), include_body_vel=False, random_force_com=False, max_force_strength=10.0, **kwargs):
 
         self._hidable_obs = ("positions", "velocities", "com_inertia", "com_velocity",
                              "actuator_forces", "external_contact_forces")
@@ -18,6 +18,7 @@ class HumanoidEnvPOMPD(HumanoidEnv):
         self._random_force_com = random_force_com
         self._max_force_strength = max_force_strength
         self._force_strength = 0.0
+        self._include_body_vel = include_body_vel
         super().__init__(**kwargs)
 
     def reset_model(self):
@@ -61,3 +62,56 @@ class HumanoidEnvPOMPD(HumanoidEnv):
             observations += [external_contact_forces]
 
         return np.concatenate(observations)
+
+    def get_mask(self, obs_to_hide):
+        """ This function returns a boolean mask to hide observations from a fully observable state. """
+
+        if type(obs_to_hide) == str:
+            obs_to_hide = (obs_to_hide,)
+        assert all(x in self._hidable_obs for x in obs_to_hide), "Some of the observations you want to hide are not" \
+                                                                 "supported. Valid observations to hide are %s." \
+                                                                 % (self._hidable_obs,)
+        mask = []
+        position = self.sim.data.qpos.flat.copy()
+        if self._exclude_current_positions_from_observation:
+            position = position[2:]
+        velocity = self.sim.data.qvel.flat.copy()
+        com_inertia = self.sim.data.cinert.flat.copy()
+        com_velocity = self.sim.data.cvel.flat.copy()
+        actuator_forces = self.sim.data.qfrc_actuator.flat.copy()
+        external_contact_forces = self.sim.data.cfrc_ext.flat.copy()
+
+        if "positions" not in obs_to_hide:
+            mask += [np.ones_like(position, dtype=np.bool)]
+        else:
+            mask += [np.zeros_like(position, dtype=np.bool)]
+
+        if "velocities" not in obs_to_hide:
+            mask += [np.ones_like(velocity, dtype=np.bool)]
+        else:
+            velocity_mask = [np.zeros_like(velocity, dtype=np.bool)]
+            if self._include_body_vel:
+                velocity_mask[0][:6] = 1
+            mask += velocity_mask
+
+        if "com_inertia" not in obs_to_hide:
+            mask += [np.ones_like(com_inertia, dtype=np.bool)]
+        else:
+            mask += [np.zeros_like(com_inertia, dtype=np.bool)]
+
+        if "com_velocity" not in obs_to_hide:
+            mask += [np.ones_like(com_velocity, dtype=np.bool)]
+        else:
+            mask += [np.zeros_like(com_velocity, dtype=np.bool)]
+
+        if "actuator_forces" not in obs_to_hide:
+            mask += [np.ones_like(actuator_forces, dtype=np.bool)]
+        else:
+            mask += [np.zeros_like(actuator_forces, dtype=np.bool)]
+
+        if "external_contact_forces" not in obs_to_hide:
+            mask += [np.ones_like(external_contact_forces, dtype=np.bool)]
+        else:
+            mask += [np.zeros_like(external_contact_forces, dtype=np.bool)]
+
+        return np.concatenate(mask).ravel()
