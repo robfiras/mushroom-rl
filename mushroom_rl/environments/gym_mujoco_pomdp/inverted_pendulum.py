@@ -17,9 +17,6 @@ class InvertedPendulumEnvPOMDP(InvertedPendulumEnv):
         super().__init__(**kwargs)
 
     def _get_obs(self):
-        return np.concatenate([self.sim.data.qpos, self.sim.data.qvel]).ravel()
-
-    def _get_obs(self):
         observations = []
         if "positions" not in self._obs_to_hide:
             position = self.sim.data.qpos.flat.copy()

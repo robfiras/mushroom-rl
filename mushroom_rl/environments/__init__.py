@@ -109,4 +109,17 @@ if Gym:
         id='Walker2dPOMDP-v3',
         entry_point='mushroom_rl.environments.gym_mujoco_pomdp:Walker2dEnvPOMPD',
     )
+    register(
+        id='InvertedPendulumEnvPOMDP',
+        entry_point='mushroom_rl.environments.gym_mujoco_pomdp:InvertedPendulumEnvPOMDP',
+    )
+    register(
+        id='PendulumEnvPOMDP',
+        entry_point='mushroom_rl.environments.gym_mujoco_pomdp:PendulumEnvPOMDP',
+    )
+
+    register(
+        id='BipedalWalkerPOMDP',
+        entry_point='mushroom_rl.environments.other_pomdp_envs:BipedalWalkerPOMDP',
+    )
 
