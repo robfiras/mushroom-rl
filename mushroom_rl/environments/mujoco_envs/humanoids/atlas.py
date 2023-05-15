@@ -1,8 +1,6 @@
 from pathlib import Path
-
-import mujoco
+from dm_control import mjcf
 from mushroom_rl.environments.mujoco_envs.humanoids.base_humanoid import BaseHumanoid
-from mushroom_rl.utils.angles import quat_to_euler
 from mushroom_rl.utils.running_stats import *
 from mushroom_rl.utils.mujoco import *
 
@@ -12,7 +10,7 @@ class Atlas(BaseHumanoid):
     Mujoco simulation of the Atlas robot.
 
     """
-    def __init__(self, **kwargs):
+    def __init__(self, hold_weight=False, weight_mass = None, tmp_dir_name=None, **kwargs):
         """
         Constructor.
 
@@ -66,7 +64,33 @@ class Atlas(BaseHumanoid):
                             ("foot_l", ["left_foot_back"]),
                             ("front_foot_l", ["left_foot_front"])]
 
+        self._hold_weight = hold_weight
+        self._weight_mass = weight_mass
+        self._valid_weights = [0.1, 1.0, 10.0, 20.0]
+        if hold_weight:
+            xml_handle = mjcf.from_path(xml_path)
+            self.add_weight(xml_handle)
+            xml_path = self.save_xml_handle(xml_handle, "atas")
+
         super().__init__(xml_path, action_spec, observation_spec, collision_groups, **kwargs)
+
+    def setup(self, substep_no=None):
+        super().setup(substep_no)
+        if self._hold_weight:
+            if self._weight_mass is None:
+                ind = np.random.randint(0, len(self._valid_weights))
+                new_weight_mass = self._valid_weights[ind]
+                env._model.body("weight").mass = new_weight_mass
+
+                # modify the color of the mass according to the mass
+                red_rgba = np.array([[1.0, 0.0, 0.0, 1.0]])
+                blue_rgba = np.array([[0.2, 0.0, 1.0, 1.0]])
+                interpolation_var = ind / (len(self._valid_weights)-1)
+                color = blue_rgba + ((red_rgba - blue_rgba) * interpolation_var)
+                geom_id = self._model.body("weight").geomadr[0]
+                self._model.geom_rgba[geom_id] = color
+            else:
+                env._model.body("weight").mass = self._weight_mass
 
     @staticmethod
     def has_fallen(state):
@@ -79,22 +103,47 @@ class Atlas(BaseHumanoid):
 
         return pelvis_condition
 
+    def add_weight(self, xml_handle):
+
+        # find pelvis handle
+        pelvis = xml_handle.find("body", "pelvis")
+        pelvis.add("body", name="weight")
+        weight = xml_handle.find("body", "weight")
+        weight.add("geom", type="box", size="0.1 0.27 0.1", pos="0.75 0 -0.02", rgba="1.0 0.0 0.0 1.0", mass="100")
+
+        # modify the arm orientation
+        r_clav = xml_handle.find("body", "r_clav")
+        r_clav.quat = [1.0,  0.0, -0.35, 0.0]
+        l_clav = xml_handle.find("body", "l_clav")
+        l_clav.quat = [0.0, -0.35, 0.0,  1.0]
+
+    def save_xml_handle(self, xml_handle, tmp_dir_name):
+
+        # save new model and return new xml path
+        new_model_dir_name = 'new_atlas/' +  tmp_dir_name + "/"
+        cwd = Path.cwd()
+        new_model_dir_path = Path.joinpath(cwd, new_model_dir_name)
+        xml_file_name =  "modified_atlas.xml"
+        mjcf.export_with_assets(xml_handle, new_model_dir_path, xml_file_name)
+        new_xml_path = Path.joinpath(new_model_dir_path, xml_file_name)
+        return new_xml_path.as_posix()
 
 if __name__ == '__main__':
 
-    env = Atlas(random_start=False)
+    env = Atlas(random_start=False, hold_weight=True)
 
     action_dim = env.info.action_space.shape[0]
-
-    print(env.info.observation_space.shape[0])
 
     env.reset()
     env.render()
 
     absorbing = False
-    while True:
-        print('test')
-        action = np.random.randn(action_dim)
-        nstate, _, absorbing, _ = env.step(action)
-
+    for i in range(100):
+        env.reset()
         env.render()
+        for j in range(100):
+            action = np.random.randn(action_dim)
+            nstate, _, absorbing, _ = env.step(action)
+            if absorbing and False:
+                break
+            env.render()
