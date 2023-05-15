@@ -12,11 +12,15 @@ class Atlas(BaseHumanoid):
     Mujoco simulation of the Atlas robot.
 
     """
-    def __init__(self, hold_weight=False, weight_mass = None, tmp_dir_name=None, **kwargs):
+    def __init__(self, hold_weight=False, weight_mass=None, tmp_dir_name=None, **kwargs):
         """
         Constructor.
 
         """
+        if hold_weight:
+            assert tmp_dir_name is not None, "If you want to carry weights, you have to specify a" \
+                                             "directory name for the temporary xml-files to be saved."
+
         xml_path = (Path(__file__).resolve().parent.parent / "data" / "atlas" / "model.xml").as_posix()
 
         action_spec = ["hip_flexion_r_actuator","hip_adduction_r_actuator","hip_rotation_r_actuator",
@@ -193,7 +197,7 @@ class Atlas(BaseHumanoid):
 
 if __name__ == '__main__':
 
-    env = Atlas(random_start=False, hold_weight=True)
+    env = Atlas(random_start=False)
     action_dim = env.info.action_space.shape[0]
 
     env.reset()
