@@ -74,7 +74,7 @@ class Atlas(BaseHumanoid):
 
         self._hold_weight = hold_weight
         self._weight_mass = weight_mass
-        self._valid_weights = [0.1, 1.0, 10.0, 20.0]
+        self._valid_weights = [0.1, 1.0, 5.0, 10.0]
         if hold_weight:
             xml_handle = mjcf.from_path(xml_path)
             self.add_weight(xml_handle)
