@@ -9,7 +9,7 @@ try:
     Gym = None
     from .gym_env import Gym
     Gym.register()
-    from .gym_mujoco_pomdp import NoisyDelayedGym
+    from .gym_mujoco_pomdp import NoisyDelayedGym, RandomizedMassGym
 except ImportError:
     pass
 
