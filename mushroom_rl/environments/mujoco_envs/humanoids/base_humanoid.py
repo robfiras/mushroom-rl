@@ -24,7 +24,7 @@ except ModuleNotFoundError:
 
 class BaseHumanoid(MuJoCo):
     """
-    Base humanoid class for all kinds of humanoid environemnts.
+    Base humanoid class for all kinds of humanoid environments.
 
     """
     def __init__(self, xml_path, action_spec, observation_spec, collision_groups=[], gamma=0.99, horizon=1000, n_substeps=10,  goal_reward=None,

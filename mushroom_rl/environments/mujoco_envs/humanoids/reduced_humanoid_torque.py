@@ -1,5 +1,6 @@
 import time
 from pathlib import Path
+
 from dm_control import mjcf
 
 from mushroom_rl.environments.mujoco_envs.humanoids.base_humanoid import BaseHumanoid
@@ -167,6 +168,7 @@ class ReducedHumanoidTorque(BaseHumanoid):
             observation_spec = [elem for elem in observation_spec if elem[0] not in obs_to_remove]
             action_spec = [ac for ac in action_spec if ac not in motors_to_remove]
             xml_handle = mjcf.from_path(xml_path)
+
             xml_handle = self.delete_from_xml_handle(xml_handle, joints_to_remove,
                                                      motors_to_remove, equ_constr_to_remove)
             if use_brick_foots:
@@ -224,7 +226,6 @@ class ReducedHumanoidTorque(BaseHumanoid):
         xml_file_name =  "modified_reduced_humanoid.xml"
         mjcf.export_with_assets(xml_handle, new_model_dir_path, xml_file_name)
         new_xml_path = Path.joinpath(new_model_dir_path, xml_file_name)
-
         return new_xml_path.as_posix()
 
     def has_fallen(self, state):
@@ -260,11 +261,10 @@ if __name__ == '__main__':
 
     env.reset()
     env.render()
-
     absorbing = False
     i = 0
     while True:
-        if i == 1000:
+        if i == 1000 or absorbing:
             env.reset()
             i = 0
         action = np.random.randn(action_dim)
