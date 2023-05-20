@@ -82,26 +82,19 @@ class BaseHumanoid(MuJoCo):
                                               window_size=n_substeps)
 
         if traj_params:
-            self.trajectory = Trajectory(keys=self.get_all_observation_keys(),
-                                         low=self.info.observation_space.low,
-                                         high=self.info.observation_space.high,
-                                         joint_pos_idx=self.obs_helper.joint_pos_idx,
-                                         **traj_params)
+            self.load_trajectory(traj_params)
         else:
             self.trajectory = None
 
-        if not traj_params and random_start:
-            raise ValueError("Random start not possible without trajectory data.")
-        elif not traj_params and init_step_no is not None:
-            raise ValueError("Setting an initial step is not possible without trajectory data.")
-        elif init_step_no is not None and random_start:
-            raise ValueError("Either use a random start or set an initial step, not both.")
-        elif traj_params is not None and not (random_start or init_step_no is not None):
-            raise ValueError("You have specified a trajectory, you have to use either a random start or "
-                             "set an initial step")
-
         self._random_start = random_start
         self._init_step_no = init_step_no
+
+    def load_trajectory(self, traj_params):
+        self.trajectory = Trajectory(keys=self.get_all_observation_keys(),
+                                     low=self.info.observation_space.low,
+                                     high=self.info.observation_space.high,
+                                     joint_pos_idx=self.obs_helper.joint_pos_idx,
+                                     **traj_params)
 
     def _get_observation_space(self):
         sim_low, sim_high = (self.info.observation_space.low[2:],
@@ -140,6 +133,17 @@ class BaseHumanoid(MuJoCo):
 
     def setup(self, substep_no=None):
         self.goal_reward.reset_state()
+
+        if not self.trajectory and self._random_start:
+            raise ValueError("Random start not possible without trajectory data.")
+        elif not self.trajectory and self._init_step_no is not None:
+            raise ValueError("Setting an initial step is not possible without trajectory data.")
+        elif self._init_step_no is not None and self._random_start:
+            raise ValueError("Either use a random start or set an initial step, not both.")
+        elif self.trajectory is not None and not (self._random_start or self._init_step_no is not None):
+            raise ValueError("You have specified a trajectory, you have to use either a random start or "
+                             "set an initial step")
+
         if self.trajectory is not None:
             if self._random_start:
                 sample = self.trajectory.reset_trajectory()
@@ -166,6 +170,21 @@ class BaseHumanoid(MuJoCo):
 
     def get_kinematic_obs_mask(self):
         return self._kinematic_obs_mask
+
+    def obs_to_kinematics_conversion(self, obs):
+        obs = np.atleast_2d(obs)
+        rel_keys = [obs_spec[0] for obs_spec in self.obs_helper.observation_spec]
+        #assert len(rel_keys) <= len(obs[0])
+        num_data = len(obs)
+        dataset = dict()
+        for i, key in enumerate(rel_keys):
+            if i < 2:
+                # fill with zeros for x and y position
+                data = np.zeros(num_data)
+            else:
+                data = obs[:, i-2]
+            dataset[key] = data
+        return dataset
 
     def get_obs_idx(self, name):
         idx = self.obs_helper.obs_idx_map[name]
