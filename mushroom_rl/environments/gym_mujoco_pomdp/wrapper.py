@@ -98,7 +98,7 @@ class RandomizedMassGym(Gym):
         if hide_mass_setup:
             mask = np.concatenate([mask, np.zeros_like(self._curr_mass_change, dtype=np.bool)])
         else:
-            mask = np.concatenate([mask, np.zeros_like(self._curr_mass_change, dtype=np.bool)])
+            mask = np.concatenate([mask, np.ones_like(self._curr_mass_change, dtype=np.bool)])
 
         return mask
 
