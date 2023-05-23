@@ -213,14 +213,18 @@ class Trajectory(object):
             if i in j_idx:
                 high_i = high[i-2]
                 low_i = low[i-2]
-                if np.max(d) > high_i:
+                n_violations_high = len(np.argwhere(d > high_i))
+                n_violations_low = len(np.argwhere(d < low_i))
+                if n_violations_high > 0:
                     warnings.warn("Trajectory violates joint range in %s. Maximum in trajecotry is %f "
-                                  "and maximum range is %f. Clipping the trajecotry into range!"
-                                  % (keys[i], np.max(d), high_i), RuntimeWarning)
-                elif np.min(d) < low_i:
+                                  "and maximum in range is %f. Number if violations %d. "
+                                  "Clipping the trajectory into range!"
+                                  % (keys[i], np.max(d), high_i, n_violations_high), RuntimeWarning)
+                elif n_violations_low > 0:
                     warnings.warn("Trajectory violates joint range in %s. Minimum in trajecotry is %f "
-                                  "and minimum range is %f. Clipping the trajecotry into range!"
-                                  % (keys[i], np.min(d), low_i), RuntimeWarning)
+                                  "and minimum in range is %f. Number if violations %d. "
+                                  "Clipping the trajectory into range!"
+                                  % (keys[i], np.min(d), low_i, n_violations_low), RuntimeWarning)
 
                 # clip trajectory to min & max
                 self._trajectory_files[k] = np.clip(self._trajectory_files[k], low_i, high_i)
