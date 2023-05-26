@@ -183,7 +183,7 @@ class Trajectory(object):
         self.x_dist = 0
         if substep_no is None:
             self.subtraj_step_no = int(np.random.rand() * (
-                    self.traj_length * 0.45))
+                    self.traj_length))
         else:
             self.subtraj_step_no = substep_no
 
