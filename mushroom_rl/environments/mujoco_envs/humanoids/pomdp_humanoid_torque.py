@@ -171,11 +171,12 @@ class ReducedHumanoidTorquePOMDP(BaseHumanoid):
             equ_constr_to_remove += ["wrist_flex_r_constraint", "wrist_dev_r_constraint",
                                     "wrist_flex_l_constraint", "wrist_dev_l_constraint"]
 
+        xml_handle = mjcf.from_path(xml_path)
+
         if use_brick_foots or disable_arms:
             obs_to_remove = ["q_" + j for j in joints_to_remove] + ["dq_" + j for j in joints_to_remove]
             observation_spec = [elem for elem in observation_spec if elem[0] not in obs_to_remove]
             action_spec = [ac for ac in action_spec if ac not in motors_to_remove]
-            xml_handle = mjcf.from_path(xml_path)
 
             xml_handle = self.delete_from_xml_handle(xml_handle, joints_to_remove,
                                                      motors_to_remove, equ_constr_to_remove)
@@ -183,9 +184,9 @@ class ReducedHumanoidTorquePOMDP(BaseHumanoid):
             if use_brick_foots:
                 xml_handle = self.add_brick_foots_to_xml_handle(xml_handle)
 
-            xml_handles = [self.scale_body(deepcopy(xml_handle), scaling) for scaling in self._scalings]
+        xml_handles = [self.scale_body(deepcopy(xml_handle), scaling) for scaling in self._scalings]
 
-            xml_paths = [self.save_xml_handle(handle, tmp_dir_name) for handle in xml_handles]
+        xml_paths = [self.save_xml_handle(handle, tmp_dir_name) for handle in xml_handles]
 
 
         super().__init__(xml_paths, action_spec, observation_spec, collision_groups, **kwargs)

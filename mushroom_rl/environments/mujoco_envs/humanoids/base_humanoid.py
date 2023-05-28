@@ -203,11 +203,11 @@ class BaseHumanoid(MultiMuJoCo):
         # else:
         #     self._viewer = MujocoGlfwViewer(self._model, self.dt, **self._viewer_params)
 
-        if mujoco_viewer_available:
-            self._viewer.render()
-            time.sleep(self.dt)
-        else:
-            self._viewer.render(self._data)
+        #if mujoco_viewer_available:
+        #    self._viewer.render()
+        #    time.sleep(self.dt)
+        #else:
+        self._viewer.render(self._data)
 
     def create_dataset(self, ignore_keys=[], normalizer=None):
         if self.trajectory is not None :
