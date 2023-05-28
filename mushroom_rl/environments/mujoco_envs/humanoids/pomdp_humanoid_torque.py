@@ -260,8 +260,7 @@ class ReducedHumanoidTorquePOMDP(BaseHumanoid):
 
     def has_fallen(self, state):
         pelvis_euler = state[1:4]
-        pelvis_condition = ((state[0] < -0.46) or (state[0] > 0.0)
-                            or (pelvis_euler[0] < (-np.pi / 4.5)) or (pelvis_euler[0] > (np.pi / 12))
+        pelvis_condition = ((pelvis_euler[0] < (-np.pi / 4.5)) or (pelvis_euler[0] > (np.pi / 12))
                             or (pelvis_euler[1] < -np.pi / 12) or (pelvis_euler[1] > np.pi / 8)
                             or (pelvis_euler[2] < (-np.pi / 10)) or (pelvis_euler[2] > (np.pi / 10))
                            )
@@ -281,8 +280,8 @@ class ReducedHumanoidTorquePOMDP(BaseHumanoid):
 
 if __name__ == '__main__':
 
-    env = ReducedHumanoidTorquePOMDP(timestep=1/1000, n_substeps=10, use_brick_foots=False, random_start=False,
-                                disable_arms=True)
+    env = ReducedHumanoidTorquePOMDP(scaling=0.25, timestep=1/1000, n_substeps=10, use_brick_foots=True, random_start=False,
+                                disable_arms=True, tmp_dir_name="/home/firas/Downloads/teso")
 
 
     action_dim = env.info.action_space.shape[0]
