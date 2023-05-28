@@ -2,7 +2,7 @@ import time
 from abc import abstractmethod
 import mujoco
 
-from mushroom_rl.environments.mujoco import MuJoCo, ObservationType
+from mushroom_rl.environments.multi_mujoco import MultiMuJoCo, ObservationType
 from pathlib import Path
 
 from mushroom_rl.utils import spaces
@@ -22,7 +22,7 @@ except ModuleNotFoundError:
     mujoco_viewer_available = False
 
 
-class BaseHumanoid(MuJoCo):
+class BaseHumanoid(MultiMuJoCo):
     """
     Base humanoid class for all kinds of humanoid environments.
 
@@ -33,6 +33,9 @@ class BaseHumanoid(MuJoCo):
         Constructor.
 
         """
+
+        if type(xml_path) != list:
+            xml_path = [xml_path]
 
         super().__init__(xml_path, action_spec, observation_spec, gamma=gamma, horizon=horizon,
                          n_substeps=n_substeps, timestep=timestep, collision_groups=collision_groups)
@@ -191,11 +194,14 @@ class BaseHumanoid(MuJoCo):
         return [i-2 for i in idx]
 
     def render(self):
-        if self._viewer is None:
-            if mujoco_viewer_available:
-                self._viewer = mujoco_viewer.MujocoViewer(self._model, self._data)
-            else:
-                self._viewer = MujocoGlfwViewer(self._model, self.dt, **self._viewer_params)
+        super().render()
+
+        # ToDo: Make a mult viewer for MujocoViewer (from mujoco_viewer) as well
+        # if self._viewer is None:
+        #     if mujoco_viewer_available:
+        #         self._viewer = mujoco_viewer.MujocoViewer(self._model, self._data)
+        # else:
+        #     self._viewer = MujocoGlfwViewer(self._model, self.dt, **self._viewer_params)
 
         if mujoco_viewer_available:
             self._viewer.render()
