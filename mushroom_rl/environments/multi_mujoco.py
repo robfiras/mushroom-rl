@@ -99,9 +99,18 @@ class MultiMuJoCo(MuJoCo):
 
         # Read the observation spec to build a mapping at every step. It is
         # ensured that the values appear in the order they are specified.
-        self.obs_helper = ObservationHelper(observation_spec, self._model, self._data, max_joint_velocity=3)
+        self.obs_helpers = [ObservationHelper(observation_spec, m, d, max_joint_velocity=3)
+                            for m, d in zip(self._models, self._datas)]
+        self.obs_helper = self.obs_helpers[0]
 
         observation_space = Box(*self.obs_helper.get_obs_limits())
+
+        # multi envs with different obs limits are now allowed, do sanity check
+        for oh in self.obs_helpers:
+            low, high = self.obs_helper.get_obs_limits()
+            if  not np.array_equal(low, observation_space.low) or not np.array_equal(high, observation_space.high):
+                raise ValueError("The provided environments differ in the their observation limits. "
+                                 "This is not allowed.")
 
         # Pre-process the additional data to allow easier writing and reading
         # to and from arrays in MuJoCo
@@ -143,6 +152,7 @@ class MultiMuJoCo(MuJoCo):
         i = np.random.randint(0, len(self._models))
         self._model = self._models[i]
         self._data = self._datas[i]
+        self.obs_helper = self.obs_helpers[i]
         mujoco.mj_resetData(self._model, self._data)
 
         if self._viewer is not None:
