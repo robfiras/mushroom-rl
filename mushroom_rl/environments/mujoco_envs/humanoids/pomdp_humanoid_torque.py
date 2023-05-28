@@ -208,6 +208,7 @@ class ReducedHumanoidTorquePOMDP(BaseHumanoid):
     def scale_body(self, xml_handle, scaling):
         body_scaling = scaling
         mesh_handle = xml_handle.find_all("mesh")
+        # todo: add the rest that is important for scaling
         for h in mesh_handle:
             h.scale *= body_scaling
         body_handle = xml_handle.find_all("body")
@@ -216,6 +217,8 @@ class ReducedHumanoidTorquePOMDP(BaseHumanoid):
         return xml_handle
 
     def add_brick_foots_to_xml_handle(self, xml_handle):
+
+        # todo: this has to be dependant on the scaling!
 
         # find foot and attach bricks
         toe_l = xml_handle.find("body", "toes_l")
