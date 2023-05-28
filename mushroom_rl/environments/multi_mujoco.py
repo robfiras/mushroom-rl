@@ -79,23 +79,19 @@ class MultiMuJoCo(MuJoCo):
 
         # Read the actuation spec and build the mapping between actions and ids
         # as well as their limits
-        if len(actuation_spec) == 0:
-            self._action_indices = [i for i in range(0, len(self._data.actuator_force))]
-        else:
-            self._action_indices = []
-            for name in actuation_spec:
-                self._action_indices.append(self._model.actuator(name).id)
+        self._action_indices = self.get_action_indices(self._model, self._data, actuation_spec)
 
-        low = []
-        high = []
-        for index in self._action_indices:
-            if self._model.actuator_ctrllimited[index]:
-                low.append(self._model.actuator_ctrlrange[index][0])
-                high.append(self._model.actuator_ctrlrange[index][1])
-            else:
-                low.append(-np.inf)
-                high.append(np.inf)
-        action_space = Box(np.array(low), np.array(high))
+        action_space = self.get_action_space(self._action_indices, self._model)
+
+        # all env need to have the same action space, do sanity check
+        for m, d in zip(self._models, self._datas):
+            action_ind = self.get_action_indices(m, d, actuation_spec)
+            action_sp = self.get_action_space(action_ind, m)
+            if not np.array_equal(action_ind, self._action_indices) or \
+                    not np.array_equal(action_space.low, action_sp.low) or\
+                    not np.array_equal(action_space.high, action_sp.high):
+                raise ValueError("The provided environments differ in the their action spaces. "
+                                 "This is not allowed.")
 
         # Read the observation spec to build a mapping at every step. It is
         # ensured that the values appear in the order they are specified.
@@ -138,7 +134,6 @@ class MultiMuJoCo(MuJoCo):
         # call grad-parent class, not MuJoCo
         super(MuJoCo, self).__init__(mdp_info)
 
-
     def render(self):
         if self._viewer is None:
             self._viewer = MultMujocoGlfwViewer(self._model, self.dt, **self._viewer_params)
@@ -161,3 +156,26 @@ class MultiMuJoCo(MuJoCo):
         self._obs = self._create_observation(self.obs_helper.build_obs(self._data))
         return self._modify_observation(self._obs)
 
+    @staticmethod
+    def get_action_indices(model, data, actuation_spec):
+        if len(actuation_spec) == 0:
+            action_indices = [i for i in range(0, len(data.actuator_force))]
+        else:
+            action_indices = []
+            for name in actuation_spec:
+                action_indices.append(model.actuator(name).id)
+        return action_indices
+
+    @staticmethod
+    def get_action_space(action_indices, model):
+        low = []
+        high = []
+        for index in action_indices:
+            if model.actuator_ctrllimited[index]:
+                low.append(model.actuator_ctrlrange[index][0])
+                high.append(model.actuator_ctrlrange[index][1])
+            else:
+                low.append(-np.inf)
+                high.append(np.inf)
+        action_space = Box(np.array(low), np.array(high))
+        return action_space
