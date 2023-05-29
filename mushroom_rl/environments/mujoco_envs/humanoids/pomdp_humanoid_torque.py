@@ -300,7 +300,7 @@ class ReducedHumanoidTorquePOMDP(BaseHumanoid):
                             or (lumbar_euler[1] < -np.pi / 10) or (lumbar_euler[1] > np.pi / 10)
                             or (lumbar_euler[2] < (-np.pi / 4.5)) or (lumbar_euler[2] > (np.pi / 4.5))
                             )
-        return (pelvis_condition or lumbar_condition) and False
+        return pelvis_condition or lumbar_condition
 
 
 if __name__ == '__main__':
