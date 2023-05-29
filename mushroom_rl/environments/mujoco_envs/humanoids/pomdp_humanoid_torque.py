@@ -212,8 +212,16 @@ class ReducedHumanoidTorquePOMDP(BaseHumanoid):
         body_scaling = scaling
         mesh_handle = xml_handle.find_all("mesh")
 
+        head_geoms = ["hat_skull", "hat_jaw", "hat_ribs_cap"]
+
         for h in mesh_handle:
-            h.scale *= body_scaling
+            if h.name not in head_geoms: # don't scale head
+                h.scale *= body_scaling
+
+        for h in xml_handle.find_all("geom"):
+            if h.name in head_geoms: # change position of head
+                h.pos = [0.0, -0.5*(1 - scaling), 0.0]
+
         body_handle = xml_handle.find_all("body")
         for h in body_handle:
             h.pos *= body_scaling
@@ -297,7 +305,7 @@ class ReducedHumanoidTorquePOMDP(BaseHumanoid):
 
 if __name__ == '__main__':
 
-    env = ReducedHumanoidTorquePOMDP(timestep=1/1000, n_substeps=10, use_brick_foots=True, random_start=False,
+    env = ReducedHumanoidTorquePOMDP(scaling=0.4, timestep=1/1000, n_substeps=10, use_brick_foots=True, random_start=False,
                                      disable_arms=True, tmp_dir_name="/home/moore/Downloads/teso")
 
     action_dim = env.info.action_space.shape[0]
