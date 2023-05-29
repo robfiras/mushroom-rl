@@ -207,12 +207,23 @@ class ReducedHumanoidTorquePOMDP(BaseHumanoid):
     def scale_body(self, xml_handle, scaling):
         body_scaling = scaling
         mesh_handle = xml_handle.find_all("mesh")
-        # todo: add the rest that is important for scaling
+
         for h in mesh_handle:
             h.scale *= body_scaling
         body_handle = xml_handle.find_all("body")
         for h in body_handle:
             h.pos *= body_scaling
+            h.inertial.mass *= body_scaling**3
+            # Diagonal elements of the inertia matrix change quintically with scaling.
+            # As all off-diagonal elements are 0 here.
+            h.inertial.fullinertia *= body_scaling**5
+            assert np.array_equal(h.inertial.fullinertia[3:], np.zeros(3)), "Some of the diagonal elements of the" \
+                                                                            "inertia matrix are not zero! Scaling is" \
+                                                                            "not done correctly. Double-Check!"
+        actuator_handle = xml_handle.find_all("actuator")
+        for h in actuator_handle:
+            h.gear *= body_scaling**2
+
         return xml_handle
 
     def add_brick_foots_to_xml_handle(self, xml_handle, scaling):
@@ -277,7 +288,7 @@ class ReducedHumanoidTorquePOMDP(BaseHumanoid):
                             or (lumbar_euler[1] < -np.pi / 10) or (lumbar_euler[1] > np.pi / 10)
                             or (lumbar_euler[2] < (-np.pi / 4.5)) or (lumbar_euler[2] > (np.pi / 4.5))
                             )
-        return pelvis_condition or lumbar_condition
+        return (pelvis_condition or lumbar_condition) and False
 
 
 if __name__ == '__main__':
@@ -295,10 +306,11 @@ if __name__ == '__main__':
     absorbing = False
     i = 0
     while True:
-        if i == 50 or absorbing:
+        if i == 200 or absorbing:
             env.reset()
+            env.render()
             i = 0
-        action = np.random.randn(action_dim)
+        action = np.random.randn(action_dim) * 0.01
         nstate, _, absorbing, _ = env.step(action)
 
         env.render()
