@@ -49,6 +49,7 @@ class MultMujocoGlfwViewer:
         self.rgb_buffer = np.empty((width, height, 3), dtype=np.uint8)
 
     def load_new_model(self, model):
+        self._model = model
         self._scene = mujoco.MjvScene(model, 1000)
         self._scene_option = mujoco.MjvOption()
 
