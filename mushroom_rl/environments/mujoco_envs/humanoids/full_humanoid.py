@@ -263,6 +263,7 @@ class FullHumanoid(BaseHumanoid):
 
     @staticmethod
     def has_fallen(state):
+        # todo this function has to be adapted for brick feet as well!
         pelvis_euler = state[1:4]
         pelvis_condition = ((state[0] < -0.35) or (state[0] > 0.10)
                             or (pelvis_euler[0] < (-np.pi / 4.5)) or (pelvis_euler[0] > (np.pi / 12))
@@ -296,7 +297,7 @@ if __name__ == '__main__':
     while True:
         psi = psi + dt * frequencies
         action = np.sin(psi)
-        #action = np.random.normal(1.0, 0.5, (action_dim,)) # compare to normal gaussian noise
+        action = np.random.normal(0.0, 1.0, (action_dim,)) # compare to normal gaussian noise
         nstate, _, absorbing, _ = env.step(action)
 
         env.render()
