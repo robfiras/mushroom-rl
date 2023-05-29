@@ -137,7 +137,11 @@ class ReducedHumanoidTorquePOMDP(BaseHumanoid):
                             ("foot_l", ["l_foot"]),
                             ("front_foot_l", ["l_bofoot"])]
 
-        allowed_scalings = [0.25, 0.5, 0.75, 1.0]
+        # 0.4 ~ 1 year old baby which just started walking
+        # 0.6 ~ 5 year old boy
+        # 0.8 ~ 12 year old boy
+        # 1.0 ~ 20 year old man
+        allowed_scalings = [0.4, 0.6, 0.8, 1.0]
         if scaling is None:
             self._scalings = allowed_scalings
         else:
