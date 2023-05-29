@@ -143,13 +143,12 @@ class MultiMuJoCo(MuJoCo):
 
     def reset(self, obs=None):
         mujoco.mj_resetData(self._model, self._data)
-        self.setup()
 
         self._current_model_idx = np.random.randint(0, len(self._models))
         self._model = self._models[self._current_model_idx]
         self._data = self._datas[self._current_model_idx]
         self.obs_helper = self.obs_helpers[self._current_model_idx]
-        mujoco.mj_resetData(self._model, self._data)
+        self.setup()
 
         if self._viewer is not None:
             self._viewer.load_new_model(self._model)
