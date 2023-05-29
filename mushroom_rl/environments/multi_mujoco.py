@@ -61,7 +61,8 @@ class MultiMuJoCo(MuJoCo):
         # Create the simulation
         assert type(file_names)
         self._models = [mujoco.MjModel.from_xml_path(f) for f in file_names]
-        self._model = self._models[0]
+        self._current_model_idx = 0
+        self._model = self._models[self._current_model_idx]
         if timestep is not None:
             self._model.opt.timestep = timestep
             self._timestep = timestep
@@ -69,7 +70,7 @@ class MultiMuJoCo(MuJoCo):
             self._timestep = self._model.opt.timestep
 
         self._datas = [mujoco.MjData(m) for m in self._models]
-        self._data = self._datas[0]
+        self._data = self._datas[self._current_model_idx]
 
         self._n_intermediate_steps = n_intermediate_steps
         self._n_substeps = n_substeps
@@ -144,10 +145,10 @@ class MultiMuJoCo(MuJoCo):
         mujoco.mj_resetData(self._model, self._data)
         self.setup()
 
-        i = np.random.randint(0, len(self._models))
-        self._model = self._models[i]
-        self._data = self._datas[i]
-        self.obs_helper = self.obs_helpers[i]
+        self._current_model_idx = np.random.randint(0, len(self._models))
+        self._model = self._models[self._current_model_idx]
+        self._data = self._datas[self._current_model_idx]
+        self.obs_helper = self.obs_helpers[self._current_model_idx]
         mujoco.mj_resetData(self._model, self._data)
 
         if self._viewer is not None:
@@ -179,3 +180,7 @@ class MultiMuJoCo(MuJoCo):
                 high.append(np.inf)
         action_space = Box(np.array(low), np.array(high))
         return action_space
+
+    @property
+    def more_than_one_env(self):
+        return len(self._models) > 1

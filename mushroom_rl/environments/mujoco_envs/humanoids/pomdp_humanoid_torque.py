@@ -137,6 +137,8 @@ class ReducedHumanoidTorquePOMDP(BaseHumanoid):
                             ("foot_l", ["l_foot"]),
                             ("front_foot_l", ["l_bofoot"])]
 
+        self._hidable_obs = ("positions", "velocities", "foot_forces", "env_type")
+
         # 0.4 ~ 1 year old baby which just started walking
         # 0.6 ~ 5 year old boy
         # 0.8 ~ 12 year old boy
@@ -280,8 +282,84 @@ class ReducedHumanoidTorquePOMDP(BaseHumanoid):
 
         return file_path
 
+    def _get_observation_space(self):
+        low, high = super(ReducedHumanoidTorquePOMDP, self)._get_observation_space()
+        if self.more_than_one_env:
+            len_env_map = len(self._get_env_id_map())
+            low = np.concatenate([low, np.zeros(len_env_map)])
+            high = np.concatenate([high, np.ones(len_env_map)])
+        return low, high
+
+    def _create_observation(self, obs):
+        obs = super(ReducedHumanoidTorquePOMDP, self)._create_observation(obs)
+        if self.more_than_one_env:
+            env_id_map = self._get_env_id_map()
+            obs = np.concatenate([obs, env_id_map])
+        return obs
+
     def render(self):
+        # call grand-parent's render function
         super(BaseHumanoid, self).render()
+
+    def _get_env_id_map(self):
+        """ We use a binary map to identify task. """
+        bits_needed = 1+int(np.log((len(self._models)-1))/np.log(2))
+        id_mask = np.zeros(bits_needed)
+        bin_rep = np.binary_repr(self._current_model_idx)[::-1]
+        for i, b in enumerate(bin_rep):
+            idx = bits_needed - 1 - i   # reverse idx
+            if int(b):
+                id_mask[idx] = 1.0
+            else:
+                id_mask[idx] = 0.0
+        return id_mask
+
+    def get_mask(self, obs_to_hide):
+        """ This function returns a boolean mask to hide observations from a fully observable state. """
+
+        if type(obs_to_hide) == str:
+            obs_to_hide = (obs_to_hide,)
+        assert all(x in self._hidable_obs for x in obs_to_hide), "Some of the observations you want to hide are not" \
+                                                                 "supported. Valid observations to hide are %s." \
+                                                                 % (self._hidable_obs,)
+
+        pos_dim = len(self.get_joint_pos()) - 2
+        vel_dim = len(self.get_joint_vel())
+        force_dim = 12  # 3*4
+        if self.more_than_one_env:
+            env_id_dim = len(self._get_env_id_map())
+        else:
+            env_id_dim = 0
+
+        mask = []
+        if "positions" not in obs_to_hide:
+            mask += [np.ones(pos_dim, dtype=np.bool)]
+        else:
+            mask += [np.zeros(pos_dim, dtype=np.bool)]
+
+        if "velocities" not in obs_to_hide:
+            mask += [np.ones(vel_dim, dtype=np.bool)]
+        else:
+            mask += [np.zeros(vel_dim, dtype=np.bool)]
+
+        if self._use_foot_forces:
+            if "foot_forces" not in obs_to_hide:
+                mask += [np.ones(force_dim, dtype=np.bool)]
+            else:
+                mask += [np.zeros(force_dim, dtype=np.bool)]
+        else:
+            assert "foot_forces" not in obs_to_hide, "Creating a mask to hide foot forces without activating " \
+                                                     "the latter is not allowed."
+        if self.more_than_one_env:
+            if "env_type" not in obs_to_hide:
+                mask += [np.ones(env_id_dim, dtype=np.bool)]
+            else:
+                mask += [np.zeros(env_id_dim, dtype=np.bool)]
+        else:
+            assert "env_type" not in obs_to_hide, "Creating a mask to hide the env type without having more than  " \
+                                                     "one env is not allowed."
+
+        return np.concatenate(mask).ravel()
 
     def has_fallen(self, state):
         pelvis_euler = state[1:4]
@@ -305,13 +383,16 @@ class ReducedHumanoidTorquePOMDP(BaseHumanoid):
 
 if __name__ == '__main__':
 
-    env = ReducedHumanoidTorquePOMDP(scaling=0.4, timestep=1/1000, n_substeps=10, use_brick_foots=True, random_start=False,
+    env = ReducedHumanoidTorquePOMDP(scaling=1.0, timestep=1/1000, n_substeps=10, use_brick_foots=True, random_start=False,
                                      disable_arms=True, tmp_dir_name="/home/moore/Downloads/teso")
 
     action_dim = env.info.action_space.shape[0]
 
     print("Dimensionality of Obs-space:", env.info.observation_space.shape[0])
     print("Dimensionality of Act-space:", env.info.action_space.shape[0])
+
+
+    env_mask = env.get_mask(obs_to_hide=())
 
     env.reset()
     env.render()
