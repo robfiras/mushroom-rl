@@ -236,8 +236,7 @@ class ReducedHumanoidTorquePOMDP(BaseHumanoid):
                                                                             "not done correctly. Double-Check!"
         actuator_handle = xml_handle.find_all("actuator")
         for h in actuator_handle:
-            #h.gear *= body_scaling**2
-            h.gear *= (body_scaling**4 + body_scaling**5)    # todo: double check if this is correct
+            h.gear *= body_scaling**2
 
         return xml_handle
 
