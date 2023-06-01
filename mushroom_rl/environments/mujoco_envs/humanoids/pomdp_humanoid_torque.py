@@ -285,7 +285,7 @@ class ReducedHumanoidTorquePOMDP(BaseHumanoid):
     def _get_observation_space(self):
         low, high = super(ReducedHumanoidTorquePOMDP, self)._get_observation_space()
         if self.more_than_one_env:
-            len_env_map = len(self._get_env_id_map())
+            len_env_map = len(self._get_env_id_map(self._current_model_idx, len(self._models)))
             low = np.concatenate([low, np.zeros(len_env_map)])
             high = np.concatenate([high, np.ones(len_env_map)])
         return low, high
@@ -293,26 +293,13 @@ class ReducedHumanoidTorquePOMDP(BaseHumanoid):
     def _create_observation(self, obs):
         obs = super(ReducedHumanoidTorquePOMDP, self)._create_observation(obs)
         if self.more_than_one_env:
-            env_id_map = self._get_env_id_map()
+            env_id_map = self._get_env_id_map(self._current_model_idx, len(self._models))
             obs = np.concatenate([obs, env_id_map])
         return obs
 
     def render(self):
         # call grand-parent's render function
         super(BaseHumanoid, self).render()
-
-    def _get_env_id_map(self):
-        """ We use a binary map to identify task. """
-        bits_needed = 1+int(np.log((len(self._models)-1))/np.log(2))
-        id_mask = np.zeros(bits_needed)
-        bin_rep = np.binary_repr(self._current_model_idx)[::-1]
-        for i, b in enumerate(bin_rep):
-            idx = bits_needed - 1 - i   # reverse idx
-            if int(b):
-                id_mask[idx] = 1.0
-            else:
-                id_mask[idx] = 0.0
-        return id_mask
 
     def get_mask(self, obs_to_hide):
         """ This function returns a boolean mask to hide observations from a fully observable state. """
@@ -327,7 +314,7 @@ class ReducedHumanoidTorquePOMDP(BaseHumanoid):
         vel_dim = len(self.get_joint_vel())
         force_dim = 12  # 3*4
         if self.more_than_one_env:
-            env_id_dim = len(self._get_env_id_map())
+            env_id_dim = len(self._get_env_id_map(self._current_model_idx, len(self._models)))
         else:
             env_id_dim = 0
 
@@ -380,11 +367,25 @@ class ReducedHumanoidTorquePOMDP(BaseHumanoid):
                             )
         return pelvis_condition or lumbar_condition
 
+    @staticmethod
+    def _get_env_id_map(current_model_idx, n_models):
+        """ We use a binary map to identify task. """
+        bits_needed = 1+int(np.log((n_models-1))/np.log(2))
+        id_mask = np.zeros(bits_needed)
+        bin_rep = np.binary_repr(current_model_idx)[::-1]
+        for i, b in enumerate(bin_rep):
+            idx = bits_needed - 1 - i   # reverse idx
+            if int(b):
+                id_mask[idx] = 1.0
+            else:
+                id_mask[idx] = 0.0
+        return id_mask
 
 if __name__ == '__main__':
 
-    env = ReducedHumanoidTorquePOMDP(scaling=1.0, timestep=1/1000, n_substeps=10, use_brick_foots=True, random_start=False,
-                                     disable_arms=True, tmp_dir_name="/home/moore/Downloads/teso")
+    env = ReducedHumanoidTorquePOMDP(timestep=1/1000, n_substeps=10, use_brick_foots=True, random_start=False,
+                                     disable_arms=True, goal_reward="mult_target_velocity",
+                                     goal_reward_params=dict(target_velocity=1.25))
 
     action_dim = env.info.action_space.shape[0]
 

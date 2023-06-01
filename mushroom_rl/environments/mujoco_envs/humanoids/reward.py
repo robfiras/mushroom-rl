@@ -126,6 +126,29 @@ class TargetVelocityReward(GoalRewardInterface):
         return np.exp(- np.square(x_vel - self._target_vel))
 
 
+class MultTargetVelocityReward(GoalRewardInterface):
+
+    def __init__(self, target_velocity, x_vel_idx, env_id_len, scalings):
+        self._target_vel = target_velocity
+        self._env_id_len = env_id_len
+        self._scalings = scalings
+        self._x_vel_idx = x_vel_idx
+
+    def __call__(self, state, action, next_state):
+        x_vel = state[self._x_vel_idx]
+        env_id = state[-self._env_id_len:]
+
+        # convert binary array to index
+        ind = np.packbits(env_id.astype(int), bitorder='big') >> (8 - env_id.shape[0])
+        ind = ind[0]
+        scaling = self._scalings[ind]
+
+        # calculate target vel
+        target_vel = self._target_vel * scaling
+
+        return np.exp(- np.square(x_vel - target_vel))
+
+
 class PosReward(GoalRewardInterface):
 
     def __init__(self, pos_idx):

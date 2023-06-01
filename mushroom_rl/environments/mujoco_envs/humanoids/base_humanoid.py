@@ -12,7 +12,7 @@ from mushroom_rl.utils.mujoco import *
 from mushroom_rl.environments.mujoco_envs.humanoids.trajectory import Trajectory
 
 from mushroom_rl.environments.mujoco_envs.humanoids.reward import NoGoalReward, CustomReward,\
-    TargetVelocityReward, PosReward
+    TargetVelocityReward, MultTargetVelocityReward, PosReward
 
 # optional imports
 try:
@@ -53,6 +53,14 @@ class BaseHumanoid(MultiMuJoCo):
             assert len(x_vel_idx) == 1
             x_vel_idx = x_vel_idx[0]
             self.goal_reward = TargetVelocityReward(x_vel_idx=x_vel_idx, **goal_reward_params)
+        elif goal_reward == "mult_target_velocity":
+            x_vel_idx = self.get_obs_idx("dq_pelvis_tx")
+            assert len(x_vel_idx) == 1
+            x_vel_idx = x_vel_idx[0]
+            n_models = len(self._models)
+            env_id_len = len(self._get_env_id_map(0, n_models))
+            self.goal_reward = MultTargetVelocityReward(x_vel_idx=x_vel_idx, scalings=self._scalings,
+                                                        env_id_len=env_id_len, **goal_reward_params)
         elif goal_reward == "x_pos":
             x_idx = self.get_obs_idx("q_pelvis_tx")
             assert len(x_idx) == 1
