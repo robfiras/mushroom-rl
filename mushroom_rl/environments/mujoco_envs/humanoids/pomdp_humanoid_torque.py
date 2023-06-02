@@ -147,6 +147,9 @@ class ReducedHumanoidTorquePOMDP(BaseHumanoid):
         if scaling is None:
             self._scalings = allowed_scalings
         else:
+            #if type(scaling) == list:
+            #    self._scalings = scaling
+            #else:
             assert scaling in allowed_scalings
             self._scalings = [scaling]
 
@@ -178,6 +181,7 @@ class ReducedHumanoidTorquePOMDP(BaseHumanoid):
                                     "wrist_flex_l_constraint", "wrist_dev_l_constraint"]
 
         xml_handle = mjcf.from_path(xml_path)
+        #xml_handle = self.reorient_arms(xml_handle)
         xml_handles = [self.scale_body(deepcopy(xml_handle), scaling) for scaling in self._scalings]
 
         if use_brick_foots or disable_arms:
@@ -243,14 +247,15 @@ class ReducedHumanoidTorquePOMDP(BaseHumanoid):
     def add_brick_foots_to_xml_handle(self, xml_handle, scaling):
 
         # find foot and attach bricks
+        alpha_bricks = 0.0
         toe_l = xml_handle.find("body", "toes_l")
         size = np.array([0.112, 0.03, 0.05]) * scaling
         pos = np.array([-0.09, 0.019, 0.0]) * scaling
         toe_l.add("geom", name="foot_brick_l", type="box", size=size.tolist(), pos=pos.tolist(),
-                  rgba=[0.5, 0.5, 0.5, 0.5], euler=[0.0, 0.15, 0.0])
+                  rgba=[0.5, 0.5, 0.5, alpha_bricks], euler=[0.0, 0.15, 0.0])
         toe_r = xml_handle.find("body", "toes_r")
         toe_r.add("geom", name="foot_brick_r", type="box", size=size.tolist(), pos=pos.tolist(),
-                  rgba=[0.5, 0.5, 0.5, 0.5], euler=[0.0, -0.15, 0.0])
+                  rgba=[0.5, 0.5, 0.5, alpha_bricks], euler=[0.0, -0.15, 0.0])
 
         # make true foot uncollidable
         foot_r = xml_handle.find("geom", "foot")
@@ -268,6 +273,17 @@ class ReducedHumanoidTorquePOMDP(BaseHumanoid):
 
         return xml_handle
 
+    def reorient_arms(self, xml_handle):
+        h = xml_handle.find("body", "humerus_l")
+        h.quat = [1.0, -0.1, -1.0, -0.1]
+        h = xml_handle.find("body", "ulna_l")
+        h.quat = [1.0, 0.6, 0.0, 0.0]
+        h = xml_handle.find("body", "humerus_r")
+        h.quat = [1.0, 0.1, 1.0, -0.1]
+        h = xml_handle.find("body", "ulna_r")
+        h.quat = [1.0, -0.6, 0.0, 0.0]
+        return xml_handle
+
     def save_xml_handle(self, xml_handle, tmp_dir_name):
 
         if tmp_dir_name is not None:
@@ -281,6 +297,20 @@ class ReducedHumanoidTorquePOMDP(BaseHumanoid):
         mjcf.export_with_assets(xml_handle, dir, file_name)
 
         return file_path
+
+    def setup(self, substep_no=None):
+
+        if self.trajectory is not None:
+            """TODO: WARNING THIS IS A DIRTY HACK TO MAKE RANDOM INIT WORK"""
+            # this hack relies on the fact that the trajectory data it sorted from 0.4 to 1.0 scale
+            curr_model = self._current_model_idx
+            n_models = len(self._models)
+            len_traj = self.trajectory.traj_length / n_models
+            substep_no = np.random.randint(0, len_traj) + curr_model * len_traj
+        else:
+            substep_no = None
+
+        super(ReducedHumanoidTorquePOMDP, self).setup(substep_no)
 
     def _get_observation_space(self):
         low, high = super(ReducedHumanoidTorquePOMDP, self)._get_observation_space()
