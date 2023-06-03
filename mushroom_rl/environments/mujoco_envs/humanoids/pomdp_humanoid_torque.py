@@ -305,12 +305,15 @@ class ReducedHumanoidTorquePOMDP(BaseHumanoid):
             # this hack relies on the fact that the trajectory data it sorted from 0.4 to 1.0 scale
             curr_model = self._current_model_idx
             n_models = len(self._models)
-            len_traj = self.trajectory.traj_length / n_models
+            len_traj = int(self.trajectory.traj_length / n_models)
             substep_no = np.random.randint(0, len_traj) + curr_model * len_traj
         else:
             substep_no = None
 
-        super(ReducedHumanoidTorquePOMDP, self).setup(substep_no)
+        # Todo: this is also dirty and is not compliant with the other env, fix this workarround after deadline!
+        if substep_no is not None:
+            sample = self.trajectory.reset_trajectory(substep_no)
+            self.set_qpos_qvel(sample)
 
     def _get_observation_space(self):
         low, high = super(ReducedHumanoidTorquePOMDP, self)._get_observation_space()
