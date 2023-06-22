@@ -1,12 +1,13 @@
 import glfw
 import mujoco
 import time
+from copy import deepcopy
 
 import numpy as np
 
 
 class MultMujocoGlfwViewer:
-    def __init__(self, model, dt, width=1920, height=1080, start_paused=False):
+    def __init__(self, model, dt, width=1920, height=1080, start_paused=False, record=False):
         self.button_left = False
         self.button_right = False
         self.button_middle = False
@@ -21,6 +22,11 @@ class MultMujocoGlfwViewer:
         self._loop_count = 0
         self._time_per_render = 1 / 60.
         self._paused = start_paused
+
+        self._record = record
+        if record:
+            # dont allow to change the window size to have equal frame size during recording
+            glfw.window_hint(glfw.RESIZABLE, False)
 
         self._window = glfw.create_window(width=width, height=height, title="MuJoCo", monitor=None, share=None)
         glfw.make_context_current(self._window)
@@ -37,6 +43,7 @@ class MultMujocoGlfwViewer:
 
         self._scene = mujoco.MjvScene(model, 1000)
         self._scene_option = mujoco.MjvOption()
+        self.pert = mujoco.MjvPerturb()
 
         self._camera = mujoco.MjvCamera()
         mujoco.mjv_defaultFreeCamera(model, self._camera)
@@ -55,6 +62,7 @@ class MultMujocoGlfwViewer:
 
         self._camera = mujoco.MjvCamera()
         mujoco.mjv_defaultFreeCamera(model, self._camera)
+        self._camera.distance *= 0.3
 
         self._viewport = mujoco.MjrRect(0, 0, self._width, self._height)
         self._context = mujoco.MjrContext(model, mujoco.mjtFontScale(100))
@@ -131,22 +139,54 @@ class MultMujocoGlfwViewer:
                 exit(0)
 
             self._time_per_render = 0.9 * self._time_per_render + 0.1 * (time.time() - render_start)
-            """
-            if return_img:
-                mujoco.mjr_readPixels(self.rgb_buffer, None, self._viewport, self._context)
-                return self.rgb_buffer
-            """
+
+        mode = "follow"
+        if mode == "follow":
+            self._camera.type = mujoco.mjtCamera.mjCAMERA_TRACKING
+            self._camera.trackbodyid = 0
+            self._camera.distance = 3.5
+            self._camera.elevation = -0  # camera rotation around the axis in the plane going through the frame origin (if 0 you just see a line)
+            self._camera.azimuth = 90
+        elif mode == "static":
+            self._camera.lookat = np.array([15, -5.0, 1.75])
+            self._camera.distance *= 0.3
+            self._camera.distance = -2
+            self._camera.elevation = -10  # camera rotation around the axis in the plane going through the frame origin (if 0 you just see a line)
+            self._camera.azimuth = 90
 
         if self._paused:
             while self._paused:
                 render_inner_loop(self)
 
-        self._loop_count += self.dt / self._time_per_render
+        if self._record:
+            self._loop_count = 1
+        else:
+            self._loop_count += self.dt / self._time_per_render
         while self._loop_count > 0:
             render_inner_loop(self)
             self._loop_count -= 1
 
+        if self._record:
+            return self.read_pixels()
+
+    def read_pixels(self, depth=False):
+
+        shape = glfw.get_framebuffer_size(self._window)
+
+        if depth:
+            rgb_img = np.zeros((shape[1], shape[0], 3), dtype=np.uint8)
+            depth_img = np.zeros((shape[1], shape[0], 1), dtype=np.float32)
+            mujoco.mjr_readPixels(rgb_img, depth_img, self._viewport, self._context)
+            return (np.flipud(rgb_img), np.flipud(depth_img))
+        else:
+            img = np.zeros((shape[1], shape[0], 3), dtype=np.uint8)
+            mujoco.mjr_readPixels(img, None, self._viewport, self._context)
+            return np.flipud(img)
+
     def stop(self):
         glfw.destroy_window(self._window)
+
+    def get_height_width(self):
+        return self._height, self._width
 
 

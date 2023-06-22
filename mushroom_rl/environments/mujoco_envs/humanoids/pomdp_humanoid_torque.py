@@ -150,8 +150,8 @@ class ReducedHumanoidTorquePOMDP(BaseHumanoid):
             #if type(scaling) == list:
             #    self._scalings = scaling
             #else:
-            assert scaling in allowed_scalings
-            self._scalings = [scaling]
+            #assert scaling in allowed_scalings
+            self._scalings = [scaling for i in range(len(allowed_scalings))]
 
         self._use_brick_foots = use_brick_foots
         self._disable_arms = disable_arms
@@ -181,7 +181,7 @@ class ReducedHumanoidTorquePOMDP(BaseHumanoid):
                                     "wrist_flex_l_constraint", "wrist_dev_l_constraint"]
 
         xml_handle = mjcf.from_path(xml_path)
-        #xml_handle = self.reorient_arms(xml_handle)
+        xml_handle = self.reorient_arms(xml_handle)
         xml_handles = [self.scale_body(deepcopy(xml_handle), scaling) for scaling in self._scalings]
 
         if use_brick_foots or disable_arms:

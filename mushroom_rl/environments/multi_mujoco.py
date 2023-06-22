@@ -1,5 +1,8 @@
+import os
 import mujoco
+import datetime
 import numpy as np
+import cv2
 from mushroom_rl.environments import MuJoCo
 from mushroom_rl.core import MDPInfo
 from .mult_MujocoGlfwViewer import MultMujocoGlfwViewer
@@ -105,7 +108,7 @@ class MultiMuJoCo(MuJoCo):
         # multi envs with different obs limits are now allowed, do sanity check
         for oh in self.obs_helpers:
             low, high = self.obs_helper.get_obs_limits()
-            if  not np.array_equal(low, observation_space.low) or not np.array_equal(high, observation_space.high):
+            if not np.array_equal(low, observation_space.low) or not np.array_equal(high, observation_space.high):
                 raise ValueError("The provided environments differ in the their observation limits. "
                                  "This is not allowed.")
 
@@ -132,6 +135,10 @@ class MultiMuJoCo(MuJoCo):
         # set the warning callback to stop the simulation when a mujoco warning occurs
         mujoco.set_mju_user_warning(self.user_warning_raise_exception)
 
+        # needed for recording
+        self._record_video = False
+        self._video = None
+
         # call grad-parent class, not MuJoCo
         super(MuJoCo, self).__init__(mdp_info)
 
@@ -139,7 +146,45 @@ class MultiMuJoCo(MuJoCo):
         if self._viewer is None:
             self._viewer = MultMujocoGlfwViewer(self._model, self.dt, **self._viewer_params)
 
-        self._viewer.render(self._data)
+        if self._record_video:
+            image = self._viewer.render(self._data)
+            self._add_frame_to_video(image)
+        else:
+            self._viewer.render(self._data)
+
+    def _add_frame_to_video(self, frame):
+        self._video.write(cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
+
+    def activate_recording(self, path, id_tag=None):
+        assert not self._record_video, "Video recording was activated twice."
+
+        if self._viewer is None:
+            self._viewer = MultMujocoGlfwViewer(self._model, self.dt, record=True, **self._viewer_params)
+
+        if not os.path.isdir(path):
+            os.mkdir(path)
+
+        if id_tag is None:
+            date_time = datetime.datetime.now()
+            id_tag = date_time.strftime("%d-%m-%Y_%H-%M-%S")
+
+        path = path + "/" + id_tag
+
+        if not os.path.isdir(path):
+            os.mkdir(path)
+
+        path += "/" + "recording.mp4"
+
+        self._record_video = True
+        height, width = self._viewer.get_height_width()
+        self._video = cv2.VideoWriter(path, cv2.VideoWriter_fourcc('m', 'p', '4', 'v'), 60, (width, height))
+
+    def stop(self):
+        assert self._record_video, "Video recording was not activated. Saving not possible."
+
+        cv2.destroyAllWindows()
+        self._video.release()
+        super(MultiMuJoCo, self).stop()
 
     def reset(self, obs=None):
         mujoco.mj_resetData(self._model, self._data)

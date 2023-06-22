@@ -281,7 +281,7 @@ class FullHumanoid(BaseHumanoid):
 if __name__ == '__main__':
     import time
 
-    env = FullHumanoid(n_substeps=33, use_brick_foots=False, disable_arms=True, random_start=False, tmp_dir_name="test")
+    env = FullHumanoid(n_substeps=10, use_brick_foots=False, disable_arms=True, random_start=False, tmp_dir_name="test")
 
     action_dim = env.info.action_space.shape[0]
 
@@ -296,8 +296,10 @@ if __name__ == '__main__':
 
     while True:
         psi = psi + dt * frequencies
-        action = np.sin(psi)
-        action = np.random.normal(0.0, 1.0, (action_dim,)) # compare to normal gaussian noise
+        #action = np.sin(psi)
+        #action = np.random.normal(0.0, 1.0, (action_dim,)) # compare to normal gaussian noise
+        action = np.tanh(np.random.normal(0.0, 3.0, (action_dim,))) # compare to normal gaussian noise
+        action[:3] = 0.0
         nstate, _, absorbing, _ = env.step(action)
 
         env.render()
