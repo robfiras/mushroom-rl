@@ -43,20 +43,34 @@ class NoisyDelayedGym(Gym):
 
 class RandomizedMassGym(Gym):
 
-    def __init__(self, name, **kwargs):
+    def __init__(self, name, random_action_rewiring=False, **kwargs):
         super(RandomizedMassGym, self).__init__(name, **kwargs)
 
         self._allowed_relative_mass_change = [-0.3, 0.0, 0.3]
         self._init_geom_size = deepcopy(self.env.model.geom_size)
         self._init_body_mass = deepcopy(self.env.model.body_mass)
         self._curr_mass_change = np.zeros_like(self._init_body_mass)
+        self._random_action_rewiring = random_action_rewiring
+        if random_action_rewiring:
+            self._action_wiring_map = np.arange(self.env.action_space.shape[0])
+            np.random.shuffle(self._action_wiring_map)
+        else:
+            self._action_wiring_map = np.arange(self.env.action_space.shape[0])
 
         # update observation space of env
         observation_space = self.env.observation_space
-        low = np.concatenate([observation_space.low,
-                              np.ones_like(self._init_body_mass) * np.min(self._allowed_relative_mass_change)])
-        high = np.concatenate([observation_space.high,
-                              np.ones_like(self._init_body_mass) * np.max(self._allowed_relative_mass_change)])
+        if random_action_rewiring:
+            low = np.concatenate([observation_space.low,
+                                  np.ones_like(self._init_body_mass) * np.min(self._allowed_relative_mass_change),
+                                  np.ones_like(self._action_wiring_map) * np.min(self._action_wiring_map)])
+            high = np.concatenate([observation_space.high,
+                                  np.ones_like(self._init_body_mass) * np.max(self._allowed_relative_mass_change),
+                                  np.ones_like(self._action_wiring_map) * np.max(self._action_wiring_map)])
+        else:
+            low = np.concatenate([observation_space.low,
+                                  np.ones_like(self._init_body_mass) * np.min(self._allowed_relative_mass_change)])
+            high = np.concatenate([observation_space.high,
+                                  np.ones_like(self._init_body_mass) * np.max(self._allowed_relative_mass_change)])
         new_observation_space = Box(low, high, dtype=observation_space.dtype)
         self.env.observation_space = new_observation_space
         self.info.observation_space = new_observation_space
@@ -81,14 +95,24 @@ class RandomizedMassGym(Gym):
         # add mass info
         obs = np.concatenate([obs, self._curr_mass_change])
 
+        # sample action rewiring map
+        if self._random_action_rewiring:
+            np.random.shuffle(self._action_wiring_map)
+            obs = np.concatenate([obs, self._action_wiring_map])
+
         return obs
 
     def step(self, action):
+
+        action = action[self._action_wiring_map]
 
         obs, reward, absorbing, info = super(RandomizedMassGym, self).step(action)
 
         # add mass info
         obs = np.concatenate([obs, self._curr_mass_change])
+
+        if self._random_action_rewiring:
+            obs = np.concatenate([obs, self._action_wiring_map])
 
         return obs, reward, absorbing, info
 
@@ -99,6 +123,9 @@ class RandomizedMassGym(Gym):
             mask = np.concatenate([mask, np.zeros_like(self._curr_mass_change, dtype=np.bool)])
         else:
             mask = np.concatenate([mask, np.ones_like(self._curr_mass_change, dtype=np.bool)])
+
+        if self._random_action_rewiring:
+            mask = np.concatenate([mask, np.zeros_like(self._action_wiring_map, dtype=np.bool)])
 
         return mask
 
