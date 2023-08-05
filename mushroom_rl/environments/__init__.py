@@ -94,22 +94,27 @@ if Gym:
     register(
         id='AntPOMDP-v3',
         entry_point='mushroom_rl.environments.gym_mujoco_pomdp:AntEnvPOMPD',
+        max_episode_steps=1000,
     )
     register(
         id='HalfCheetahPOMDP-v3',
         entry_point='mushroom_rl.environments.gym_mujoco_pomdp:HalfCheetahEnvPOMPD',
+        max_episode_steps=1000,
     )
     register(
         id='HopperPOMDP-v3',
         entry_point='mushroom_rl.environments.gym_mujoco_pomdp:HopperEnvPOMPD',
+        max_episode_steps=1000,
     )
     register(
         id='HumanoidPOMDP-v3',
         entry_point='mushroom_rl.environments.gym_mujoco_pomdp:HumanoidEnvPOMPD',
+        max_episode_steps=1000,
     )
     register(
         id='Walker2dPOMDP-v3',
         entry_point='mushroom_rl.environments.gym_mujoco_pomdp:Walker2dEnvPOMPD',
+        max_episode_steps=1000,
     )
     register(
         id='InvertedPendulumEnvPOMDP',
