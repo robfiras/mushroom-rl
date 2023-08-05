@@ -328,7 +328,22 @@ class ReducedHumanoidTorquePOMDP(BaseHumanoid):
         if self.more_than_one_env:
             env_id_map = self._get_env_id_map(self._current_model_idx, len(self._models))
             obs = np.concatenate([obs, env_id_map])
+
+        q_pelis_ty = self._get_obs_ind("q_pelvis_ty")
+        dq_pelis_tx = self._get_obs_ind("dq_pelvis_tx")
+        dq_pelis_ty = self._get_obs_ind("dq_pelvis_ty")
+        dq_pelis_tz = self._get_obs_ind("dq_pelvis_tz")
+
+        curr_scaling = self._scalings[self._current_model_idx]
+        obs[q_pelis_ty] = obs[q_pelis_ty] / curr_scaling
+        obs[dq_pelis_tx] = obs[dq_pelis_tx] / curr_scaling
+        obs[dq_pelis_ty] = obs[dq_pelis_ty] / curr_scaling
+        obs[dq_pelis_tz] = obs[dq_pelis_tz] / curr_scaling
+
         return obs
+
+    def _get_obs_ind(self, key):
+        return self.obs_helper.obs_idx_map[key][0] - 2
 
     def render(self):
         # call grand-parent's render function
