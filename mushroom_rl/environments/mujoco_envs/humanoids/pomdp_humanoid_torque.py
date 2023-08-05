@@ -150,8 +150,8 @@ class ReducedHumanoidTorquePOMDP(BaseHumanoid):
             #if type(scaling) == list:
             #    self._scalings = scaling
             #else:
-            #assert scaling in allowed_scalings
-            self._scalings = [scaling for i in range(len(allowed_scalings))]
+            assert scaling in allowed_scalings
+            self._scalings = [scaling]
 
         self._use_brick_foots = use_brick_foots
         self._disable_arms = disable_arms

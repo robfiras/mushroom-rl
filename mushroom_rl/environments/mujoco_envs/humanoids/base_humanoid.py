@@ -1,8 +1,6 @@
-import os
 import time
 from abc import abstractmethod
 import mujoco
-import math
 
 from mushroom_rl.environments.multi_mujoco import MultiMuJoCo, ObservationType
 from pathlib import Path
@@ -20,8 +18,6 @@ from mushroom_rl.environments.mujoco_envs.humanoids.reward import NoGoalReward, 
 try:
     mujoco_viewer_available = True
     import mujoco_viewer
-
-    mujoco_viewer.MujocoViewer
 except ModuleNotFoundError:
     mujoco_viewer_available = False
 
@@ -219,7 +215,6 @@ class BaseHumanoid(MultiMuJoCo):
         #    self._viewer.render()
         #    time.sleep(self.dt)
         #else:
-
         self._viewer.render(self._data)
 
     def create_dataset(self, ignore_keys=[], normalizer=None):
@@ -229,7 +224,7 @@ class BaseHumanoid(MultiMuJoCo):
             raise ValueError("No trajecory was passed to the environment. To create a dataset,"
                              "pass a trajectory to the dataset first.")
 
-    def play_trajectory_demo(self, freq=200, view_from_other_side=True):
+    def play_trajectory_demo(self, freq=200, view_from_other_side=False):
         """
         Plays a demo of the loaded trajectory by forcing the model
         positions to the ones in the reference trajectory at every step
@@ -238,16 +233,16 @@ class BaseHumanoid(MultiMuJoCo):
         assert self.trajectory is not None
 
         ##Todo: different camera view not working
-        cam = mujoco.MjvCamera()
-        mujoco.mjv_defaultCamera(cam)
-        viewer._render_every_frame = False
-        if view_from_other_side:
-            #self._model.cam_pos = [3., 2., 0.0]
-            cam.type = mujoco.mjtCamera.mjCAMERA_TRACKING
-            cam.trackbodyid = 0
-            cam.distance *= 0.3
-            cam.elevation = -0  # camera rotation around the axis in the plane going through the frame origin (if 0 you just see a line)
-            cam.azimuth = 270
+        # cam = mujoco.MjvCamera()
+        # mujoco.mjv_defaultCamera(cam)
+        # viewer._render_every_frame = False
+        # if view_from_other_side:
+        #     #self._model.cam_pos = [3., 2., 0.0]
+        #     cam.type = mujoco.mjtCamera.mjCAMERA_TRACKING
+        #     cam.trackbodyid = 0
+        #     cam.distance *= 0.3
+        #     cam.elevation = -0  # camera rotation around the axis in the plane going through the frame origin (if 0 you just see a line)
+        #     cam.azimuth = 270
         sample = self.trajectory.reset_trajectory(substep_no=1)
         self.set_qpos_qvel(sample)
         while True:
