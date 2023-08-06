@@ -4,7 +4,8 @@ from gym.envs.mujoco.humanoid_v3 import HumanoidEnv
 
 class HumanoidEnvPOMPD(HumanoidEnv):
 
-    def __init__(self, obs_to_hide=("velocities",), include_body_vel=False, random_force_com=False, max_force_strength=10.0, **kwargs):
+    def __init__(self, obs_to_hide=("velocities", "com_inertia", "com_velocity", "actuator_forces"),
+                 include_body_vel=False, random_force_com=False, max_force_strength=10.0, **kwargs):
 
         self._hidable_obs = ("positions", "velocities", "com_inertia", "com_velocity",
                              "actuator_forces", "external_contact_forces")
