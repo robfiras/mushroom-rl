@@ -13,7 +13,7 @@ class BipedalWalkerPOMDP(BipedalWalker):
     def __init__(self, n_lidar_measurements=1, **kwargs):
         assert 10 >= n_lidar_measurements >= 1
         self._n_lidar_measurements = n_lidar_measurements
-        self._lidar_mask = np.ones(10, dtype=np.bool)
+        self._lidar_mask = np.ones(10, dtype=bool)
         ind = (10 - n_lidar_measurements) // 2
         if n_lidar_measurements < 10:
             if n_lidar_measurements % 2 >= 0.5:
@@ -26,7 +26,7 @@ class BipedalWalkerPOMDP(BipedalWalker):
         super().__init__(**kwargs)
 
     def get_mask(self):
-        return np.concatenate([np.ones(14, dtype=np.bool), deepcopy(self._lidar_mask)])
+        return np.concatenate([np.ones(14, dtype=bool), deepcopy(self._lidar_mask)])
 
 
 if __name__ == "__main__":

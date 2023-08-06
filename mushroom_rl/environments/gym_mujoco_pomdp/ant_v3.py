@@ -67,22 +67,22 @@ class AntEnvPOMPD(AntEnv):
         contact_force = self.contact_forces.flat.copy()
 
         if "positions" not in obs_to_hide:
-            mask += [np.ones_like(position, dtype=np.bool)]
+            mask += [np.ones_like(position, dtype=bool)]
         else:
-            mask += [np.zeros_like(position, dtype=np.bool)]
+            mask += [np.zeros_like(position, dtype=bool)]
 
         if "velocities" not in obs_to_hide:
-            mask += [np.ones_like(velocity, dtype=np.bool)]
+            mask += [np.ones_like(velocity, dtype=bool)]
         else:
-            velocity_mask = [np.zeros_like(velocity, dtype=np.bool)]
+            velocity_mask = [np.zeros_like(velocity, dtype=bool)]
             if self._include_body_vel:
                 velocity_mask[0][:6] = 1
             mask += velocity_mask
 
         if "contact_forces" not in obs_to_hide:
-            mask += [np.ones_like(contact_force, dtype=np.bool)]
+            mask += [np.ones_like(contact_force, dtype=bool)]
         else:
-            mask += [np.zeros_like(contact_force, dtype=np.bool)]
+            mask += [np.zeros_like(contact_force, dtype=bool)]
 
         return np.concatenate(mask).ravel()
 

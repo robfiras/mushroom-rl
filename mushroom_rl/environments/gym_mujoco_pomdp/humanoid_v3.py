@@ -83,36 +83,36 @@ class HumanoidEnvPOMPD(HumanoidEnv):
         external_contact_forces = self.sim.data.cfrc_ext.flat.copy()
 
         if "positions" not in obs_to_hide:
-            mask += [np.ones_like(position, dtype=np.bool)]
+            mask += [np.ones_like(position, dtype=bool)]
         else:
-            mask += [np.zeros_like(position, dtype=np.bool)]
+            mask += [np.zeros_like(position, dtype=bool)]
 
         if "velocities" not in obs_to_hide:
-            mask += [np.ones_like(velocity, dtype=np.bool)]
+            mask += [np.ones_like(velocity, dtype=bool)]
         else:
-            velocity_mask = [np.zeros_like(velocity, dtype=np.bool)]
+            velocity_mask = [np.zeros_like(velocity, dtype=bool)]
             if self._include_body_vel:
                 velocity_mask[0][:6] = 1
             mask += velocity_mask
 
         if "com_inertia" not in obs_to_hide:
-            mask += [np.ones_like(com_inertia, dtype=np.bool)]
+            mask += [np.ones_like(com_inertia, dtype=bool)]
         else:
-            mask += [np.zeros_like(com_inertia, dtype=np.bool)]
+            mask += [np.zeros_like(com_inertia, dtype=bool)]
 
         if "com_velocity" not in obs_to_hide:
-            mask += [np.ones_like(com_velocity, dtype=np.bool)]
+            mask += [np.ones_like(com_velocity, dtype=bool)]
         else:
-            mask += [np.zeros_like(com_velocity, dtype=np.bool)]
+            mask += [np.zeros_like(com_velocity, dtype=bool)]
 
         if "actuator_forces" not in obs_to_hide:
-            mask += [np.ones_like(actuator_forces, dtype=np.bool)]
+            mask += [np.ones_like(actuator_forces, dtype=bool)]
         else:
-            mask += [np.zeros_like(actuator_forces, dtype=np.bool)]
+            mask += [np.zeros_like(actuator_forces, dtype=bool)]
 
         if "external_contact_forces" not in obs_to_hide:
-            mask += [np.ones_like(external_contact_forces, dtype=np.bool)]
+            mask += [np.ones_like(external_contact_forces, dtype=bool)]
         else:
-            mask += [np.zeros_like(external_contact_forces, dtype=np.bool)]
+            mask += [np.zeros_like(external_contact_forces, dtype=bool)]
 
         return np.concatenate(mask).ravel()

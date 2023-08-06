@@ -120,12 +120,12 @@ class RandomizedMassGym(Gym):
 
         mask = self.env.get_mask(obs_to_hide)
         if hide_mass_setup:
-            mask = np.concatenate([mask, np.zeros_like(self._curr_mass_change, dtype=np.bool)])
+            mask = np.concatenate([mask, np.zeros_like(self._curr_mass_change, dtype=bool)])
         else:
-            mask = np.concatenate([mask, np.ones_like(self._curr_mass_change, dtype=np.bool)])
+            mask = np.concatenate([mask, np.ones_like(self._curr_mass_change, dtype=bool)])
 
         if self._random_action_rewiring:
-            mask = np.concatenate([mask, np.zeros_like(self._action_wiring_map, dtype=np.bool)])
+            mask = np.concatenate([mask, np.zeros_like(self._action_wiring_map, dtype=bool)])
 
         return mask
 

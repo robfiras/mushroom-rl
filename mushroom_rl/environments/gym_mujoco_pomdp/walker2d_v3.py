@@ -66,14 +66,14 @@ class Walker2dEnvPOMPD(Walker2dEnv):
         velocity = np.clip(self.sim.data.qvel.flat.copy(), -10, 10)
 
         if "positions" not in obs_to_hide:
-            mask += [np.ones_like(position, dtype=np.bool)]
+            mask += [np.ones_like(position, dtype=bool)]
         else:
-            mask += [np.zeros_like(position, dtype=np.bool)]
+            mask += [np.zeros_like(position, dtype=bool)]
 
         if "velocities" not in obs_to_hide:
-            mask += [np.ones_like(velocity, dtype=np.bool)]
+            mask += [np.ones_like(velocity, dtype=bool)]
         else:
-            velocity_mask = [np.zeros_like(velocity, dtype=np.bool)]
+            velocity_mask = [np.zeros_like(velocity, dtype=bool)]
             if self._include_body_vel:
                 velocity_mask[0][:3] = 1
             mask += velocity_mask
