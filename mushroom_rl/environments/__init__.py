@@ -130,3 +130,9 @@ if Gym:
         entry_point='mushroom_rl.environments.other_pomdp_envs:BipedalWalkerPOMDP',
     )
 
+    register(
+        id='AntMazePOMDP',
+        entry_point='mushroom_rl.environments.memory_task:AntEnvMazePOMDP',
+        max_episode_steps=1000,
+    )
+
