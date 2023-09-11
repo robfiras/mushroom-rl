@@ -116,8 +116,8 @@ class AntEnvMazePOMDP(AntEnv):
             mask += [np.ones_like(self._current_env_type, dtype=bool)]
             mask += [np.ones_like(self._current_env_type, dtype=bool)]
         else:
-            mask += [np.zeros_like(self._current_env_type, dtype=bool)]     # hide for policy
-            mask += [np.ones_like(self._current_env_type, dtype=bool)]      # show for critic
+            mask += [np.atleast_1d(np.ones_like(self._current_env_type, dtype=bool))]     # show policy env_type
+            mask += [np.atleast_1d(np.zeros_like(self._current_env_type, dtype=bool))]      # hide critic env_type
 
         return np.concatenate(mask).ravel()
 
