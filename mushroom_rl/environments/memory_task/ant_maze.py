@@ -1,5 +1,7 @@
 import os 
 from os import path
+
+import mujoco_py.generated.const
 import numpy as np
 from gym.envs.mujoco.ant_v3 import AntEnv
 from dm_control import mjcf
@@ -15,7 +17,11 @@ class AntEnvMazePOMDP(AntEnv):
         xml_file = path.join(path.dirname(__file__), "assets", "ant_mem.xml")
 
         if sequences is None:
-            sequences = [[2*((j+i)%2)-1 for j in range(20)] for i in range(2)]
+            # zick-zack from left once starting from right and once from left
+            sequences = [[2*((j+i) % 2)-1 for j in range(20)] for i in range(2)]
+
+        self._env_types = [0, 1]
+        self._current_env_type = 0
 
         self._xml_files = []
         for sequence in sequences:
@@ -24,7 +30,7 @@ class AntEnvMazePOMDP(AntEnv):
             xml_handle = self._add_segments(xml_handle, sequence)
             self._xml_files.append(xml_handle.to_xml_string())
 
-        self._hidable_obs = ("positions", "velocities", "contact_forces")
+        self._hidable_obs = ("env_type")
         if type(obs_to_hide) == str:
             obs_to_hide = (obs_to_hide,)
         assert not all(x in obs_to_hide for x in self._hidable_obs), "You are not allowed to hide all observations!"
@@ -37,11 +43,14 @@ class AntEnvMazePOMDP(AntEnv):
         self._force_strength = 0.0
         self._forward_reward_weight = forward_reward_weight
         self._include_body_vel = include_body_vel
-        super().__init__(xml_file=xml_file, **kwargs)
+        super().__init__(xml_file=xml_file, healthy_z_range=(5.2125, 6.0), **kwargs)
+        self.reset_model()
 
     def reset_model(self):
 
         xml_file_ind = np.random.randint(0, len(self._xml_files))
+        assert xml_file_ind in self._env_types
+        self._current_env_type = xml_file_ind
         xml_file = self._xml_files[xml_file_ind]
         self.model = self._mujoco_bindings.load_model_from_xml(xml_file)
         self.sim = self._mujoco_bindings.MjSim(self.model)
@@ -71,26 +80,13 @@ class AntEnvMazePOMDP(AntEnv):
         return super().reset_model()
 
     def _get_obs(self):
-        observations = []
-        if "positions" not in self._obs_to_hide:
-            position = self.sim.data.qpos.flat.copy()
-            if self._exclude_current_positions_from_observation:
-                position = position[2:]
-            observations += [position]
+        obs = super()._get_obs()
+        # env_type for policy
+        env_type_policy = self._current_env_type if self.get_body_com("torso")[0] < 3 else -1
 
-        if "velocities" not in self._obs_to_hide:
-            velocity = self.sim.data.qvel.flat.copy()
-            observations += [velocity]
-
-        if "velocities" in self._obs_to_hide and self._include_body_vel:
-            velocity = self.sim.data.qvel.flat.copy()
-            observations += [velocity[:6]]
-
-        if "contact_forces" not in self._obs_to_hide:
-            contact_force = self.contact_forces.flat.copy()
-            observations += [contact_force]
-
-        return np.concatenate(observations).ravel()
+        # env_type for critic
+        env_type_critic = self._current_env_type
+        return np.concatenate([obs, [env_type_policy, env_type_critic]]).ravel()
 
     def get_mask(self, obs_to_hide):
         """ This function returns a boolean mask to hide observations from a fully observable state. """
@@ -107,23 +103,21 @@ class AntEnvMazePOMDP(AntEnv):
         velocity = self.sim.data.qvel.flat.copy()
         contact_force = self.contact_forces.flat.copy()
 
-        if "positions" not in obs_to_hide:
-            mask += [np.ones_like(position, dtype=bool)]
-        else:
-            mask += [np.zeros_like(position, dtype=bool)]
+        # positions
+        mask += [np.ones_like(position, dtype=bool)]
 
-        if "velocities" not in obs_to_hide:
-            mask += [np.ones_like(velocity, dtype=bool)]
-        else:
-            velocity_mask = [np.zeros_like(velocity, dtype=bool)]
-            if self._include_body_vel:
-                velocity_mask[0][:6] = 1
-            mask += velocity_mask
+        # velocities
+        mask += [np.ones_like(velocity, dtype=bool)]
 
-        if "contact_forces" not in obs_to_hide:
-            mask += [np.ones_like(contact_force, dtype=bool)]
+        # contact forces
+        mask += [np.ones_like(contact_force, dtype=bool)]
+
+        if "env_type" not in obs_to_hide:
+            mask += [np.ones_like(self._current_env_type, dtype=bool)]
+            mask += [np.ones_like(self._current_env_type, dtype=bool)]
         else:
-            mask += [np.zeros_like(contact_force, dtype=bool)]
+            mask += [np.zeros_like(self._current_env_type, dtype=bool)]     # hide for policy
+            mask += [np.ones_like(self._current_env_type, dtype=bool)]      # show for critic
 
         return np.concatenate(mask).ravel()
 
@@ -171,12 +165,12 @@ class AntEnvMazePOMDP(AntEnv):
         state = self.state_vector()
         min_z, max_z = self._healthy_z_range
         is_healthy = np.isfinite(state).all() and min_z <= state[2] <= max_z
-        return True
+        return is_healthy
 
     @property
     def done(self):
         done = not self.is_healthy if self._terminate_when_unhealthy else False
-        return False
+        return done
 
     @staticmethod
     def _add_segments(xml_handle, sequence):
@@ -195,6 +189,21 @@ class AntEnvMazePOMDP(AntEnv):
             _add_segment(handle, n, s)
 
         return xml_handle
+
+    def viewer_setup(self):
+        """
+        This method is called when the viewer is initialized.
+        Optionally implement this method, if you need to tinker with camera position and so forth.
+        """
+
+        cam = self.viewer.cam
+        cam.azimuth = 360.0
+        cam.distance = 175.0
+        cam.elevation = -10.0
+
+        cam.fixedcamid = -1
+        cam.type = mujoco_py.generated.const.CAMERA_TRACKING
+        cam.trackbodyid = 2
 
     @staticmethod
     def _save_xml_handle(xml_handle, tmp_dir_name, file_name="tmp_model.xml"):
