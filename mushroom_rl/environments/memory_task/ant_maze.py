@@ -43,7 +43,8 @@ class AntEnvMazePOMDP(AntEnv):
         self._force_strength = 0.0
         self._forward_reward_weight = forward_reward_weight
         self._include_body_vel = include_body_vel
-        super().__init__(xml_file=xml_file, healthy_z_range=(5.2125, 6.0), **kwargs)
+        super().__init__(xml_file=xml_file, healthy_z_range=(5.2125, 6.0),
+                         exclude_current_positions_from_observation=False, **kwargs)
         self.reset_model()
 
     def reset_model(self):
