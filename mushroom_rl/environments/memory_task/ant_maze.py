@@ -12,8 +12,8 @@ import glfw
 
 class AntEnvMazePOMDP(AntEnv):
 
-    def __init__(self, obs_to_hide=("velocities",), random_force_com=False, max_force_strength=0.5,
-                 forward_reward_weight=1.0, include_body_vel=False, sequences=None, **kwargs):
+    def __init__(self, obs_to_hide=("velocities",), forward_reward_weight=10.0, ctrl_cost_weight=0.0,
+                 contact_cost_weight=0.0, include_body_vel=False, sequences=None, **kwargs):
         xml_file = path.join(path.dirname(__file__), "assets", "ant_mem.xml")
 
         if sequences is None:
@@ -38,12 +38,10 @@ class AntEnvMazePOMDP(AntEnv):
                                                                  "supported. Valid observations to hide are %s."\
                                                                  % (self._hidable_obs,)
         self._obs_to_hide = obs_to_hide
-        self._random_force_com = random_force_com
-        self._max_force_strength = max_force_strength
-        self._force_strength = 0.0
         self._forward_reward_weight = forward_reward_weight
         self._include_body_vel = include_body_vel
-        super().__init__(xml_file=xml_file, healthy_z_range=(5.2125, 6.0),
+        super().__init__(xml_file=xml_file, healthy_z_range=(5.3, 6.0), ctrl_cost_weight=ctrl_cost_weight,
+                         contact_cost_weight=contact_cost_weight,
                          exclude_current_positions_from_observation=False, **kwargs)
         self.reset_model()
 
@@ -74,10 +72,6 @@ class AntEnvMazePOMDP(AntEnv):
         self.viewer = None
         self._viewers = {}
 
-        if self._random_force_com:
-            self._force_strength = np.random.choice([-self._max_force_strength, self._max_force_strength])
-            sign = -1.0 if self._force_strength < 0 else 1.0
-            self._forward_reward_weight = np.abs(self._forward_reward_weight) * sign
         return super().reset_model()
 
     def _get_obs(self):
@@ -123,9 +117,6 @@ class AntEnvMazePOMDP(AntEnv):
         return np.concatenate(mask).ravel()
 
     def step(self, action):
-
-        torso_index = self.model.body_names.index('torso')
-        self.data.xfrc_applied[torso_index, 0] = self._force_strength
 
         xy_position_before = self.get_body_com("torso")[:2].copy()
         self.do_simulation(action, self.frame_skip)
