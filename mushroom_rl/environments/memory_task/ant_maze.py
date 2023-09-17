@@ -6,7 +6,6 @@ import numpy as np
 from gym.envs.mujoco.ant_v3 import AntEnv
 from dm_control import mjcf
 from tempfile import mkdtemp
-from mushroom_rl.utils.mujoco import MujocoGlfwViewer
 import glfw
 
 
@@ -151,6 +150,9 @@ class AntEnvMazePOMDP(AntEnv):
         }
 
         return observation, reward, done, info
+
+    def _set_observation_space(self, observation):
+        return super(AntEnvMazePOMDP, self)._set_observation_space(observation[:-1])
 
     @property
     def is_healthy(self):
